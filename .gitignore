@@ -1,0 +1,75 @@
+﻿# ===== Java / Maven =====
+backend/target/
+*.class
+*.jar
+*.war
+*.ear
+
+# ===== Node / Frontend =====
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# ===== Environment / Secrets =====
+.env
+**/.env
+!**/.env.example
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.iml
+.claude/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Data files (large CSVs, databases, Excel) =====
+05(data)/*.csv
+05(data)/*.xlsx
+05(data)/*.db
+05(data)/*.txt
+05(data)/filtered_for_model/
+05(data)/outputs/
+05(data)/Economic Complexity and International Trade/
+
+# ===== Pipeline large files =====
+pipeline/ESTAT-CN2026.rdf
+pipeline/ITC-HS_2022.pdf
+pipeline/hts_2026_basic_edition_csv.csv
+pipeline/downloads/
+*.rdf
+
+# ===== Paper figures (generated, reproducible from scripts) =====
+fig1_*.png
+fig1_*.pdf
+fig2_*.png
+fig2_*.pdf
+fig3_*.png
+fig3_*.pdf
+results_overview.png
+
+# ===== Temporary / working files =====
+_estimate_pages.py
+_validate_tex.py
+_validate_tex2.py
+_verify_numbers.py
+final_test_results.txt
+test_results.txt
+hs_test_*.json
+skills-lock.json
+PRODUCTION_DATA_AUDIT.md
+BEFORE_AFTER_COMPARISON.md
+CRITICAL_FIXES_TO_APPLY.md
+FINAL_VERIFICATION_CHECKLIST.md
+FIXES_APPLIED_SUMMARY.md
+IMMEDIATE_NEXT_STEPS.md
+TECHNICAL_AUDIT_REPORT.md
+CBEC_AI_CONFERENCE_PAPER.md
+backend/_test50_report.txt
+
+# ===== Compiled test output =====
+backend/target/maven-status/

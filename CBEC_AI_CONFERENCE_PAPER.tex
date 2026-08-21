@@ -1,0 +1,875 @@
+%=====================================================================
+%  CBEC-AI : IEEE Conference Paper (IEEEtran, two-column)
+%  Compile on Overleaf: New Project -> Upload -> this .tex file
+%  Menu -> Compiler: pdfLaTeX  (default). No extra files needed.
+%=====================================================================
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage[T1]{fontenc}
+
+% ---- convenience macros ----
+\newcommand{\arrowto}{$\rightarrow$}
+
+\begin{document}
+
+\title{CBEC-AI: A Context-Aware AI-Driven Platform for\\
+Cross-Border Export Intelligence, HS Classification,\\
+and Regulatory Compliance for Indian SMEs}
+
+\author{
+\IEEEauthorblockN{<<AUTHOR~1 NAME>>, <<AUTHOR~2 NAME>>, <<AUTHOR~3 NAME>>}
+\IEEEauthorblockA{\textit{<<Department of Computer Science / AI / IT>>} \\
+\textit{<<Institution Name>>}\\
+<<City>>, <<State>>, India \\
+\{<<author1.email>>, <<author2.email>>, <<author3.email>>\}@<<domain>>}
+}
+
+\maketitle
+
+%---------------------------------------------------------------------
+\begin{abstract}
+Small and Medium Enterprises (SMEs) constitute the backbone of India's
+export economy yet face disproportionate barriers in cross-border trade:
+complex Harmonized System (HS) code classification, fragmented
+destination-country regulatory requirements, and the absence of
+data-driven market selection tools. This paper presents \textbf{CBEC-AI},
+an integrated, context-aware platform that unifies three AI-driven
+capabilities: (i) a database-grounded, LLM-assisted HS code
+classification engine that never fabricates codes; (ii) a hierarchical
+regulatory intelligence retrieval system with \textbf{hybrid multimodal}
+Retrieval-Augmented Generation (RAG)---combining structured
+regulatory-database evidence with semantically retrieved ingested
+documents, fused via a reranking stage---that answers compliance queries
+strictly from official government evidence; and (iii) a machine-learning
+export destination ranking model trained on eight years (2017--2024) of
+bilateral trade data from CEPII BACI, CEPII Gravity, and World Bank WDI.
+We evaluate the ranking model on a held-out temporal test set
+(2023\arrowto 2024) across 55 HS6 product codes and India's top~10 export
+destinations. After a leakage audit removed year-correlated features
+(including an imputation-flag proxy and a synthetically year-formulated
+GDP-per-capita feature) and models were retrained with time-aware
+expanding-window cross-validation, a ranking-objective XGBoost model
+(XGBRanker, \texttt{rank:pairwise}) achieves the best rank correlation
+(Spearman~$\rho = 0.8956 \pm 0.0033$ across 5 seeds, Top-3 Overlap
+$= 89.1\%$), significantly outperforming a naive historical-growth
+baseline ($\rho = 0.8686$; Wilcoxon signed-rank $p = 3.8\times10^{-4}$)---in
+contrast to an earlier, less rigorously feature-audited configuration in
+which no model significantly beat the baseline. Random Forest remains the
+strongest model for single-best-market selection (Top-1 Hit Rate
+$= 81.8\%$), and a regression-objective XGBoost model remains best for
+calibrated value prediction (RMSE $= 2.44$, $R^2 = 0.836$), indicating
+that model choice should be matched to the downstream decision task rather
+than a single ``best'' model declared across all metrics. The HS
+classification engine achieves HIGH\_CONFIDENCE recommendations for
+products in covered tariff chapters while honestly returning
+NEEDS\_REVIEW for out-of-coverage products, and the served ranking model
+returns DATA\_UNAVAILABLE outside its trained product/country scope rather
+than extrapolating silently. To our knowledge, CBEC-AI is the first system
+to combine grounded, hybrid multimodal LLM regulatory reasoning with a
+leakage-audited, statistically validated ranking-objective trade model in
+a single SME-facing platform, prioritizing correctness and auditability
+over inflated performance claims.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Cross-border e-commerce, HS code classification, Retrieval-Augmented
+Generation, export market ranking, trade facilitation, gradient boosting,
+regulatory compliance, SME digitalization.
+\end{IEEEkeywords}
+
+%=====================================================================
+\section{Introduction}
+%=====================================================================
+
+\subsection{Motivation}
+India's merchandise exports crossed USD~450 billion in recent years, with
+SMEs contributing approximately 45\% of this value. Despite this, SME
+exporters operate at a significant information disadvantage compared to
+large trading houses with dedicated compliance and market-research teams.
+Three specific pain points recur:
+
+\begin{enumerate}
+\item \textbf{HS Code Misclassification.} The Indian Trade Classification
+(ITC-HS) contains over 11{,}500 national tariff lines. Incorrect
+classification results in customs delays, penalty duties, and cargo
+detention. Manual classification requires specialized expertise
+unavailable to most SMEs.
+\item \textbf{Regulatory Fragmentation.} Each destination country imposes
+distinct documentation, certification, labeling, and procedural
+requirements that vary by product and HS code, scattered across dozens of
+government portals (FDA, CBP, EU authorities, etc.).
+\item \textbf{Suboptimal Market Selection.} SMEs frequently choose export
+destinations based on anecdotal information rather than data-driven
+analysis of demand, competition, tariffs, and market accessibility.
+\end{enumerate}
+
+\subsection{Contributions}
+\begin{itemize}
+\item \textbf{C1.} A \textbf{database-first HS classification
+architecture} that combines deterministic multi-signal scoring with LLM
+re-ranking, enforcing strict validation such that the AI can only rank
+candidates retrieved from the official tariff database---eliminating
+hallucination.
+\item \textbf{C2.} A \textbf{grounded hybrid multimodal regulatory RAG
+system} that fuses hierarchical HS matching (EXACT\_NATIONAL\_CODE
+\arrowto{} HS6 \arrowto{} HS4 \arrowto{} HS2) with semantic document
+retrieval and a multimodal reranking stage, transparently reports match
+confidence, and refuses to fabricate requirements when evidence is absent.
+\item \textbf{C3.} A \textbf{rigorously-evaluated export destination
+ranking model} with honest statistical significance testing against naive
+baselines, a 5-seed ablation study, and full reproducibility artifacts.
+\item \textbf{C4.} An \textbf{end-to-end integrated platform} deployed as
+a production web application connecting classification, compliance, and
+market intelligence into a single SME workflow.
+\item \textbf{C5.} A \textbf{reproducibility and integrity framework} that
+separates verified data from AI-generated explanations and honestly
+reports coverage gaps rather than inflating metrics.
+\end{itemize}
+
+\subsection{Design Philosophy}
+The central architectural principle is \textit{``Database-first,
+AI-second, honesty-always.''} The system never allows the language model
+to be the source of regulatory or classification truth. Official
+government data is authoritative; the AI ranks, retrieves, explains, and
+summarizes but never invents. When data is unavailable, the system
+explicitly says so.
+
+%=====================================================================
+\section{Related Work}
+%=====================================================================
+
+\subsection{Automated HS Classification}
+Prior approaches include rule-based systems (WCO classification
+databases), classical machine learning on customs declarations
+\cite{ding2015,turhan2019}, and deep-learning text classifiers
+\cite{kim2020}. A common failure mode is generating codes absent from the
+official schedule. Recent LLM-based classifiers risk hallucinating
+plausible-but-nonexistent codes. CBEC-AI addresses this by constraining
+the LLM to rank only database-retrieved candidates and validating every
+output against the tariff master.
+
+\subsection{Trade Compliance Systems}
+Commercial platforms (Descartes, E2open, Thomson Reuters ONESOURCE)
+provide regulatory databases but are cost-prohibitive for SMEs, lack
+transparent evidence lineage, and do not integrate AI explanation.
+Academic work on regulatory NLP includes legal question answering
+\cite{cui2023} and compliance checking \cite{zhang2023}, but few systems
+apply grounded RAG to multi-jurisdictional trade compliance.
+
+\subsection{Export Market Prediction and Gravity Models}
+The gravity model of trade \cite{tinbergen1962,anderson2003} remains the
+econometric standard for bilateral trade flows. Machine-learning
+augmentations \cite{batarseh2021} show gains on trade volume prediction.
+However, many studies omit rigorous significance testing against naive
+baselines, risking overstated claims. Our work explicitly benchmarks
+against a naive historical-growth baseline with paired non-parametric
+tests.
+
+\subsection{Retrieval-Augmented Generation}
+RAG \cite{lewis2020} grounds LLM outputs in retrieved documents to
+mitigate hallucination. We apply RAG specifically to trade regulatory
+reasoning, with system-prompt constraints and explicit DATA\_UNAVAILABLE
+fallbacks.
+
+%=====================================================================
+\section{System Architecture}
+%=====================================================================
+
+\subsection{Overview}
+CBEC-AI comprises five layers: a React~19 single-page presentation layer;
+a Spring~Boot~3.3 / Java~21 application layer hosting the core API, the HS
+classification engine, and export analysis with compliance and RAG; an
+AI~services layer (NVIDIA API: chat, embedding, multimodal reranking); a
+dual-database persistence layer; and an offline data pipeline plus an
+offline Python ML model. Fig.~\ref{fig:arch} summarizes the layering.
+
+\begin{figure}[t]
+\centering
+\fbox{\parbox{0.92\columnwidth}{\footnotesize\ttfamily
+PRESENTATION: React 19 + Vite (SPA)\\
+\ \ Exporter Dashboard | Logistics | ML Ranking\\
+\rule{\linewidth}{0.4pt}\\
+APPLICATION: Spring Boot 3.3 / Java 21\\
+\ \ [Core API] [HS Classify] [Export Analysis + Hybrid RAG]\\
+\ \ [Market Opportunity] [Negotiation] [Compliance]\\
+\rule{\linewidth}{0.4pt}\\
+AI SERVICES: NVIDIA API\\
+\ \ nemotron-3-ultra-550b (chat/explain)\\
+\ \ llama-nemotron-embed-1b-v2 (embed)\\
+\ \ llama-nemotron-rerank-vl-1b-v2 (rerank)\\
+\rule{\linewidth}{0.4pt}\\
+DATA: InternationalTrade DB | TradeData DB\\
+\ \ auth/products/orders | 82{,}554 HS + regulations\\
+\ \ document\_chunk (vector store)\\
+\rule{\linewidth}{0.4pt}\\
+OFFLINE ML: BACI+Gravity+WDI $\rightarrow$ features $\rightarrow$\\
+\ \ XGBRanker/XGBRegressor/RF/LightGBM $\rightarrow$ ranking\\
+PIPELINE (ETL): gov PDFs $\rightarrow$ parse $\rightarrow$ store
+}}
+\caption{CBEC-AI five-layer architecture. NVIDIA AI is a service layer
+(not a data store); the reranker is a distinct stage between retrieval and
+LLM generation. Offline ML includes the XGBRanker (v4 winner) alongside
+regression models.}
+\label{fig:arch}
+\end{figure}
+
+\subsection{Dual-Database Design}
+A deliberate separation isolates transactional integrity from regulatory
+data:
+\begin{itemize}
+\item \textbf{InternationalTrade DB:} users, products, orders, shipments
+(Hibernate-managed, read-write).
+\item \textbf{TradeData DB:} HS codes, regulations, documents,
+certifications, HS-regulation mappings (read-only from backend, populated
+exclusively by the ETL pipeline).
+\end{itemize}
+This ensures application bugs cannot corrupt official tariff data, and
+regulatory updates deploy independently.
+
+\subsection{Technology Stack}
+\begin{table}[h]
+\centering
+\caption{Technology stack.}
+\label{tab:stack}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Layer} & \textbf{Technology} \\
+\midrule
+Frontend  & React 19, Vite 8, Tailwind CSS \\
+Backend   & Spring Boot 3.3.0, Java 21, Spring Security + JWT \\
+Databases & MySQL 8 (dual datasource via Hibernate) \\
+AI        & NVIDIA API: nemotron-3-ultra-550b-a55b (chat), \\
+          & llama-nemotron-embed-1b-v2 (embeddings), \\
+          & llama-nemotron-rerank-vl-1b-v2 (multimodal rerank) \\
+Pipeline  & Apache PDFBox, Jsoup, POI, OpenCSV \\
+ML Model  & Python: XGBoost, LightGBM, scikit-learn, SHAP \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%=====================================================================
+\section{HS Code Classification Engine}
+%=====================================================================
+
+\subsection{Pipeline}
+The classification pipeline is: Product Input \arrowto{} Feature
+Extraction \arrowto{} Candidate Retrieval \arrowto{} Deterministic Scoring
+\arrowto{} LLM Re-ranking \arrowto{} Validation \arrowto{} Top-$N$.
+
+\subsection{Feature Extraction}
+Structured attributes are extracted and normalized: product name,
+description, category, material, composition, function, manufacturing
+process, physical form, and technical specifications. A domain terminology
+map expands user vocabulary to HS nomenclature (e.g., ``cream'' \arrowto{}
+\{preparation, beauty, skin care\}).
+
+\subsection{Candidate Retrieval}
+Three strategies execute without premature limiting: (1) direct
+product-name LIKE search, (2) category-chapter keyword filtering, and (3)
+MySQL FULLTEXT natural-language search. All unique candidates pass to
+scoring; the top-20 are retained \emph{after} scoring---a critical design
+decision preventing correct codes from being eliminated by alphabetical
+truncation.
+
+\subsection{Deterministic Scoring}
+The composite score aggregates weighted signal matches:
+\begin{align*}
+S =\ & 0.25\,\text{descMatch} + 0.20\,\text{functionMatch} \\
+     & + 0.15\,\text{materialMatch} + 0.10\,\text{categoryScore} \\
+     & + 0.10\,\text{mfgMatch} + 0.10\,\text{techMatch} \\
+     & + 0.05\,\text{physicalForm} + 0.05\,\text{officialDesc} \\
+     & + \text{phraseBoost}(+40) + \text{hyphenBoost}(+35) \\
+     & + \text{chapterAlign}(\pm 8/{-}18).
+\end{align*}
+
+\subsection{LLM Re-ranking}
+The top-15 category-filtered candidates are sent to the LLM with a strict
+prompt: \textit{``Rank ONLY the supplied candidates. Do NOT create,
+modify, or invent an HS code.''} The final score is
+$0.50\cdot\text{DB} + 0.50\cdot\text{AI}$. Every returned code is
+validated to exist in \texttt{hs\_master} with \texttt{country='India'}
+and \texttt{is\_current=true}.
+
+\subsection{Confidence Levels}
+\begin{table}[h]
+\centering
+\caption{Confidence level thresholds.}
+\label{tab:conf}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Score} & \textbf{Level} \\
+\midrule
+$\geq 90$ & HIGH\_CONFIDENCE \\
+75--89    & GOOD\_MATCH \\
+60--74    & POSSIBLE\_MATCH \\
+40--59    & LOW\_CONFIDENCE \\
+$<40$     & NEEDS\_REVIEW \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Classification Results}
+\begin{table}[h]
+\centering
+\caption{Representative classification outputs (current system:
+\texttt{nemotron-3-ultra-550b-a55b} LLM re-ranking, AI\_RANKED mode).}
+\label{tab:classres}
+\begin{tabular}{@{}llrl@{}}
+\toprule
+\textbf{Product} & \textbf{HS Code} & \textbf{Score} & \textbf{Level} \\
+\midrule
+Cotton T-Shirt & 6109100000 & 96.2\%  & HIGH\_CONFIDENCE \\
+Smartphone     & 8517130000 & 97.5\%  & HIGH\_CONFIDENCE \\
+Basmati Rice   & 1006309059 & 77.8\%  & GOOD\_MATCH \\
+Black Pepper   & 0904110020 & 75.9\%  & GOOD\_MATCH \\
+Face Cream     & 3304991000 & 61.7\%  & POSSIBLE\_MATCH \\
+\bottomrule
+\end{tabular}
+\end{table}
+All five products are classified in AI\_RANKED mode with the current
+\texttt{nemotron-3-ultra-550b-a55b} LLM. Compared to the earlier
+\texttt{llama-3.1-8b-instruct} configuration, Smartphone's recommended
+code shifted from 8517110000 to 8517130000 (a more specific national
+tariff line) and Face Cream moved from 3304910000 to 3304991000 (a
+narrower subheading); both remain within the correct HS4 heading.
+For products in tariff chapters absent from the current dataset
+(fertilizers, footwear, plastics), the system correctly returns
+NEEDS\_REVIEW rather than hallucinating---a key integrity property.
+
+%=====================================================================
+\section{Regulatory Intelligence and RAG}
+%=====================================================================
+
+\subsection{Hierarchical Matching}
+For a (destination country, HS code) query, the system matches at
+progressively broader levels---EXACT\_NATIONAL\_CODE \arrowto{} HS6
+\arrowto{} HS4\_HEADING \arrowto{} HS2\_CHAPTER---and always reports which
+level was used, never presenting an HS4 match as product-specific.
+
+\subsection{Data Model}
+The TradeData database holds 103 regulations, 224 documents, 218
+certifications, 221 labeling requirements, 105 restrictions, 110
+procedures, and 389 HS-regulation mappings across 11 countries, sourced
+from official authorities (FDA, USDA, EPA, FCC, CBP, EU customs, etc.).
+
+\subsection{Grounded Hybrid Multimodal RAG}
+The query flow is: Query \arrowto{} Retrieve (structured TradeData evidence
+$+$ semantic vector search over ingested documents) \arrowto{} Rerank
+\arrowto{} Build context \arrowto{} NVIDIA LLM (constrained) \arrowto{}
+Grounded answer with citations. The system fuses two evidence streams: (a)
+structured regulatory-database records from hierarchical HS matching, and
+(b) semantically retrieved passages from ingested official documents
+(e.g., 19~CFR~134 text, RN numbers, Textile Fiber Products Identification
+Act provisions), embedded with \texttt{llama-nemotron-embed-1b-v2}. A
+multimodal reranking stage \cite{nogueira2019}
+(\texttt{llama-nemotron-rerank-vl-1b-v2})
+orders the fused candidate set by relevance to the query before context
+assembly. The system prompt enforces: \textit{``Use ONLY the supplied
+regulatory context. Never invent regulations, certificates, authorities,
+or dates. If evidence is insufficient, say so.''} When no evidence exists,
+the response is \texttt{DATA\_UNAVAILABLE}. Degradation is graceful: if the
+reranker is unavailable the fused candidates are used in retrieval order;
+if the LLM is unreachable, structured regulatory data is still
+returned---only the natural-language explanation is degraded.
+
+\subsection{Export Analysis Example (India \arrowto{} USA, Black Pepper)}
+\begin{table}[h]
+\centering
+\caption{Export analysis result, India \arrowto{} USA, black pepper.}
+\label{tab:export}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Match Type            & HS4\_HEADING \\
+Regulations           & 5 \\
+Documents             & 14 \\
+Certifications        & 13 \\
+Labeling              & 15 \\
+Restrictions          & 7 \\
+Procedures            & 9 \\
+Compliance Complexity & HIGH \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%=====================================================================
+\section{Export Destination Ranking Model}
+%=====================================================================
+
+\subsection{Problem Formulation}
+Given India's export profile for HS6 product $p$ in year $t$, rank
+candidate destination countries by predicted export opportunity in year
+$t{+}1$. The prediction target is $\log(\text{export value}_{t+1})$;
+countries are ranked per product by predicted value.
+
+\subsection{Dataset}
+\begin{itemize}
+\item \textbf{Products:} 55 HS6 codes across India's top 11 export
+chapters (10, 27, 29, 30, 61, 62, 71, 72, 84, 85, 87).
+\item \textbf{Countries:} India's top 10 export destinations by bilateral
+trade volume (Bangladesh, China, Germany, Hong Kong, Netherlands, Saudi
+Arabia, Singapore, UAE, UK, USA).
+\item \textbf{Time:} 2017--2024 (8 years).
+\item \textbf{Volume:} $55 \times 10 \times 8 = 4{,}400$ observations.
+\item \textbf{Sources:} CEPII BACI (bilateral trade), CEPII Gravity
+(distance, borders, FTAs), World Bank WDI (GDP, population).
+\end{itemize}
+
+\subsection{Feature Groups}
+\begin{table}[h]
+\centering
+\caption{Feature groups.}
+\label{tab:features}
+\begin{tabular}{@{}p{1.7cm}p{6cm}@{}}
+\toprule
+\textbf{Group} & \textbf{Features} \\
+\midrule
+Trade      & export value, market share, import totals, HHI
+             concentration, lags (1/2/3y), growth rates \\
+Gravity    & distance, common border, common language, FTA/WTO \\
+Macro      & destination GDP, GDP per capita, population \\
+Engineered & demand per capita, export intensity, competition intensity,
+             market-growth$\times$FTA \\
+Product    & HS2/HS4/category encodings \\
+Temporal   & year, trailing volatility, share change \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Evaluation Protocol}
+Held-out temporal split: 2023 features \arrowto{} 2024 realized exports.
+Metrics: Spearman~$\rho$, Kendall~$\tau$, Top-3 Overlap, Top-1 Hit Rate,
+NDCG@5/@10, RMSE, MAE, $R^2$. Global seed $=42$; ablations across 5 seeds
+$\{42, 101, 2024, 777, 999\}$.
+
+\subsection{Feature Audit and Leakage Correction}
+\label{sub:audit}
+Following the original ablation's discovery that an imputation-missingness
+flag (\texttt{entry\_metrics\_imputed}) acted as an undisclosed proxy for
+\texttt{year} ($r=0.873$), we conducted a systematic leakage audit \cite{kaufman2012} across
+the full feature set prior to retraining. For every feature we computed
+Pearson and Spearman correlation with \texttt{year}, mutual information
+with \texttt{year}, and within-group (HS6~$\times$~year) variance, to
+catch any feature that varies primarily across time rather than across the
+product--country decision space it is intended to inform. The audit
+removed three features:
+\begin{itemize}
+\item \textbf{\texttt{entry\_metrics\_imputed}}---confirmed as a binary
+year-threshold indicator ($\mathbf{1}[\text{year}>2020]$), the same leak
+identified in the prior ablation.
+\item \textbf{\texttt{feature\_year\_num}}---the raw year value, which is
+constant within each ranking group and falls outside the training range at
+test time.
+\item \textbf{\texttt{gdp\_per\_capita\_usd}}---removed per the prior
+ablation finding that this feature degrades ranking performance
+($p=0.032$) and was independently confirmed to carry a synthetic
+year-trend.
+\end{itemize}
+We additionally identified that \texttt{gdp\_usd} and \texttt{population},
+though sourced under the World Bank WDI label, are generated in the
+data-build pipeline via a year-indexed formula rather than ingested
+directly from WDI records. We retained these two features only for their
+cross-sectional (country-level) signal and disclose this explicitly here;
+we recommend regenerating them from authentic WDI extracts before further
+publication or production use, and treat their presence as a limitation
+(Section~\ref{sec:limitations}). The validated engineered
+features---demand per capita, export intensity, competition intensity, and
+market-growth~$\times$~FTA---were retained unchanged, consistent with
+their statistically significant contribution ($p=0.0165$).
+
+\subsection{Methodology Update: Time-Aware CV and Ranking-Objective Modeling}
+All models were retrained on the leakage-corrected feature set using
+expanding-window time-aware cross-validation (validation years 2019--2022
+sequentially; the 2023\arrowto 2024 test split remained untouched
+throughout development). In addition to the regression formulations, we
+introduced an \texttt{XGBRanker} configuration (\texttt{rank:pairwise}
+\cite{burges2010},
+grouped by product~$\times$~year, with per-group integer relevance grades),
+directly optimizing the pairwise ordering objective that the evaluation
+metrics (Spearman~$\rho$, Top-$k$ Overlap, NDCG) measure, rather than a
+proxy regression loss.
+
+\subsection{Benchmark Results (v4)}
+\label{sub:benchv4}
+\begin{table*}[t]
+\centering
+\caption{Model benchmarking on leakage-corrected features (test:
+2023\arrowto 2024; 5-seed mean$\pm$std for Spearman~$\rho$ where
+applicable). Best value per column in bold.}
+\label{tab:bench}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Spearman $\rho$} & \textbf{Top-3} & \textbf{Top-1}
+& \textbf{RMSE} & \textbf{$R^2$} & \textbf{Wilcoxon $p$} \\
+\midrule
+\textbf{XGBRanker (tuned)}   & $\mathbf{0.8956 \pm 0.0033}$ & \textbf{89.1\%} & 70.9\% & N/A$^{1}$ & N/A$^{1}$ & $\mathbf{3.8\times10^{-4}}$ \\
+Random Forest                & $0.8775$ & 85.5\% & \textbf{81.8\%} & 2.47 & 0.83 & 0.042 \\
+XGBoost Regressor (tuned)    & $0.8787$ & 85.5\% & 76.4\% & \textbf{2.44} & \textbf{0.836} & 0.114 \\
+Naive Historical Growth      & $0.8686$ & 84.2\% & 74.5\% & 2.68 & 0.80 & --- \\
+LightGBM                     & $0.8669$ & 83.0\% & 76.4\% & 2.52 & 0.825 & 0.762 \\
+Gradient Boosting            & $0.8611$ & 81.8\% & 72.7\% & 2.57 & 0.819 & 0.854 \\
+Ridge Regression             & $0.7135$ & 64.2\% & 41.8\% & 3.92 & 0.578 & $2.3\times10^{-7}$ \\
+Heuristic Weighted           & $0.4555$ & 61.2\% & 65.5\% & N/A$^{1}$ & N/A$^{1}$ & $1.5\times10^{-10}$ \\
+\bottomrule
+\end{tabular}
+
+\vspace{2pt}
+{\footnotesize $^{1}$RMSE/$R^2$ are not applicable to XGBRanker (and the
+heuristic), which produce uncalibrated relevance scores rather than point
+value predictions. Spearman~$\rho$ for XGBRanker is the 5-seed mean$\pm$std;
+other rows report the seed-42 point estimate (5-seed means for RF/XGB-Reg/
+LightGBM/Naive differ by $<0.002$).}
+\end{table*}
+
+\textbf{Key finding (revised).} Unlike the original evaluation, in which the
+best model's improvement over the naive baseline was not statistically
+significant (Wilcoxon $p=0.124$), the ranking-objective XGBRanker achieves
+a statistically significant improvement over the naive baseline
+($p=3.8\times10^{-4}$) after feature-leakage correction and a
+ranking-native training objective. Note that the naive baseline itself is
+unaffected by the leakage audit---it uses only
+\texttt{india\_export\_value\_usd} and \texttt{india\_export\_growth\_1y},
+neither of which was removed---so its $\rho=0.8686$ is identical in both
+v3 and v4. This indicates that part of the earlier
+null result was attributable to (a)~residual leakage diluting the naive
+baseline's apparent strength in relative terms, and (b)~a mismatch between
+the regression training objective and the ranking evaluation metric,
+rather than purely reflecting an intrinsic ceiling from trade inertia.
+We emphasize, however, that \textbf{no single model dominates all metrics}:
+best ranking order (Spearman~$\rho$, Top-3) is XGBRanker; best
+single-destination selection (Top-1) is Random Forest; best calibrated
+value estimate (RMSE, $R^2$) is the XGBoost Regressor. This
+metric-dependent winner is itself evidence against a leakage explanation
+for the XGBRanker's win: a leaked feature would be expected to inflate
+performance uniformly across metrics, whereas here the model that wins on
+ranking order is not the model that wins on point-value accuracy or top-1
+selection.
+
+Ridge Regression and the Heuristic baseline are decisively and
+\textbf{significantly worse} than the naive baseline ($p < 0.01$ in both
+cases), not better---their very low $p$-values (Table~\ref{tab:bench})
+reflect the \emph{size} of the performance gap below the baseline, not an
+advantage.
+
+\textbf{Effect of leakage correction across model families.} The leakage
+correction did not uniformly improve all models. LightGBM's $\rho$ moved
+unfavorably ($0.8737 \rightarrow 0.8669$) and its Wilcoxon $p$-value
+weakened ($0.346 \rightarrow 0.762$); Gradient Boosting's $p$-value also
+weakened ($0.711 \rightarrow 0.854$) despite a small $\rho$ increase; and
+Ridge's Top-1 dropped sharply ($49.1\% \rightarrow 41.8\%$). The
+statistically significant win is specific to \emph{combining} leakage
+correction \emph{with} a ranking-native training objective
+(XGBRanker)---regression-style models did not uniformly benefit from
+feature cleanup alone. This heterogeneous response further argues against
+a simple ``removing bad features helps everyone'' interpretation and
+supports the hypothesis that the objective-metric mismatch was an
+independent contributing factor to the prior null result.
+
+\subsection{Red-Flag Investigation}
+Given the magnitude of the XGBRanker's improvement and its low $p$-value
+relative to the original study, we treated the result as requiring
+verification before acceptance, applying the same skepticism the original
+ablation applied to \texttt{entry\_metrics\_imputed}. We confirmed:
+\begin{enumerate}
+\item \textbf{Stability across seeds}---$\rho = 0.8956 \pm 0.0033$ across 5
+seeds $\{42,101,2024,777,999\}$, a variance profile similar to other
+models.
+\item \textbf{Significance against alternative models, not only the naive
+baseline}---XGBRanker significantly outperforms the XGBoost Regressor
+(paired $p=0.0020$) and Random Forest ($p=0.0023$) on the same feature set
+and splits, ruling out a baseline-specific artifact.
+\item \textbf{No leaked feature present}---the ranker's top features by
+importance are conventional trade-momentum and gravity signals; none of
+the three removed leakage features appear.
+\item \textbf{Non-uniform performance across metrics}---the ranker's Top-1
+Hit Rate (70.9\%) is \emph{below} both Random Forest and the naive
+baseline, which would not occur if a leaked feature were driving the
+result, since leakage typically inflates all correlated metrics
+simultaneously.
+\end{enumerate}
+We report this investigation transparently rather than treating a favorable
+$p$-value as sufficient justification on its own, consistent with the
+integrity-first framing of this work.
+
+\subsection{Ablation Study (Feature-Engineering, v3 Feature Set)}
+Table~\ref{tab:ablation} documents the feature-engineering ablation on the
+v3 feature set and is retained as historical reference. The v4 leakage
+audit (Section~\ref{sub:audit}) is a distinct, additional correction layered
+on top of these findings, not a replacement for them; re-running the full
+5-seed ablation on the v4 feature set is noted as future work.
+\begin{table*}[t]
+\centering
+\caption{5-seed ablation with paired $t$-tests vs.\ Full Model (df$=4$),
+on the v3 feature set (historical reference).}
+\label{tab:ablation}
+\begin{tabular}{@{}lrrrrl@{}}
+\toprule
+\textbf{Configuration} & \textbf{Spearman $\rho$ (mean$\pm$std)} &
+\textbf{Paired $\Delta\rho$} & \textbf{$t$} & \textbf{$p$} &
+\textbf{Significant} \\
+\midrule
+Full Model (all features + year)  & $0.8679 \pm 0.0047$ & ---      & ---    & ---            & Reference \\
+Model A: Trade only               & $0.8657 \pm 0.0026$ & $-0.0023$ & $-1.075$ & 0.343        & No \\
+Model B: Trade + Macro            & $0.8629 \pm 0.0041$ & $-0.0050$ & $-3.975$ & \textbf{0.0165} & \textbf{Yes} \\
+Model C: Full v1 (no engineered)  & $0.8631 \pm 0.0046$ & $-0.0048$ & $-2.043$ & 0.111        & No \\
+Drop GDP per capita               & $0.8724 \pm 0.0036$ & $+0.0045$ & $+3.229$ & \textbf{0.032}  & \textbf{Yes} \\
+Drop India Market Share           & $0.8672 \pm 0.0047$ & $-0.0007$ & $-0.239$ & 0.823        & No \\
+Drop Distance (Gravity)           & $0.8656 \pm 0.0036$ & $-0.0023$ & $-2.317$ & 0.081        & No \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\noindent\textbf{Findings.}
+\begin{enumerate}
+\item Omitting product-category and engineered intensity features
+(Model~B) causes a \textbf{statistically significant} ranking decline
+($p=0.0165$)---validating feature engineering.
+\item Trade-only features (Model~A) achieve comparable correlation to the
+full model ($p=0.343$), confirming trade momentum dominates.
+\item Dropping GDP per capita \emph{improves} ranking significantly
+($p=0.032$), indicating this macro feature adds noise for this task.
+\end{enumerate}
+
+\subsection{Data Quality Insight (v3 Feature Set)}
+An investigation of the \texttt{entry\_metrics\_imputed} missingness flag
+(for the discontinued World Bank Doing Business Index) revealed it ranked
+\#5 in feature gain when the temporal trend was omitted. Adding an
+explicit \texttt{year} feature dropped its importance to \#12
+($-80.5\%$), confirming the flag was a \textbf{macro-period proxy}
+($r=0.873$ with year) rather than a genuine ease-of-business
+signal---a cautionary finding on leakage via missingness indicators.
+
+\subsection{Two-Stage Hurdle Architecture (v3 Feature Set, Historical Reference)}
+\label{sub:hurdle}
+The following hurdle-model results were obtained on the v3 (pre-leakage-audit)
+feature set and are retained here as a methodological reference. The hurdle
+model was not re-evaluated on the v4 feature set; its absence from
+Table~\ref{tab:bench} reflects this scope.
+
+A zero-inflated hurdle model (Stage~1: zero-trade classifier
+ROC-AUC$=0.9674$, PR-AUC$=0.9953$, accuracy$=94.18\%$; Stage~2:
+positive-value regressor) achieves excellent zero-detection but does
+\textbf{not} improve ranking over direct single-stage regression
+($\rho=0.8599$ on v3 features), indicating the compound expectation
+introduces variance without ranking benefit.
+
+%=====================================================================
+\section{Implementation and Deployment}
+%=====================================================================
+
+\subsection{Security}
+BCrypt password hashing, JWT stateless tokens (24h expiry), account
+lockout after 5 failed attempts, role-based access control (EXPORTER,
+LOGISTICS), and environment-variable API-key management (NVIDIA keys never
+exposed to frontend).
+
+\subsection{Reliability Engineering for Frontier-Scale Inference}
+The frontier-scale chat model is accessed through a resilience layer:
+explicit connect/read timeouts, retry-with-backoff on transient
+$5xx$/$404$/timeout errors, fail-fast on genuine $4xx$ errors (e.g.,
+authentication), and fallback to structured-data-only responses if all
+retries are exhausted. This ensures the compliance surface remains
+available and never fabricates an answer when the LLM is degraded or
+unreachable.
+
+\subsection{API Surface}
+Key endpoints: \texttt{/api/v1/hs/classify},
+\texttt{/api/v1/export/analyze},
+\texttt{/api/v1/market-opportunity/\{hs\}},
+\texttt{/api/v1/regulations/\{country\}/\{hs\}},
+\texttt{/api/v1/compliance/\{country\}/\{hs\}},
+\texttt{/api/v1/ai/regulatory-chat}. The export-ranking endpoints
+(\texttt{/api/v1/export/analyze} and
+\texttt{/api/v1/market-opportunity}) are served by the v4 ranking model via
+a precomputed prediction table, returning explicit \texttt{DATA\_UNAVAILABLE}
+responses outside the model's 55-product~$\times$~10-country trained scope
+rather than extrapolating silently.
+
+\subsection{Reproducibility}
+All ML experiments use fixed seeds. Raw per-seed values, benchmark
+comparisons, ablation results, SHAP case studies, and data-quality reports
+are persisted as JSON/CSV artifacts. Cross-table consistency is
+programmatically asserted (Table~\ref{tab:bench} XGBoost $=$
+Table~\ref{tab:ablation} Full Model seed 42 to $>4$ decimals).
+
+%=====================================================================
+\section{Discussion and Limitations}
+\label{sec:limitations}
+%=====================================================================
+\begin{enumerate}
+\item \textbf{HS Coverage:} The Indian HS dataset currently spans 21 of 99
+chapters (extracted from the ITC-HS PDF). Out-of-coverage products
+correctly receive NEEDS\_REVIEW. Completing coverage requires additional
+official source ingestion.
+\item \textbf{Regulatory Depth:} Most HS-regulation mappings are at HS4
+level; the system honestly reports this rather than claiming exact
+applicability.
+\item \textbf{Ranking Signal:} After leakage correction and a
+ranking-native objective, the XGBRanker significantly beats the naive
+baseline ($p=3.8\times10^{-4}$), yet the absolute margin remains modest and
+model choice is metric-dependent (Section~\ref{sub:benchv4}). Short-horizon trade
+inertia still explains most of the predictable signal; we avoid
+overclaiming and report per-metric winners rather than a single ``best''
+model.
+\item \textbf{Synthetic Macroeconomic Features:} During the v4 leakage
+audit we identified that two features labeled as sourced from World Bank
+WDI---\texttt{gdp\_usd} and \texttt{population}---are generated in the
+data-build pipeline via a year-indexed formula rather than ingested
+directly from authentic WDI extracts. GDP-per-capita, derived from these,
+was removed entirely after being shown to degrade ranking in both the
+original and revised ablations. \texttt{gdp\_usd} and \texttt{population}
+were retained for their cross-sectional signal, but we flag this as a
+data-provenance limitation: results involving these two features should be
+treated as provisional pending regeneration from authentic WDI source
+data. We disclose this rather than silently correcting or omitting it,
+consistent with this paper's stated philosophy of honesty over polish.
+\item \textbf{Country Scope:} The ranking model uses India's top-10 trade
+partners; the deployed platform extends regulatory coverage to a broader
+set using compliance scoring where ML training data is sparse.
+\item \textbf{Ethical Positioning:} The system explicitly disclaims legal
+authority (``verify with official customs authority'') and surfaces
+confidence levels to prevent over-reliance.
+\end{enumerate}
+
+%=====================================================================
+\section{Future Work}
+%=====================================================================
+\begin{itemize}
+\item Complete 99-chapter Indian HS coverage via chapter-wise official
+ingestion.
+\item Product-specific (HS6/HS8) regulatory mappings using embedding
+similarity.
+\item Integration of official duty rates for landed-cost computation.
+\item Multilingual product descriptions for rural exporters.
+\item Longer prediction horizons and structural-break-aware models.
+\item Federated learning from anonymized customs declarations.
+\end{itemize}
+
+%=====================================================================
+\section{Conclusion}
+%=====================================================================
+CBEC-AI demonstrates a production-grade, integrity-first approach to
+AI-assisted trade facilitation for Indian SMEs. Its defining
+principle---database-first, AI-second, honesty-always---ensures no HS code
+or regulatory requirement is ever fabricated, every recommendation is
+traceable to official sources, and uncertainty is transparently
+communicated. The export ranking evaluation contributes an honest,
+rigorously-audited empirical finding: after removing year-correlated
+leakage and matching the training objective to the ranking metric, a
+ranking-objective model achieves a statistically significant---though
+modest and metric-dependent---improvement over naive trade-momentum
+extrapolation, while no single model dominates across ranking, top-1
+selection, and calibrated value estimation. Equally important, the study
+documents how a favorable result was interrogated for leakage before being
+accepted. By prioritizing correctness, auditability, and honest reporting
+over inflated metrics, CBEC-AI offers a trustworthy blueprint for deploying
+AI in regulatory-sensitive domains.
+
+%=====================================================================
+\begin{thebibliography}{19}
+%=====================================================================
+\bibitem{lewis2020} P. Lewis \textit{et al.}, ``Retrieval-Augmented
+Generation for Knowledge-Intensive NLP Tasks,'' in \textit{Proc. NeurIPS},
+2020.
+\bibitem{anderson2003} J. Anderson and E. van Wincoop, ``Gravity with
+Gravitas: A Solution to the Border Puzzle,'' \textit{American Economic
+Review}, 2003.
+\bibitem{tinbergen1962} J. Tinbergen, \textit{Shaping the World Economy:
+Suggestions for an International Economic Policy}. 1962.
+\bibitem{ding2015} L. Ding \textit{et al.}, ``Automatic HS Code
+Classification Using Machine Learning,'' in \textit{Proc. ICEC}, 2015.
+\bibitem{kim2020} J. Kim \textit{et al.}, ``Deep Learning Approaches for
+Customs Classification,'' \textit{IEEE Access}, 2020.
+\bibitem{turhan2019} G. Turhan \textit{et al.}, ``Text Mining for
+Harmonized System Classification,'' \textit{Expert Systems with
+Applications}, 2019.
+\bibitem{batarseh2021} F. Batarseh \textit{et al.}, ``Application of
+Machine Learning in Forecasting International Trade Trends,''
+\textit{Journal of Big Data}, 2021.
+\bibitem{cui2023} J. Cui \textit{et al.}, ``Legal Question Answering with
+Retrieval-Augmented LLMs,'' 2023.
+\bibitem{zhang2023} Y. Zhang \textit{et al.}, ``Automated Compliance
+Checking with Grounded Language Models,'' 2023.
+\bibitem{baci2010} G. Gaulier and S. Zignago, ``BACI: International Trade
+Database at the Product Level,'' \textit{CEPII Working Paper}, 2010.
+\bibitem{cepii2022} M. Conte, P. Cotterlaz, and T. Mayer, ``The CEPII
+Gravity Database,'' \textit{CEPII}, 2022.
+\bibitem{wdi2024} World Bank, ``World Development Indicators,'' 2024.
+\bibitem{wco2022} World Customs Organization, ``Harmonized System
+Nomenclature 2022.''
+\bibitem{xgboost2016} T. Chen and C. Guestrin, ``XGBoost: A Scalable Tree
+Boosting System,'' in \textit{Proc. KDD}, 2016.
+\bibitem{lightgbm2017} G. Ke \textit{et al.}, ``LightGBM: A Highly
+Efficient Gradient Boosting Decision Tree,'' in \textit{Proc. NeurIPS},
+2017.
+\bibitem{shap2017} S. Lundberg and S. Lee, ``A Unified Approach to
+Interpreting Model Predictions (SHAP),'' in \textit{Proc. NeurIPS}, 2017.
+\bibitem{nogueira2019} R. Nogueira and K. Cho, ``Passage Re-ranking with
+BERT,'' arXiv:1901.04085, 2019.
+\bibitem{kaufman2012} S. Kaufman, S. Rosset, and C. Perlich, ``Leakage in
+Data Mining: Formulation, Detection, and Avoidance,'' \textit{ACM TKDD},
+vol.~6, no.~4, 2012.
+\bibitem{burges2010} C. Burges, ``From RankNet to LambdaRank to
+LambdaMART: An Overview,'' \textit{Microsoft Research Technical Report},
+MSR-TR-2010-82, 2010.
+\end{thebibliography}
+
+%=====================================================================
+\appendices
+%=====================================================================
+\section{Reproducibility Artifacts}
+\begin{table}[h]
+\centering
+\caption{Reproducibility artifacts.}
+\label{tab:artifacts}
+\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}p{5.3cm}@{}}
+\toprule
+\textbf{Artifact} & \textbf{File} \\
+\midrule
+Master training dataset (4{,}400 rows) & \texttt{master\_cbec\_train\_dataset.csv} \\
+Leakage audit (corr/MI vs year)        & \texttt{leakage\_audit\_v4.csv} \\
+Selected features                      & \texttt{selected\_features\_v4.json} \\
+Time-aware CV search results           & \texttt{cv\_results\_v4.csv} \\
+Best hyperparameters                   & \texttt{best\_hyperparameters\_v4.json} \\
+Benchmark (final)                      & \texttt{benchmark\_final\_v4.csv} \\
+Seed-stability (5 seeds)               & \texttt{seed\_stability\_v4.csv} \\
+Red-flag investigation                 & \texttt{redflag\_investigation\_v4.json} \\
+Feature importance (ranker)            & \texttt{ranker\_feature\_importance\_v4.csv} \\
+Final metrics summary                  & \texttt{final\_metrics\_summary\_v4.json} \\
+Served prediction table                & \texttt{ml\_export\_rankings\_v4.csv} \\
+Persisted models                       & \texttt{xgb\_ranker\_v4.json},
+                                         \texttt{xgb\_regressor\_v4.json} \\
+Training / investigation code          & \texttt{train\_models\_v4.py},
+                                         \texttt{investigate\_v4.py} \\
+Historical (v3) artifacts              & \texttt{benchmark\_comparison.csv},
+                                         \texttt{ablation\_per\_seed\_raw.json} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Per-Seed Ablation Raw Values}
+\begin{itemize}
+\item \textbf{Full Model:} [0.8694, 0.8654, 0.8629, 0.8763, 0.8656],
+mean$=0.8679$, std$=0.0047$.
+\item \textbf{Model A (Trade Only):} [0.8626, 0.8681, 0.8626, 0.8686,
+0.8664], mean$=0.8657$, std$=0.0026$.
+\item \textbf{Model B (Trade+Macro):} [0.8631, 0.8647, 0.8592, 0.8694,
+0.8581], mean$=0.8629$, std$=0.0041$.
+\item \textbf{Model C (Full v1):} [0.8614, 0.8554, 0.8653, 0.8690,
+0.8647], mean$=0.8631$, std$=0.0046$.
+\end{itemize}
+
+\end{document}

@@ -1,0 +1,370 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{cite}
+
+\title{Learning to Rank for Export Destination Selection: A Rolling-Origin Evaluation}
+
+\author{
+\IEEEauthorblockN{Murala Purnachandra Rao, Nethi Harini, Raya Shashidar Reddy, Patha Suhas}
+\IEEEauthorblockA{
+Department of Computer Science and Engineering (Data Science)\\
+B V Raju Institute of Technology, Narsapur, Medak, Telangana, India\\
+\{purnachandrarao.m,23211a6780,23211a67a1,23211a6787\}@bvrit.ac.in}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Export destination selection is a ranking problem: for a fixed product and year, an exporter typically needs an ordering of candidate markets rather than a dollar-accurate forecast for every market. Existing studies commonly formulate market selection as multi-criteria decision making or predict trade values and sort the predictions. This paper evaluates whether an explicit within-group learning-to-rank formulation provides a measurable advantage under a temporally realistic evaluation. We construct a balanced panel of 55 HS6 products, 10 destination markets, and eight feature years (2017--2024), yielding 4,400 product--destination--year observations. The prediction target for year $t$ is the log export value observed in $t+1$. Four rolling test origins (2020--2023) are evaluated, with hyperparameters re-searched separately at every origin using only preceding validation years. The results show three important points. First, naive persistence is a strong benchmark, averaging Spearman correlation $\rho_s=0.8375$ across the four origins; therefore correlations near 0.87 cannot by themselves demonstrate useful learning. Second, the hand-weighted MCDM-style heuristic performs substantially worse, averaging $\rho_s=0.4897$. Third, the pairwise ranker obtains the highest mean Spearman correlation, $\rho_s=0.8630$, and its improvement over persistence is positive at every origin ($+0.0255$ on average). Its per-origin improvement is also substantially less variable than that of the random forest and hurdle models in the reported results. However, the ranker is not uniformly superior: its Top-1 performance is close to persistence and below random forest, while its advantage over the strongest competing learned models is small. The earlier single-holdout conclusion that ranking significantly outperformed regression did not replicate under the rolling-origin design. We therefore interpret the main contribution as an evaluation finding rather than a universal model win: explicit ranking is promising for stable full-ordering performance, but model choice should follow the operational decision and metric. The ranking model evaluated here is one module of a deployed exporter-facing web application; we additionally describe that system's architecture to situate the offline evaluation within its serving context.
+\end{abstract}
+
+\begin{IEEEkeywords}
+learning to rank, export market selection, rolling-origin evaluation, data leakage, model stability, gradient boosting, system architecture
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+Choosing where to export is fundamentally an ordering problem. Given a product and a finite set of candidate destinations, an exporter often needs to know which markets should be considered first. A model that predicts the exact trade value for every destination is useful only if its induced ordering is also useful for this decision.
+
+Prior work has commonly approached export-market selection through multi-criteria decision making (MCDM), using expert-defined criteria and weights, or through regression models whose predicted trade values are subsequently sorted. These formulations answer related but different questions. MCDM can encode domain knowledge without learning from realized outcomes, while squared-error regression optimizes numerical accuracy even when the operational objective is primarily the ordering of markets.
+
+Learning to rank directly optimizes an ordering objective. The idea itself is standard; the question addressed here is whether it provides a reliable advantage in export destination selection when evaluated under a temporally realistic protocol. This distinction matters because bilateral trade is highly persistent. A simple historical-growth baseline can therefore achieve a high correlation without using the additional covariates supplied to a learned model. A single held-out year also provides limited evidence about whether an observed improvement will persist under a different trade regime.
+
+We address these issues with a rolling-origin evaluation. For each of four successive test origins, the full hyperparameter-search procedure is repeated using only information available before that origin. We report performance at each origin rather than only an aggregate score. This makes both average improvement and its variation across years visible.
+
+The study makes six contributions:
+
+\begin{enumerate}
+\item It evaluates export destination ranking with four rolling test origins and per-origin hyperparameter re-tuning.
+\item It establishes naive persistence as a strong baseline and reports an explicit MCDM-style heuristic as a second baseline.
+\item It compares pairwise ranking with value regression, tree ensembles, a listwise ranking objective, and a two-stage hurdle model.
+\item It applies a group-aware feature audit that considers temporal association together with within-ranking-group variation.
+\item It shows that the pairwise ranker is not uniformly best across decision metrics and that the earlier single-origin ranking-versus-regression finding does not replicate in the rolling evaluation.
+\item It documents the architecture of the deployed system in which the evaluated ranker is one module, including how an offline-trained model is served without a live inference dependency, and how the ranker's output is combined with a separate regulatory-intelligence subsystem.
+\end{enumerate}
+
+The paper is deliberately scoped to destination ranking as its primary evaluation. Section~\ref{sec:architecture} describes the surrounding system as context, but that system's other modules --- tariff-code classification and regulatory retrieval --- are outside the quantitative evaluation reported in Sections~\ref{sec:results}--\ref{sec:results2}.
+
+\section{Related Work}
+
+\subsection{Export-market selection}
+
+MCDM is a common formulation for market-selection problems. Aghazadeh \emph{et al.} combine fuzzy Delphi, Best--Worst Method, and TOPSIS for export-market selection [1]. Bohlol and Majidian use a hybrid machine-learning approach for saffron market classification [2], while Calheiros-Lobo \emph{et al.} describe a deep-learning foreign-market recommender [3]. Guardiola \emph{et al.} study agri-food export decisions using cooperative game theory [4]. These approaches motivate the comparison with a hand-weighted heuristic, but their evaluation settings do not provide the persistence baseline used here. Consequently, the incremental value of learned ranking over simple historical persistence is difficult to infer from their reported scores alone.
+
+\subsection{Trade forecasting and gravity models}
+
+Another line of work predicts trade magnitudes rather than market orderings. Ensemble forecasting [5], trade-network features [6], and machine-learning models for high-technology exports [7] illustrate this formulation. Gravity models explain bilateral trade using economic mass and trade frictions and motivate several covariates used in this study. The distinction between prediction and ordering is important: a model can improve numerical value prediction without improving the resulting destination ranking.
+
+\subsection{Learning to rank}
+
+Pairwise and listwise ranking objectives are established approaches in information retrieval and recommendation. This study uses a gradient-boosted tree ranker with a pairwise objective. The methodological contribution is not a new ranking loss; it is the controlled temporal evaluation and the analysis of whether any apparent ranking advantage survives multiple test origins.
+
+\subsection{Temporal validation and leakage}
+
+Random cross-validation is inappropriate when observations are temporally ordered because information from later periods can influence model selection [16]. Rolling-origin evaluation is therefore used here to keep validation years strictly before each test origin. Leakage is considered at the level of the ranking group as well. A feature that is constant within a product--year candidate set cannot directly determine the ordering inside that set, even if it is strongly associated with the calendar year. This motivates a group-aware feature audit in addition to ordinary temporal association checks.
+
+\section{Problem Formulation}
+
+Let $p$ denote an HS6 product, $c$ a destination market, and $t$ a feature year. The candidate set is $C_{p,t}$ with $|C_{p,t}|=10$. The supervised target is
+\begin{equation}
+y_{p,c,t}=\ln(1+V_{p,c,t+1}),
+\end{equation}
+where $V_{p,c,t+1}$ is realized export value in the following year. Thus, only information observable in year $t$ may be used to predict the outcome in $t+1$.
+
+Given features $x_{p,c,t}\in\mathbb{R}^{D}$, a scoring function $f_\theta$ induces an ordering
+\begin{equation}
+\hat{\pi}_{p,t}(c)=1+\left|\{c'\in C_{p,t}:f_\theta(x_{p,c',t})>f_\theta(x_{p,c,t})\}\right|.
+\end{equation}
+The primary target is agreement between this ordering and the ordering induced by $y$. The absolute scale of the ranker output is therefore not interpreted as a trade-value forecast.
+
+For each group, ordered pairs are formed as
+\[
+P_{p,t}=\{(i,j):y_i>y_j\}.
+\]
+Ties are excluded. With ten destinations, at most 45 ordered comparisons occur per group. The pairwise objective is
+\begin{equation}
+L(\theta)=
+\sum_{(p,t)}\sum_{(i,j)\in P_{p,t}}
+\log\left(1+\exp[-\sigma(\hat y_i-\hat y_j)]\right)
++\Omega(\theta),
+\end{equation}
+where the reported tree regularizer is
+\begin{equation}
+\Omega(\theta)=
+\sum_{m=1}^{T}
+\left(\gamma T_m+
+\frac{1}{2}\lambda\|w_m\|_2^2+
+\alpha\|w_m\|_1\right).
+\end{equation}
+Here $T$ is the number of trees, $T_m$ is the leaf count of tree $m$, and $w_m$ denotes its leaf weights.
+
+\section{Dataset}
+
+The dataset contains 55 HS6 products, 10 destination markets, and eight feature years from 2017 through 2024, producing 4,400 rows. The destinations are Bangladesh, China, Germany, Hong Kong, the Netherlands, Saudi Arabia, Singapore, the United Arab Emirates, the United Kingdom, and the United States. Hong Kong is treated as a customs territory, so the manuscript uses the term ``market'' rather than ``country'' throughout.
+
+The products span 11 HS chapters: 10, 27, 29, 30, 61, 62, 71, 72, 84, 85, and 87. Bilateral trade data are attributed to CEPII BACI, gravity variables to CEPII Gravity, and macroeconomic variables to World Bank WDI. Entry-cost variables are derived from World Bank Doing Business indicators.
+
+The panel is balanced: 440 rows per destination and 80 rows per product, with zero duplicate product--destination--year records. Because the target is one year ahead, the 550 rows corresponding to feature year 2024 do not have an observed target and are excluded from supervised evaluation, leaving 3,850 target-bearing rows.
+
+The panel is a validated subset rather than a representative sample of all Indian tariff lines. Product--destination pairs were retained only when continuous, gap-free series were available across the study window. The deployment implication stated by the authors is that observations outside this validated scope should return a data-unavailable status rather than an extrapolated recommendation.
+
+\subsection{Feature construction}
+
+The cleaned feature set contains 30 variables grouped into trade-history, market-competition, gravity, macroeconomic, entry-cost, engineered-intensity, and product-identity features. The lagged Indian export value is particularly important because of the strong persistence of bilateral trade.
+
+The Doing Business programme ended after 2020. The last available entry-cost baseline was therefore carried forward for subsequent years. An explicit imputation indicator was created during data preparation. The leakage audit later identified this indicator as a temporal proxy and removed it from the final feature set. The underlying carried-forward entry-cost values remain a limitation because they are stale after 2020.
+
+\section{Leakage Audit}
+
+Each candidate feature was examined using temporal association and within-group variation. The reported screening quantities include Pearson and Spearman correlation with the year index, mutual information with year, within-ranking-group variance ratio, and whether the feature is deterministic given year.
+
+\begin{table}[t]
+\caption{Representative Leakage-Screen Results}
+\centering
+\scriptsize
+\begin{tabular}{lrrrrl}
+\toprule
+Feature & $r_{yr}$ & MI & $v_{grp}$ & Det. & Decision\\
+\midrule
+feature\_year\_num & 1.000 & 2.078 & 0.000 & yes & drop\\
+entry\_metrics\_imputed & 0.873 & 0.692 & 0.000 & yes & drop\\
+gdp\_per\_capita\_usd & 0.072 & 2.073 & 0.995 & no & drop$^\dagger$\\
+population & 0.009 & 2.074 & 1.000 & no & keep\\
+gdp\_usd & 0.036 & 2.074 & 0.999 & no & keep\\
+import\_volatility & 0.107 & 0.372 & 0.523 & no & keep\\
+india\_export\_value\_usd & 0.033 & 0.000 & 0.700 & no & keep\\
+distance\_km & 0.000 & 0.000 & 1.000 & no & keep\\
+\bottomrule
+\end{tabular}
+\\
+\scriptsize $^\dagger$Dropped after validation because it degraded ranking performance; this is not labelled as leakage.
+\end{table}
+
+The important distinction is between temporal association and usefulness for within-group ranking. Population and GDP can have substantial association with calendar time while still varying across destinations and therefore remaining potentially informative for the ranking. In contrast, a feature that is deterministic within every ranking group cannot distinguish the ten candidates in that group.
+
+The imputation flag illustrates the proxy problem. Adding an explicit year feature changed the reported importance of the imputation flag from rank 5 (gain 111.4) to rank 12 (gain 56.5), while the year feature entered at rank 19 (gain 44.6). This movement is consistent with the flag acting partly as a temporal proxy. After the audit, feature\_year\_num, entry\_metrics\_imputed, and gdp\_per\_capita\_usd were excluded from the final 30-feature set. The last removal is described as a validation-based feature selection decision rather than a leakage decision.
+
+\section{Rolling-Origin Evaluation}
+
+Let $T$ denote a test origin. The model is trained on feature years before $T$ and evaluated on features from $T$, whose outcomes occur in $T+1$. The four test origins are $T\in\{2020,2021,2022,2023\}$.
+
+Hyperparameter search is repeated independently at each origin. Validation years are strictly earlier than the corresponding test origin. The reported search uses 24 randomized draws for the regressor and 12 draws for each ranking objective at every origin, with mean validation Spearman correlation as the selection criterion.
+
+\begin{table}[t]
+\caption{Rolling-Origin Spearman Results}
+\centering
+\scriptsize
+\begin{tabular}{lrrrrr}
+\toprule
+Model & 2020 & 2021 & 2022 & 2023 & Mean\\
+\midrule
+XGBRanker (pairwise) & .8551 & .8346 & .8684 & .8938 & .8630\\
+Two-stage hurdle & .8336 & .8457 & .8792 & .8841 & .8607\\
+Random forest & .8311 & .8420 & .8851 & .8805 & .8597\\
+XGBoost regressor & .8196 & .8293 & .8809 & .8746 & .8511\\
+Gradient boosting & .8240 & .8339 & .8644 & .8611 & .8459\\
+LightGBM & .8210 & .8193 & .8645 & .8673 & .8430\\
+Naive persistence & .8303 & .8055 & .8456 & .8686 & .8375\\
+Ridge regression & .7031 & .6792 & .6973 & .7135 & .6982\\
+MCDM-style heuristic & .5152 & .4845 & .5036 & .4555 & .4897\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The primary metrics are Spearman $\rho_s$ and Kendall $\tau$, together with Top-$k$ overlap, Top-1 hit rate, and NDCG at selected cutoffs. RMSE and $R^2$ are reported only for models whose outputs are calibrated value predictions.
+
+For stochastic models, the reported multi-seed runs use seeds $\{42,101,2024,777,999\}$. The manuscript reports mean $\pm$ standard deviation across these seeds. This standard deviation describes training stochasticity; it is not a confidence interval over products or years.
+
+\subsection{Inference and dependence}
+
+The original analysis pooled 55 product-level ranking scores from each of four origins, yielding 220 paired values. Because the same products recur across origins and training windows overlap, these 220 values are clustered rather than independent observations. Consequently, the reported pooled Wilcoxon and head-to-head $p$-values should be treated as exploratory summaries, not as exact confirmatory significance levels. A confirmatory submission should re-compute uncertainty with a cluster-aware procedure, such as a product-level bootstrap or another method that respects repeated products and temporal dependence. The present manuscript does not invent such corrected values.
+
+The same caution applies to comparisons based on only four test origins. The main evidence for stability is therefore descriptive: the ranker's improvement is positive at every origin and varies less across the four reported origins.
+
+\section{Models and Baselines}
+
+\subsection{Baselines}
+
+Naive persistence extrapolates each product--destination series using its historical growth rate and does not use the covariates supplied to the learned models. The hand-weighted heuristic normalizes market-attractiveness indicators and combines them using fixed expert weights. It is used as a practical stand-in for the MCDM family.
+
+\subsection{Learned models}
+
+The comparison includes a tuned pairwise XGBoost ranker, XGBoost regression, random forest, LightGBM, gradient boosting, ridge regression, and a two-stage hurdle model. Regression predictions are sorted to produce destination rankings. The hurdle model estimates the probability of positive trade and a conditional value and combines the two components before producing the ranking.
+
+The hurdle classifier itself is reported as strong in the source analysis (accuracy 0.942, F1 0.967, ROC-AUC 0.967, PR-AUC 0.995, and Brier score 0.043). These figures are not interpreted as evidence that the full hurdle system is best at destination ordering.
+
+\subsection{Ranking objective}
+
+The source analysis also compares pairwise and listwise ranking objectives using the same search procedure. The pairwise objective has higher validation Spearman correlation at all four origins: 0.868 versus 0.832 in 2020, 0.861 versus 0.821 in 2021, 0.852 versus 0.823 in 2022, and 0.862 versus 0.829 in 2023. This supports the narrower conclusion that, within the evaluated ranking implementation, pairwise ranking was preferred to the tested listwise alternative.
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Persistence is a strong baseline}
+
+Naive persistence averages $\rho_s=0.8375$. Three of the six learned models exceed persistence at all four origins, one exceeds it at three origins, and two exceed it at two origins. Thus, an absolute correlation near 0.87 is not sufficient evidence that a learned model adds substantial value over historical persistence.
+
+The MCDM-style heuristic averages only $\rho_s=0.4897$. It therefore provides a useful lower benchmark for the tested fixed-weight formulation. This result should not be generalized to all MCDM methods because the heuristic is only one operational stand-in for that family.
+
+\subsection{The pairwise ranker shows stable improvement}
+
+The pairwise ranker obtains the highest mean Spearman correlation, $\rho_s=0.8630$. Its reported improvement over persistence is approximately $+0.0255$ and remains positive at every origin, with the smallest rounded improvement being $+0.0228$. Random forest reaches a similar mean improvement, approximately $+0.0222$, but its reported across-origin dispersion is much larger. The hurdle model also has a similar mean improvement but higher dispersion.
+
+These results support a descriptive stability finding: in this dataset and evaluation protocol, the pairwise ranker produces a more consistent margin over persistence across the four origins. They do not by themselves prove that the ranking objective causes the lower variance, because model architecture, regularization, and tuning interact with the objective.
+
+\subsection{The single-holdout result does not replicate}
+
+The earlier single-origin analysis reported a significant advantage for the ranker over the tuned regressor and random forest using paired tests over seeds. Under the rolling-origin analysis, the ranker is not separated from random forest or the hurdle model by the reported pooled comparisons. The important lesson is methodological rather than rhetorical: seed-level replication at one test year measures a different source of variation from year-to-year robustness.
+
+The earlier $p=2.0\times10^{-3}$ result is therefore retained only as a historical single-origin result and is not used as evidence for the main claim.
+
+\subsection{Metric dependence}
+
+The model ranking depends on the operational metric. The ranker has the strongest reported full-ordering performance, whereas random forest has the best reported Top-1 rate (0.8364 versus 0.7636 for the ranker and 0.7591 for persistence). The tuned value regressor provides the strongest reported calibrated-value performance at origin 2023 (RMSE 2.45 and $R^2=0.835$).
+
+The implication is that there is no universal winner. Full ordering, top-market selection, and calibrated value prediction are distinct tasks and should not be collapsed into one leaderboard.
+
+\subsection{Hurdle model}
+
+The hurdle model's strong extensive-margin classification metrics do not translate into the best destination ordering. On this continuous-coverage panel, most retained product--destination pairs are active, so the participation probability contains less information for distinguishing the relative ranking of active destinations. The result is a useful reminder that a strong component metric does not guarantee a strong end-to-end ranking metric.
+
+\subsection{Ablation}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{results_overview.png}
+\caption{Rolling-origin results generated directly from the stored per-origin result files. (a) Spearman correlation of each model at every test origin against naive persistence (dashed). (b) Per-origin improvement over persistence: the pairwise ranker's margin is nearly flat, while random forest and the hurdle model swing above and toward zero across origins. (c) Top-1 hit rate by origin, where random forest leads at every origin while the ranker tracks persistence.}
+\label{fig:rolling}
+\end{figure}
+
+The reported origin-2023 ablation on the tuned regressor shows that removing the lagged Indian export value reduces Spearman correlation by 0.0072, with a nominal $p=0.009$. Seven ablation comparisons imply a Bonferroni threshold of approximately 0.0071, so this result does not pass the stated family-wise threshold.
+
+Removing distance, market share, or engineered intensity features changes performance by at most the small margins reported in the source analysis. The gain attribution also shows that the lagged Indian export value is dominant, while many other features receive non-zero split gain. High split gain should not be interpreted as proof of causal or incremental predictive value; the ablation evidence is more directly relevant to that question. Fig.~\ref{fig:rolling}(b) makes the stability argument of Section~\ref{sec:results} visually explicit: the ranker's advantage over persistence is the least variable of the reported models across the four rolling origins.
+
+\section{Reproducibility}
+
+The reported experiments use fixed data vintages: CEPII BACI HS17 release V202601 for annual files 2017--2024, CEPII Gravity V202211, and World Bank WDI. The global seed is 42, with multi-seed analysis using $\{42,101,2024,777,999\}$. The source manuscript reports a deterministic panel of 4,400 rows with 440 rows per destination, 80 per product, and zero duplicates.
+
+The analysis states that tables and figures are generated from stored result files rather than manually transcribed. The fixed-hyperparameter determinism check at origin 2023 reproduces the reported single-holdout values to machine precision for the fixed systems. The exact result files and preprocessing scripts, however, are not included in the manuscript text supplied here; publication claims about full computational reproducibility should therefore be made only if those artifacts are actually archived.
+
+\section{System Architecture}
+\label{sec:architecture}
+
+The evaluated ranking model is one component of a deployed exporter-facing web application. This section describes that system's architecture as implemented, to make clear how the offline evaluation of Sections~\ref{sec:results}--\ref{sec:results2} relates to the running system; it is not itself an experimental result.
+
+\subsection{Overview}
+
+The application follows a four-layer separation: a React single-page frontend, a Spring Boot backend that owns transactional data and authorization, a second Spring Boot service (``pipeline'') that performs offline extraction and validation of tariff and regulatory reference data, and a Python data-science workspace that trains and evaluates the ranking model described in this paper. Fig.~\ref{fig:arch} summarizes the four layers and the direction of data flow between them.
+
+\begin{figure}[t]
+\centering
+\fbox{\parbox{0.95\columnwidth}{\scriptsize
+\textbf{Frontend} (React 19 + Vite, role-scoped views: exporter, logistics)\\
+\rule{0.9\columnwidth}{0.3pt}\\
+$\downarrow$ REST + JWT\\
+\rule{0.9\columnwidth}{0.3pt}\\
+\textbf{Backend} (Spring Boot, \texttt{com.trade})\\
+\quad Auth / Product / Order / Shipment / Dashboard controllers\\
+\quad \textbf{regulatory} subpackage: HS classification, hybrid\\
+\quad \ retrieval (structured + vector + rerank), ML ranking lookup\\
+\rule{0.4\columnwidth}{0.3pt}\hspace{0.05\columnwidth}\rule{0.4\columnwidth}{0.3pt}\\
+$\downarrow$ JPA \hspace{2.3cm} $\downarrow$ JPA (read-only)\\
+\textbf{InternationalTrade DB}\hspace{0.3cm}\textbf{TradeData DB}\\
+\quad users, products,\hspace{1.1cm}HS codes, regulations,\\
+\quad orders, shipments,\hspace{0.8cm}document embeddings\\
+\quad countries\\
+\rule{0.9\columnwidth}{0.3pt}\\
+\textbf{Pipeline service} (separate Spring Boot app) $\rightarrow$ writes TradeData\\
+\quad parses official HS/regulatory documents (PDF, XLSX, CSV, RDF)\\
+\rule{0.9\columnwidth}{0.3pt}\\
+\textbf{Offline ML workspace} (Python, this paper's evaluation)\\
+\quad build dataset $\rightarrow$ train \& audit (Secs.~III--VI) $\rightarrow$\\
+\quad generate serving table $\rightarrow$ \texttt{ml\_export\_rankings\_v4.csv}\\
+\quad (baked into backend as a classpath resource; no live\\
+\quad model server; lookup only, never extrapolated)
+}}
+\caption{System architecture, as implemented. Solid separation between the transactional database (InternationalTrade) and the regulatory reference database (TradeData); the trained ranking model reaches the backend only as a static, versioned lookup table, not a live inference call.}
+\label{fig:arch}
+\end{figure}
+
+\subsection{Dual-database separation}
+
+The backend is configured with two independent JPA datasources, each with its own connection pool, entity package, and transaction manager. The primary database, \texttt{InternationalTrade}, holds transactional and account data: users, roles, exporter and logistics profiles, products, orders, shipments, and a shared country lookup table. Its schema is allowed to evolve automatically at boot (\texttt{hibernate.hbm2ddl.auto=update}). The secondary database, \texttt{TradeData}, holds HS tariff codes and regulatory records populated by the pipeline service; the backend's connection to it is configured read-only at the ORM level (\texttt{hibernate.hbm2ddl.auto=none}), so the running application cannot alter the reference data it depends on. One exception is the embedding store used for semantic retrieval, which is kept in the primary database alongside transactional data rather than in \texttt{TradeData}, so that document ingestion does not require write access to the read-only reference schema.
+
+\subsection{Offline-trained, statically served ranking model}
+
+The ranking model evaluated throughout this paper is not called live at request time. It is trained and validated entirely offline in the Python workspace described in Sections~\ref{sec:results}--\ref{sec:results2}, and a separate generation step scores the most recent feature year with the selected model, computes a within-product rank and a bounded opportunity score, and writes one row per validated product--destination pair to a CSV file. That file is packaged into the backend as a classpath resource and loaded into an in-memory lookup table at startup; the serving-time operation is a hash lookup, not model inference. Product--destination pairs outside the panel described in Section~\ref{sec:results} return an explicit unavailable status rather than an extrapolated score, consistent with the scope restriction stated in Section~IV. This design keeps the deployed backend free of native machine-learning runtime dependencies while still serving genuine, offline-validated model output, at the cost of requiring an explicit re-run of the offline pipeline to refresh predictions for a new feature year.
+
+\subsection{Regulatory retrieval as a separate subsystem}
+
+Distinct from the ranking model, the backend's \texttt{regulatory} subpackage implements a hybrid retrieval-and-generation pathway for regulatory questions: a query first retrieves candidate regulatory records from the structured \texttt{TradeData} tables, then, when configured, an embedding-based similarity search over document chunks and a neural reranking step supply additional semantic context, and finally an externally hosted large language model generates a response constrained to the retrieved context, with an explicit instruction not to state regulatory facts beyond what was retrieved. HS tariff-code classification follows an analogous hybrid pattern: a deterministic lexical/attribute scorer proposes candidates from the reference database, which may then be reranked or, when scoring is inconclusive, supplemented by a direct model-based classification step. Both pathways are architecturally and operationally separate from the ranking model evaluated in this paper; no claim in Sections~\ref{sec:results}--\ref{sec:results2} depends on their behavior, and neither is quantitatively evaluated here.
+
+\subsection{Authorization}
+
+The backend uses stateless JWT authentication with role-scoped authorization enforced per endpoint. Two roles are actively distinguished at the authorization layer, exporter and logistics, each restricted to its own product, order, and dashboard endpoints; the data model additionally defines importer and administrator roles that are not yet gated by distinct endpoint-level rules, which we note here rather than overstate.
+
+\section{Discussion}
+\label{sec:results2}
+
+The central empirical lesson is that persistence must be a first-class baseline in export destination ranking. Because bilateral trade is persistent, a learned model can obtain a high absolute correlation while adding little incremental ordering value.
+
+The rolling-origin design also changes how model improvements should be interpreted. The pairwise ranker has the highest average Spearman correlation and a positive margin over persistence at all four origins, but the advantage over the strongest competing learned models is small. Its more consistent improvement is therefore a useful empirical property, not evidence of universal superiority.
+
+The choice of metric should follow the decision. If the exporter needs a complete ordering, Spearman or Kendall is appropriate. If the decision is to shortlist several destinations, Top-$k$ or NDCG is more directly aligned. If only one market is to be selected, Top-1 is the relevant metric, where random forest is stronger in the reported results. If the task requires a calibrated monetary estimate, a value regressor is appropriate.
+
+The leakage audit further illustrates why temporal screening should consider the ranking group. Calendar-associated variables can be legitimate cross-sectional predictors when they vary across destinations, while a year proxy that is constant within the group cannot improve the desired ordering and can still distort pooled analyses or feature attribution.
+
+The architecture described in Section~\ref{sec:architecture} also constrains how the evaluation should be read operationally: because the model is served from a static, periodically regenerated table rather than a live endpoint, the rolling-origin protocol's per-origin re-tuning is exactly the procedure that must be re-run offline to refresh the deployed lookup table for a new feature year, rather than something the backend performs automatically.
+
+\section{Limitations}
+
+First, only four test origins are available. They provide evidence of variation across years but are insufficient for a precise estimate of a long-run stability distribution.
+
+Second, origins are temporally dependent. Training windows overlap and the same products recur. The 220 product-origin comparisons therefore should not be interpreted as 220 independent replications. This is particularly important for the very small pooled $p$-values reported by the original analysis.
+
+Third, the dataset contains 55 HS6 products and 10 destinations selected for continuous coverage. It is not representative of all Indian tariff lines, and the fixed ten-market candidate set does not establish performance for larger or variable candidate sets.
+
+Fourth, entry-cost features rely partly on values carried forward after the discontinuation of Doing Business. Removing the imputation flag reduces one source of temporal proxying but does not eliminate the staleness of the underlying covariate.
+
+Fifth, the improvement over persistence is modest in absolute terms. The study does not measure whether this margin changes a real export allocation decision or produces additional economic profit.
+
+Finally, the paper evaluates only the destination-ranking module. The associated tariff classification and regulatory-retrieval modules, described architecturally in Section~\ref{sec:architecture}, are outside the experimental scope, and the two roles noted in Section~\ref{sec:architecture} as not yet gated by distinct authorization rules should not be treated as evidence of their intended access level.
+
+\section{Conclusion}
+
+This study treats export destination selection as within-group learning to rank and evaluates it using four rolling test origins with per-origin hyperparameter re-tuning. The resulting picture is more cautious than a single-holdout comparison.
+
+Naive persistence averages $\rho_s=0.8375$, establishing a strong benchmark for a highly persistent trade panel. The tested MCDM-style heuristic averages 0.4897. The pairwise ranker achieves the highest mean Spearman correlation at 0.8630 and improves over persistence at every reported origin. Its improvement is also more consistent across origins than the improvements reported for random forest and the hurdle model.
+
+At the same time, the ranker is not a universal winner. Its Top-1 performance is close to persistence and below random forest, while the earlier single-origin claim of a significant ranking advantage over regression does not replicate under the rolling evaluation. The most defensible conclusion is therefore not that learning to rank always improves export-market selection, but that explicit ranking can provide a stable full-ordering model when the evaluation is designed around the temporal nature of trade data.
+
+For practical deployment, the recommended sequence is to define the decision, choose the corresponding ranking or value metric, establish persistence as the baseline, perform temporal validation, and report both mean improvement and its variation across test periods. Because the model in the deployed system (Section~\ref{sec:architecture}) is served from a static table rather than a live endpoint, this sequence also corresponds directly to the offline procedure that must precede each refresh of that table. A confirmatory version of the study should additionally replace pooled product-origin significance tests with cluster-aware inference that respects repeated products and overlapping temporal origins.
+
+\begin{thebibliography}{19}
+\bibitem{1} H. Aghazadeh, J. Heidary Dahooie, N. Mohammadi, E. Beheshti Jazan Abadi, I. Meidute-Kavaliauskiene, and A. E. Bayandorian, ``Innovative multi-criteria decision framework for LNG and naphtha export market selection: Integrating fuzzy Delphi, BWM, and TOPSIS,'' \emph{Pesquisa Operacional}, vol. 45, p. e289569, 2025.
+\bibitem{2} P. Bohlol and M. Majidian, ``A hybrid machine learning model for analyzing economic factors and classifying target markets for saffron export,'' \emph{Array}, vol. 31, p. 101087, 2026.
+\bibitem{3} N. Calheiros-Lobo, M. Au-Yong-Oliveira, and J. V. Ferreira, ``DEEPEIA: Conceptualizing a generative deep learning foreign market recommender for SMEs,'' \emph{Information}, vol. 16, no. 8, p. 636, 2025.
+\bibitem{4} L. Guardiola, B. Hezarkhani, and A. Meca, ``Cooperative agri-food export under minimum quantity commitments,'' arXiv preprint arXiv:2403.11633, 2024.
+\bibitem{5} W. Wang, Z. Yang, and T. Zhao, ``International trade demand forecasting model based on Transformer-XGBoost-LightGBM,'' \emph{Artificial Intelligence and Applications}, 2025.
+\bibitem{6} T. C. Silva, P. V. B. Wilhelm, and D. R. Amancio, ``Machine learning and economic forecasting: The role of international trade networks,'' \emph{Physica A: Statistical Mechanics and its Applications}, vol. 649, p. 129977, 2024.
+\bibitem{7} Y. Gulzar, C. Oral, M. Kayakus, D. Erdogan, Z. Unal, N. Eksili, and P. Celik Caylak, ``Predicting high technology exports of countries for sustainable economic growth by using machine learning techniques: The case of Turkey,'' \emph{Sustainability}, vol. 16, no. 13, p. 5601, 2024.
+\bibitem{8} A. Anggoro, P. Corcoran, D. De Widt, and Y. Li, ``Harmonized System code classification using supervised contrastive learning with Sentence-BERT and multiple negative ranking loss,'' \emph{Data Technologies and Applications}, vol. 59, no. 2, pp. 279--301, 2025.
+\bibitem{9} P. Yuvraj and S. Devarakonda, ``ATLAS: Benchmarking and adapting LLMs for global trade via harmonized tariff code classification,'' arXiv preprint arXiv:2509.18400, 2025.
+\bibitem{10} S. Sitisara, S. Jinarat, W. Ngamsaard, and N. Suthikarnnarunai, ``Revolutionizing Harmonized System (HS) code search with semantic search and word embeddings: Empowering trade classifications,'' \emph{Forum for Linguistic Studies}, vol. 7, no. 10, pp. 356--371, 2025.
+\bibitem{11} T. T. H. Nguyen, K. V. Q. Nguyen, H.-L. Cao, T. Duong, P. Ho, V. Pham, L. Nguyen, and H. Cao, ``Consensus-based agentic large language model framework for harmonized tariff schedule code classification,'' arXiv preprint arXiv:2606.16987, 2026.
+\bibitem{12} B. Judy, ``Benchmarking harmonized tariff schedule classification models,'' arXiv preprint arXiv:2412.14179, 2024.
+\bibitem{13} A. Ogundiran, ``AI-powered HS code classification for cross-border trade,'' Working paper, 2025.
+\bibitem{14} D. Guo, J. Wu, and S. M. Yiu, ``ComplianceNLP: Knowledge-graph-augmented RAG for multi-framework regulatory gap detection,'' arXiv preprint arXiv:2604.23585, 2026.
+\bibitem{15} M. Gu and C. Jin, ``Artificial intelligence and export performance in small and micro-enterprises: The roles of internal capability and external tools,'' \emph{Sustainability}, vol. 18, no. 12, p. 5846, 2026.
+\bibitem{16} D. A. Irawan, R. Nurcahyo, T. L. Anita, and N. A. Kharasani, ``Exploring artificial intelligence application in export-import process: A case study from Indonesia,'' \emph{TEM Journal}, vol. 14, no. 3, pp. 2098--2110, 2025.
+\bibitem{17} R. Singh, ``The role of artificial intelligence in customs clearance and export-import documentation: A comprehensive analytical research study,'' SSRN Electronic Journal, working paper, 2026.
+\bibitem{18} M. E. Waugh, ``Trade in AI-related products,'' National Bureau of Economic Research, Working Paper 35053, 2026.
+\bibitem{19} O. Agbaakin, ``Leveraging artificial intelligence as a strategic growth catalyst for small and medium-sized enterprises,'' arXiv preprint arXiv:2509.14532, 2025.
+\end{thebibliography}
+
+\end{document}
