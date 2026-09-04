@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TrendingUp, Globe, AlertCircle, Loader2, BarChart3, Award, DollarSign, Brain, Info } from 'lucide-react';
-import { intelligenceApi } from '../services/api';
+import { intelligenceApi } from '../services';
 
 /**
  * ML Export Destination Ranking Component

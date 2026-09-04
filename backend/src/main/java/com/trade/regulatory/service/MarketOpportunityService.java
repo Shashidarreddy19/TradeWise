@@ -23,17 +23,20 @@ public class MarketOpportunityService {
     private final CostEstimationService costService;
     private final HsMasterRepository hsMasterRepo;
     private final MlExportRankingService mlRankingService;
+    private final RegulatoryKnowledgeService knowledgeService;
 
     public MarketOpportunityService(CountryMasterRepository countryRepo,
                                      RegulatoryRetrievalService retrievalService,
                                      CostEstimationService costService,
                                      HsMasterRepository hsMasterRepo,
-                                     MlExportRankingService mlRankingService) {
+                                     MlExportRankingService mlRankingService,
+                                     RegulatoryKnowledgeService knowledgeService) {
         this.countryRepo = countryRepo;
         this.retrievalService = retrievalService;
         this.costService = costService;
         this.hsMasterRepo = hsMasterRepo;
         this.mlRankingService = mlRankingService;
+        this.knowledgeService = knowledgeService;
     }
 
     /**
@@ -79,11 +82,28 @@ public class MarketOpportunityService {
         entry.put("country", country);
         entry.put("hsCode", hsCode);
 
-        // 1. Compliance complexity (from real regulatory data)
+        // 1. Compliance complexity (from real regulatory data, with knowledge fallback)
         RegulatoryRetrievalService.RegulatoryResult regResult =
                 retrievalService.getRegulations(country, hsCode);
         RegulatoryRetrievalService.ComplianceScore compliance =
                 retrievalService.calculateCompliance(regResult);
+
+        // If DB has no specific data or only generic chapter-level match, use knowledge-based scoring
+        boolean isGenericMatch = "HS2_CHAPTER".equals(regResult.matchType)
+                || "NOT_FOUND".equals(regResult.matchType)
+                || "COVERAGE_AUDIT".equals(regResult.matchType);
+        boolean hasMinimalData = compliance.documentsCount < 5 && compliance.certificationsCount < 3;
+
+        if (isGenericMatch || hasMinimalData) {
+            Map<String, Object> kb = knowledgeService.getKnowledgeBasedRegulations(
+                    country, hsCode, regResult.productDescription, regResult.category);
+            compliance.numericScore = knowledgeService.calculateScore(kb);
+            compliance.complexity = knowledgeService.getComplexity(kb);
+            compliance.documentsCount = ((java.util.List<?>) kb.getOrDefault("required_documents", java.util.List.of())).size();
+            compliance.certificationsCount = ((java.util.List<?>) kb.getOrDefault("certifications", java.util.List.of())).size();
+            compliance.restrictionsCount = ((java.util.List<?>) kb.getOrDefault("restricted_products", java.util.List.of())).size();
+            compliance.regulationFound = true;
+        }
 
         entry.put("complianceScore", compliance.numericScore);
         entry.put("complexity", compliance.complexity);

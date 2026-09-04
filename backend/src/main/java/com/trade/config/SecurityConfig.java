@@ -81,6 +81,9 @@ public class SecurityConfig {
                 // Market analysis — EXPORTER only
                 .requestMatchers("/api/market-analysis").hasRole("EXPORTER")
 
+                // Logistics Shipment Planning APIs (authenticated — any role)
+                .requestMatchers("/api/shipment/**").authenticated()
+
                 // Shipments — LOGISTICS only
                 .requestMatchers("/api/shipments/**").hasRole("LOGISTICS")
 

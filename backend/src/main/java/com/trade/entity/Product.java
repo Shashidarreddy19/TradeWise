@@ -82,13 +82,13 @@ public class Product {
      * Manufacturing cost per unit.
      * NOT NULL in the DB — defaults to the price if not provided.
      */
-    @Column(name = "manufacturing_cost", nullable = false, precision = 15, scale = 2)
+    @Column(name = "manufacturing_cost", nullable = false, precision = 19, scale = 4)
     private BigDecimal manufacturingCost;
 
     /**
      * Unit price in INR.
      */
-    @Column(nullable = false, precision = 12, scale = 2)
+    @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal price;
 
     /**

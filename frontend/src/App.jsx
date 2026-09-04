@@ -5,7 +5,7 @@ import ProblemStatement from './components/ProblemStatement';
 import HowItWorks from './components/HowItWorks';
 import CoreFeatures from './components/CoreFeatures';
 import Footer from './components/Footer';
-import { isAuthenticated, getUser, clearAuth } from './services/api';
+import { isAuthenticated, getUser, clearAuth } from './services';
 
 // Pages
 import Login from './pages/Login';

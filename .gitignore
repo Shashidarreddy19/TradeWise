@@ -41,16 +41,25 @@ pipeline/ESTAT-CN2026.rdf
 pipeline/ITC-HS_2022.pdf
 pipeline/hts_2026_basic_edition_csv.csv
 pipeline/downloads/
+pipeline/target/
+pipeline/sample_data/
+pipeline/01-99-2026-eng.pdf
+pipeline/HSCodeMaster-v3.3customers.xlsx
+pipeline/build_evidence.sql
+pipeline/*.pdf
+pipeline/*.xlsx
+pipeline/*.csv
 *.rdf
 
-# ===== Paper figures (generated, reproducible from scripts) =====
-fig1_*.png
-fig1_*.pdf
-fig2_*.png
-fig2_*.pdf
-fig3_*.png
-fig3_*.pdf
-results_overview.png
+# ===== External tools / downloaded libraries =====
+comtradeapicall-main/
+
+# ===== Korean/foreign HS code files =====
+pipeline/*HS*.xlsx
+pipeline/*관세청*
+
+# ===== Generated figures =====
+05(data)/figures/
 
 # ===== Temporary / working files =====
 _estimate_pages.py

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Play, CheckCircle, XCircle, Loader2, AlertTriangle, BarChart3 } from 'lucide-react';
-import { intelligenceApi } from '../services/api';
+import { intelligenceApi } from '../services';
 
 /**
  * ML Model Integration Test — 20 Products

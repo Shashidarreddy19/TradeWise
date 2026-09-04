@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Eye, EyeOff, User, Building, Mail, Phone, Globe, Lock, Briefcase, Truck, ShieldCheck, ArrowLeft, ArrowRight, Loader2, Check, X } from 'lucide-react';
-import { authApi, setToken, setUser } from '../services/api';
+import { authApi, setToken, setUser } from '../services';
 
 // ── Validation helpers (pure functions, no side effects) ─────────────────────
 
@@ -386,13 +386,29 @@ export default function Register({ onNavigate }) {
       // If the backend returns field-level errors, display them
       if (err.data && typeof err.data === 'object' && err.data.data) {
         const fieldErrors = err.data.data;
-        setErrors(prev => ({ ...prev, ...fieldErrors }));
+        // Map backend field names to frontend error keys
+        const mapped = {};
+        Object.entries(fieldErrors).forEach(([key, msg]) => {
+          if (key === 'gstNumber') mapped.exporterGst = msg;
+          else if (key === 'businessType') mapped.exporterType = msg;
+          else if (key === 'productCategories') mapped.exporterCategories = msg;
+          else if (key === 'productDescription') mapped.exporterProducts = msg;
+          else if (key === 'exportExperience') mapped.exporterExp = msg;
+          else mapped[key] = msg;
+        });
+        setErrors(prev => ({ ...prev, ...mapped }));
         // Navigate to the step containing the first errored field
         const step1Fields = ['name', 'email', 'phone', 'password', 'confirmPassword', 'country', 'companyName'];
-        const hasStep1Error = Object.keys(fieldErrors).some(f => step1Fields.includes(f));
-        if (hasStep1Error && step !== 1) setStep(1);
+        const step2Fields = ['exporterGst', 'exporterType', 'exporterCategories', 'exporterProducts', 'exporterExp'];
+        const hasStep1Error = Object.keys(mapped).some(f => step1Fields.includes(f));
+        const hasStep2Error = Object.keys(mapped).some(f => step2Fields.includes(f));
+        if (hasStep1Error) setStep(1);
+        else if (hasStep2Error) setStep(2);
       }
-      triggerToast('error', err.message || 'Registration failed. Please try again.');
+      const errorMsg = err.data?.data
+        ? Object.values(err.data.data).join('. ')
+        : (err.message || 'Registration failed. Please try again.');
+      triggerToast('error', errorMsg);
       setShake(true);
       setTimeout(() => setShake(false), 500);
     } finally {

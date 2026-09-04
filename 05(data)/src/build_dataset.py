@@ -33,7 +33,7 @@ def build_cbec_dataset():
         '84': 'Nuclear Reactors, Boilers, Machinery',
         '85': 'Electrical Machinery & Equipment',
         '61': 'Apparel & Clothing (Knitted)',
-        '62': 'Apparel & Clothing (Not Knitted)',
+        '62': 'Apparel & Clothing (Not Knitted)',   
         '72': 'Iron & Steel',
         '87': 'Vehicles & Automotive Parts',
         '10': 'Cereals (including Rice)'

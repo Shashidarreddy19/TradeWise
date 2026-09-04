@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft, Loader2 } from 'lucide-react';
-import { authApi, setToken, setUser, clearAuth } from '../services/api';
+import { authApi, setToken, setUser, clearAuth } from '../services';
 
 export default function Login({ onNavigate }) {
   const [email, setEmail] = useState('');

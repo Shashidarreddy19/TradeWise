@@ -5,6 +5,7 @@ import com.trade.regulatory.repository.*;
 import com.trade.regulatory.service.RegulatoryRetrievalService;
 import com.trade.regulatory.service.RegulatoryRetrievalService.ComplianceScore;
 import com.trade.regulatory.service.RegulatoryRetrievalService.RegulatoryResult;
+import com.trade.regulatory.service.RegulatoryKnowledgeService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -25,16 +26,19 @@ public class RegulatoryController {
     private final HsMasterRepository hsMasterRepo;
     private final CountryMasterRepository countryRepo;
     private final RegulationSourceRepository sourceRepo;
+    private final RegulatoryKnowledgeService knowledgeService;
 
     public RegulatoryController(
             RegulatoryRetrievalService retrievalService,
             HsMasterRepository hsMasterRepo,
             CountryMasterRepository countryRepo,
-            RegulationSourceRepository sourceRepo) {
+            RegulationSourceRepository sourceRepo,
+            RegulatoryKnowledgeService knowledgeService) {
         this.retrievalService = retrievalService;
         this.hsMasterRepo = hsMasterRepo;
         this.countryRepo = countryRepo;
         this.sourceRepo = sourceRepo;
+        this.knowledgeService = knowledgeService;
     }
 
     /**
@@ -63,13 +67,52 @@ public class RegulatoryController {
         response.put("matchType", result.matchType);
         response.put("confidence", result.confidence);
         response.put("regulationFound", result.regulationFound);
-        response.put("regulations", result.regulations);
-        response.put("documents", result.documents);
-        response.put("certifications", result.certifications);
-        response.put("labeling", result.labeling);
-        response.put("restrictions", result.restrictions);
-        response.put("procedures", result.procedures);
-        response.put("sources", result.sources);
+
+        // Check if DB returned sufficient product-specific regulatory details
+        // Chapter-level matches (HS2) are too generic — augment with knowledge base
+        boolean hasSpecificData = (result.documents != null && result.documents.size() >= 5)
+                || (result.certifications != null && result.certifications.size() >= 3);
+        boolean isGenericMatch = "HS2_CHAPTER".equals(result.matchType) 
+                || "NOT_FOUND".equals(result.matchType)
+                || "COVERAGE_AUDIT".equals(result.matchType);
+
+        if (hasSpecificData && !isGenericMatch) {
+            // Use structured DB data
+            response.put("regulations", result.regulations);
+            response.put("documents", result.documents);
+            response.put("certifications", result.certifications);
+            response.put("labeling", result.labeling);
+            response.put("restrictions", result.restrictions);
+            response.put("procedures", result.procedures);
+            response.put("sources", result.sources);
+            response.put("dataSource", "STRUCTURED_DB");
+        } else {
+            // Fallback to knowledge-based regulations
+            Map<String, Object> kb = knowledgeService.getKnowledgeBasedRegulations(
+                    country, hsCode, result.productDescription, result.category);
+            response.put("import_regulations", kb.get("import_regulations"));
+            response.put("customs_rules", kb.get("customs_rules"));
+            response.put("labeling_requirements", kb.get("labeling_requirements"));
+            response.put("packaging_requirements", List.of());
+            response.put("restricted_products", kb.get("restricted_products"));
+            response.put("required_documents", kb.get("required_documents"));
+            response.put("certifications_list", kb.get("certifications"));
+            // Also put in standard field names for backward compatibility
+            response.put("regulations", kb.get("import_regulations"));
+            response.put("documents", kb.get("required_documents"));
+            response.put("certifications", kb.get("certifications"));
+            response.put("labeling", kb.get("labeling_requirements"));
+            response.put("restrictions", kb.get("restricted_products"));
+            response.put("procedures", kb.get("customs_rules"));
+            response.put("sources", List.of(Map.of("source", "Knowledge Base", "url", "")));
+            response.put("dataSource", "KNOWLEDGE_BASE");
+            response.put("disclaimer", kb.get("disclaimer"));
+        }
+
+        // Always add anti-dumping and packaging verification (regardless of DB vs knowledge source)
+        response.put("antiDumping", knowledgeService.getAntiDumpingStatus(country, hsCode, result.productDescription));
+        response.put("packagingVerification", knowledgeService.getPackagingRequirements(country, hsCode, result.productDescription));
+
         return ResponseEntity.ok(response);
     }
 
@@ -87,6 +130,27 @@ public class RegulatoryController {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", regResult.error));
         }
         ComplianceScore score = retrievalService.calculateCompliance(regResult);
+
+        // Use knowledge-based scoring when DB data is generic (chapter-level match)
+        // or when there's insufficient specific data
+        boolean isGenericMatch = "HS2_CHAPTER".equals(regResult.matchType)
+                || "NOT_FOUND".equals(regResult.matchType)
+                || "COVERAGE_AUDIT".equals(regResult.matchType);
+        boolean hasMinimalData = score.documentsCount < 5 && score.certificationsCount < 3;
+
+        if (isGenericMatch || hasMinimalData) {
+            Map<String, Object> kb = knowledgeService.getKnowledgeBasedRegulations(
+                    country, hsCode, regResult.productDescription, regResult.category);
+            score.numericScore = knowledgeService.calculateScore(kb);
+            score.complexity = knowledgeService.getComplexity(kb);
+            score.documentsCount = ((List<?>) kb.getOrDefault("required_documents", List.of())).size();
+            score.certificationsCount = ((List<?>) kb.getOrDefault("certifications", List.of())).size();
+            score.labelingCount = ((List<?>) kb.getOrDefault("labeling_requirements", List.of())).size();
+            score.restrictionsCount = ((List<?>) kb.getOrDefault("restricted_products", List.of())).size();
+            score.proceduresCount = ((List<?>) kb.getOrDefault("customs_rules", List.of())).size();
+            score.regulationFound = true;
+            score.regulationFound = true;
+        }
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
