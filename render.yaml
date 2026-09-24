@@ -8,23 +8,23 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: DB_MAIN_URL
-        sync: false
+        value: jdbc:mysql://gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/InternationalTrade?useSSL=true&enabledTLSProtocols=TLSv1.2,TLSv1.3&serverTimezone=UTC
       - key: DB_MAIN_USERNAME
-        sync: false
+        value: 4E6jkkzgnyWdQrr.root
       - key: DB_MAIN_PASSWORD
-        sync: false
+        value: rXmp8hKhKz7mgl9r
       - key: DB_TRADEDATA_URL
-        sync: false
+        value: jdbc:mysql://gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/TradeData?useSSL=true&enabledTLSProtocols=TLSv1.2,TLSv1.3&serverTimezone=UTC
       - key: DB_TRADEDATA_USERNAME
-        sync: false
+        value: 4E6jkkzgnyWdQrr.root
       - key: DB_TRADEDATA_PASSWORD
-        sync: false
+        value: rXmp8hKhKz7mgl9r
       - key: JWT_SECRET
-        generateValue: true
+        value: TradePlatformSecretKey2024SecureKeyForHS256SigningMustBe32BytesPlus
       - key: NVIDIA_API_KEY
-        sync: false
+        value: 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
       - key: CORS_ALLOWED_ORIGINS
-        sync: false
+        value: https://tradewise-frontend.onrender.com
 
   - type: web
     name: tradewise-frontend
@@ -38,4 +38,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_BASE_URL
-        sync: false
+        value: https://tradewise-backend.onrender.com/api
