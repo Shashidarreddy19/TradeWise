@@ -2,6 +2,7 @@ package com.trade.service;
 
 import com.trade.dto.auth.AuthResponse;
 import com.trade.dto.auth.LoginRequest;
+import com.trade.dto.auth.ProfileUpdateRequest;
 import com.trade.dto.auth.RegisterRequest;
 import com.trade.dto.auth.UserProfileResponse;
 
@@ -15,4 +16,10 @@ public interface AuthService {
     AuthResponse login(LoginRequest request);
 
     UserProfileResponse getProfile(String email);
+
+    UserProfileResponse updateProfile(ProfileUpdateRequest request, String email);
+
+    boolean isEmailAvailable(String email);
+
+    boolean isPhoneAvailable(String phone);
 }

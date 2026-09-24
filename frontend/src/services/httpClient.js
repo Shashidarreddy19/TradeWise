@@ -10,7 +10,7 @@
  * - Typed HTTP method shortcuts: get, post, put, patch, del
  */
 
-export const BASE_URL = 'http://localhost:8081/api';
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // ── Token & Auth helpers ─────────────────────────────────────────────────────
 
@@ -68,8 +68,10 @@ async function request(endpoint, options = {}) {
 
   const response = await fetch(url, config);
 
-  // Handle 401 — token expired or invalid
-  if (response.status === 401) {
+  const isAuthAttempt = endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/register');
+
+  // Handle 401 — token expired or invalid (do not hijack failed login/register)
+  if (response.status === 401 && !isAuthAttempt) {
     clearAuth();
     window.location.href = '/login';
     throw new Error('Session expired. Please log in again.');

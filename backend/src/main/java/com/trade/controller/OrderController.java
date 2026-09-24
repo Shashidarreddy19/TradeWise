@@ -47,6 +47,19 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(orders));
     }
 
+    /**
+     * Returns all PENDING_LOGISTICS requests excluding those already rejected by this partner.
+     * Declared before /{id} so "pending" is never captured as an order id.
+     */
+    @GetMapping("/pending")
+    @PreAuthorize("hasRole('LOGISTICS')")
+    public ResponseEntity<ApiResponse<List<OrderResponse>>> getPendingRequests(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        List<OrderResponse> orders = orderService.getPendingRequests(userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.success(orders));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('EXPORTER')")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrderById(
@@ -81,18 +94,6 @@ public class OrderController {
     }
 
     // ── LOGISTICS endpoints ──────────────────────────────────────────────────
-
-    /**
-     * Returns all PENDING_LOGISTICS requests excluding those already rejected by this partner.
-     */
-    @GetMapping("/pending")
-    @PreAuthorize("hasRole('LOGISTICS')")
-    public ResponseEntity<ApiResponse<List<OrderResponse>>> getPendingRequests(
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        List<OrderResponse> orders = orderService.getPendingRequests(userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.success(orders));
-    }
 
     /**
      * Accept a shipment request. Auto-creates a shipment with status ASSIGNED.

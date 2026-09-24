@@ -3,7 +3,6 @@ package com.trade.config;
 import com.trade.entity.*;
 import com.trade.repository.*;
 
-import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -46,28 +45,38 @@ public class DataSeeder implements CommandLineRunner {
     // ── Countries ────────────────────────────────────────────────────────────
 
     private void seedCountries() {
-        if (countryRepository.count() > 0) {
-            log.info("Countries already seeded — skipping.");
-            return;
-        }
-        upsertCountry("Germany", "EUR");
-        upsertCountry("United States", "USD");
-        upsertCountry("United Arab Emirates", "AED");
-        upsertCountry("Singapore", "SGD");
-        upsertCountry("Australia", "AUD");
-        log.info("Ensured 5 required countries are present.");
+        // Idempotently ensure each destination country is present
+        upsertCountry("Germany", "DE", "EUR");
+        upsertCountry("United States", "US", "USD");
+        upsertCountry("United Arab Emirates", "AE", "AED");
+        upsertCountry("Singapore", "SG", "SGD");
+        upsertCountry("Australia", "AU", "AUD");
+        upsertCountry("Saudi Arabia", "SA", "SAR");
+        upsertCountry("United Kingdom", "GB", "GBP");
+        upsertCountry("Netherlands", "NL", "EUR");
+        upsertCountry("Canada", "CA", "CAD");
+        upsertCountry("Japan", "JP", "JPY");
+        upsertCountry("South Korea", "KR", "KRW");
+        upsertCountry("China", "CN", "CNY");
+        upsertCountry("Hong Kong", "HK", "HKD");
+        upsertCountry("Bangladesh", "BD", "BDT");
+        upsertCountry("Malaysia", "MY", "MYR");
+        upsertCountry("Indonesia", "ID", "IDR");
+        upsertCountry("Vietnam", "VN", "VND");
+        upsertCountry("Thailand", "TH", "THB");
+        upsertCountry("South Africa", "ZA", "ZAR");
+        upsertCountry("Brazil", "BR", "BRL");
+        upsertCountry("France", "FR", "EUR");
+        upsertCountry("Italy", "IT", "EUR");
+        upsertCountry("Kuwait", "KW", "KWD");
+        upsertCountry("Qatar", "QA", "QAR");
+        upsertCountry("Oman", "OM", "OMR");
+        upsertCountry("Bahrain", "BH", "BHD");
+        log.info("Ensured required export destination countries are present in database.");
     }
 
-    private void upsertCountry(String name, String currency) {
-        if (countryRepository.findByName(name).isEmpty()) {
-            String code = switch (name) {
-                case "Germany"               -> "DE";
-                case "United States"         -> "US";
-                case "United Arab Emirates"  -> "AE";
-                case "Singapore"             -> "SG";
-                case "Australia"             -> "AU";
-                default -> name.substring(0, 2).toUpperCase();
-            };
+    private void upsertCountry(String name, String code, String currency) {
+        if (countryRepository.findByNameIgnoreCase(name).isEmpty() && countryRepository.findByCodeIgnoreCase(code).isEmpty()) {
             countryRepository.save(
                 Country.builder()
                     .name(name)
@@ -80,8 +89,8 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 
+
     // ── Categories ───────────────────────────────────────────────────────────
-    @Builder
     private void seedCategories() {
         if (categoryRepository.count() > 0) {
             log.info("Categories already seeded — skipping.");

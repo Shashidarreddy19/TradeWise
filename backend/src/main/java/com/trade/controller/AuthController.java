@@ -4,6 +4,7 @@ import com.trade.dto.ApiResponse;
 import com.trade.dto.auth.AuthResponse;
 import com.trade.dto.auth.LoginRequest;
 import com.trade.dto.auth.RegisterRequest;
+import com.trade.dto.auth.ProfileUpdateRequest;
 import com.trade.dto.auth.UserProfileResponse;
 import com.trade.service.AuthService;
 import jakarta.validation.Valid;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * Handles user registration, login, and profile retrieval.
+ * Handles user registration, login, and profile retrieval/updating.
  *
  * Public endpoints:
  *   POST /api/auth/register
@@ -25,6 +26,7 @@ import java.util.Map;
  *
  * Protected endpoint:
  *   GET  /api/auth/profile  (requires Bearer token)
+ *   PUT  /api/auth/profile  (requires Bearer token)
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -71,6 +73,19 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(profile));
     }
 
+    /**
+     * Update profile details of the currently authenticated user.
+     * Requires a valid Bearer token in the Authorization header.
+     */
+    @PutMapping("/profile")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody ProfileUpdateRequest request) {
+
+        UserProfileResponse updated = authService.updateProfile(request, userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", updated));
+    }
+
     // ── Real-time duplicate detection endpoints ──────────────────────────────
 
     /**
@@ -78,13 +93,12 @@ public class AuthController {
      * GET /api/auth/check-email?email=foo@bar.com
      */
     @GetMapping("/check-email")
-    public ResponseEntity<Map<String, Object>> checkEmail(@RequestParam String email) {
-        boolean available = ((com.trade.service.impl.AuthServiceImpl) authService)
-                .isEmailAvailable(email);
-        return ResponseEntity.ok(Map.of(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkEmail(@RequestParam String email) {
+        boolean available = authService.isEmailAvailable(email);
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "available", available,
                 "message", available ? "Email is available." : "This email is already registered."
-        ));
+        )));
     }
 
     /**
@@ -92,12 +106,11 @@ public class AuthController {
      * GET /api/auth/check-phone?phone=+919876543210
      */
     @GetMapping("/check-phone")
-    public ResponseEntity<Map<String, Object>> checkPhone(@RequestParam String phone) {
-        boolean available = ((com.trade.service.impl.AuthServiceImpl) authService)
-                .isPhoneAvailable(phone);
-        return ResponseEntity.ok(Map.of(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkPhone(@RequestParam String phone) {
+        boolean available = authService.isPhoneAvailable(phone);
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "available", available,
                 "message", available ? "Phone number is available." : "This phone number is already registered."
-        ));
+        )));
     }
 }

@@ -2,6 +2,7 @@ package com.trade.config;
 
 import jakarta.persistence.EntityManagerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
@@ -29,6 +30,9 @@ import java.util.Map;
 )
 public class TradeDataDatasourceConfig {
 
+    @Value("${tradedata.jpa.ddl-auto:update}")
+    private String ddlAuto;
+
     @Bean
     @ConfigurationProperties("tradedata.datasource")
     public DataSourceProperties tradeDataDataSourceProperties() {
@@ -46,8 +50,11 @@ public class TradeDataDatasourceConfig {
     public LocalContainerEntityManagerFactoryBean tradeDataEntityManagerFactory(
             EntityManagerFactoryBuilder builder) {
         Map<String, Object> props = new HashMap<>();
-        props.put("hibernate.hbm2ddl.auto", "none"); // READ-ONLY — never modify schema
+        // "update" lets a fresh deploy start without the pipeline having run.
+        // Set TRADEDATA_DDL_AUTO=none in production once TradeData is pipeline-managed.
+        props.put("hibernate.hbm2ddl.auto", ddlAuto);
         props.put("hibernate.format_sql", "true");
+        props.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
 
         return builder
                 .dataSource(tradeDataDataSource())

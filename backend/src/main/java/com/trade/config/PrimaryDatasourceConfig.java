@@ -53,6 +53,7 @@ public class PrimaryDatasourceConfig {
         Map<String, Object> props = new HashMap<>();
         props.put("hibernate.hbm2ddl.auto", "update");
         props.put("hibernate.format_sql", "true");
+        props.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
 
         return builder
                 .dataSource(primaryDataSource())

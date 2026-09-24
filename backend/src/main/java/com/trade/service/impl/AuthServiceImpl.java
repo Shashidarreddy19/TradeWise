@@ -293,24 +293,85 @@ public class AuthServiceImpl implements AuthService {
                 builder.companyName(profile.getCompanyName());
                 builder.serviceArea(profile.getServiceArea());
                 builder.fleetSize(profile.getFleetSize());
+                builder.services(profile.getServices());
+                builder.businessRegistrationNumber(profile.getBusinessRegistrationNumber());
+                builder.experience(profile.getExperience());
+                builder.trackingSupport(profile.getTrackingSupport());
+                builder.cargoInsurance(profile.getCargoInsurance());
             });
         }
 
         return builder.build();
     }
 
+    @Override
+    @Transactional
+    public UserProfileResponse updateProfile(ProfileUpdateRequest request, String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+
+        if (request.getName() != null && !request.getName().isBlank()) {
+            user.setName(request.getName().trim());
+        }
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            user.setPhone(request.getPhone().trim());
+        }
+        userRepository.save(user);
+
+        if (user.getRole() == Role.LOGISTICS) {
+            LogisticsProfile profile = logisticsProfileRepository.findByUser(user)
+                    .orElseGet(() -> LogisticsProfile.builder().user(user).build());
+
+            if (request.getCompanyName() != null) profile.setCompanyName(request.getCompanyName().trim());
+            if (request.getServiceArea() != null) profile.setServiceArea(request.getServiceArea().trim());
+            if (request.getServices() != null) {
+                profile.setServices(String.join(", ", request.getServices()));
+            }
+            if (request.getBusinessRegistrationNumber() != null) {
+                profile.setBusinessRegistrationNumber(request.getBusinessRegistrationNumber().trim().toUpperCase());
+            }
+            if (request.getExperience() != null) profile.setExperience(request.getExperience().trim());
+            if (request.getTrackingSupport() != null) profile.setTrackingSupport(request.getTrackingSupport());
+            if (request.getCargoInsurance() != null) profile.setCargoInsurance(request.getCargoInsurance());
+
+            logisticsProfileRepository.save(profile);
+            log.info("Logistics profile updated for [{}]", email);
+        } else if (user.getRole() == Role.EXPORTER) {
+            ExporterProfile profile = exporterProfileRepository.findByUser(user)
+                    .orElseGet(() -> ExporterProfile.builder().user(user).build());
+
+            if (request.getCompanyName() != null) profile.setCompanyName(request.getCompanyName().trim());
+            if (request.getAddress() != null) profile.setAddress(request.getAddress().trim());
+            if (request.getGstNumber() != null) profile.setGstNumber(request.getGstNumber().trim().toUpperCase());
+            if (request.getIecCode() != null) profile.setIecCode(request.getIecCode().trim());
+            if (request.getBusinessType() != null) profile.setBusinessType(request.getBusinessType());
+            if (request.getExportExperience() != null) profile.setExportExperience(request.getExportExperience());
+            if (request.getProductDescription() != null) profile.setProductDescription(request.getProductDescription());
+
+            exporterProfileRepository.save(profile);
+            log.info("Exporter profile updated for [{}]", email);
+        }
+
+        return getProfile(email);
+    }
+
     // ════════════════════════════════════════════════════════════════════════
     // DUPLICATE-CHECK HELPERS (used by AuthController for real-time checks)
     // ════════════════════════════════════════════════════════════════════════
 
+    @Override
     public boolean isEmailAvailable(String email) {
         if (email == null || email.isBlank()) return true;
         return !userRepository.existsByEmail(email.trim().toLowerCase());
     }
 
+    @Override
     public boolean isPhoneAvailable(String phone) {
         if (phone == null || phone.isBlank()) return true;
-        return !userRepository.existsByPhone(phone.trim());
+        String trimmed = phone.trim();
+        if (userRepository.existsByPhone(trimmed)) return false;
+        String indiaNormalized = normalizePhone(trimmed, "India");
+        return indiaNormalized == null || !userRepository.existsByPhone(indiaNormalized);
     }
 
     // ════════════════════════════════════════════════════════════════════════

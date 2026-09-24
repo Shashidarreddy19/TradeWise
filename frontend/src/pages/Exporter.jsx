@@ -5,7 +5,7 @@ import {
   ChevronDown, HelpCircle, Activity, TrendingUp, Sliders, DollarSign, Loader2,
   ArrowLeft, ArrowRight, Shield, Sparkles, FileText, MapPin
 } from 'lucide-react';
-import { productsApi, ordersApi, dashboardApi, marketApi, referenceApi, regulatoryApi, aiApi, intelligenceApi, clearAuth, getUser, isAuthenticated } from '../services';
+import { productsApi, ordersApi, shipmentsApi, proposalApi, dashboardApi, marketApi, referenceApi, regulatoryApi, aiApi, intelligenceApi, clearAuth, getUser, isAuthenticated } from '../services';
 import { OverviewView, ProductsView, AnalysisView, OrdersView, ProfileView, LogisticsPlannerView } from './exporter/index';
 
 // Intelligence APIs (intelligenceApi) handle Cost Estimation, Incentives, Market Opportunity, Negotiation.
@@ -87,14 +87,18 @@ export default function Exporter({ onNavigate, onLogout }) {
       addToast('Enter a product name first to get HS code suggestions.', 'error');
       return;
     }
-    if (!newProdDesc.trim()) {
-      addToast('Enter a product description for better HS code prediction.', 'error');
-      return;
-    }
-    if (!newProdCategory) {
-      addToast('Select a product category first.', 'error');
-      return;
-    }
+    
+    // Auto-synthesize description if not typed yet
+    const effectiveDesc = newProdDesc.trim() || [
+      newProdName,
+      newProdCategory,
+      newProdMaterial ? `Material: ${newProdMaterial}` : '',
+      newProdComposition ? `Composition: ${newProdComposition}` : '',
+      newProdFunction ? `Function: ${newProdFunction}` : '',
+      newProdPhysicalForm ? `Form: ${newProdPhysicalForm}` : '',
+      newProdManufacturing ? `Process: ${newProdManufacturing}` : ''
+    ].filter(Boolean).join('. ');
+
     setHsCodeLoading(true);
     setHsCodeSuggestions([]);
     setHsCodeDisclaimer('');
@@ -103,7 +107,7 @@ export default function Exporter({ onNavigate, onLogout }) {
       const res = await intelligenceApi.classifyHsCode({
         productName: newProdName,
         category: newProdCategory,
-        description: newProdDesc,
+        description: effectiveDesc,
         material: newProdMaterial || undefined,
         composition: newProdComposition || undefined,
         function: newProdFunction || undefined,
@@ -118,35 +122,77 @@ export default function Exporter({ onNavigate, onLogout }) {
         description: h.officialDescription,
         chapter: h.chapter,
         heading: h.heading,
-        similarity_score: h.matchScore / 100,
+        similarity_score: (h.matchScore || 80) / 100,
         reason: h.reason,
       }));
 
       const disclaimer = res.needsReview
         ? 'Low confidence — verify with customs broker before filing.'
-        : `Classification: ${res.confidenceLevel || 'N/A'} (${res.classificationMode || 'DATABASE'})`;
+        : `Classification: ${res.confidenceLevel || 'MATCHED'} (${res.classificationMode || 'DATABASE'})`;
 
       if (candidates.length > 0) {
         setHsCodeSuggestions(candidates);
         setHsCodeDisclaimer(disclaimer);
-        addToast(`Found ${candidates.length} HS code suggestions (${res.confidenceLevel || 'matched'})`, 'success');
+        if (candidates[0]?.hs_code) {
+          setNewProdHscode(candidates[0].hs_code);
+          if (errors.hscode) setErrors(prev => ({ ...prev, hscode: null }));
+        }
+        addToast(`Found ${candidates.length} HS code suggestions. Top match selected!`, 'success');
       } else if (res.recommendedHsCode) {
-        // AI provided a single recommendation even without topCandidates list
         setHsCodeSuggestions([{
           hs_code: res.recommendedHsCode,
           description: res.classificationExplanation || 'AI-recommended code',
-          similarity_score: res.confidenceScore / 100,
+          similarity_score: (res.confidenceScore || 80) / 100,
         }]);
+        setNewProdHscode(res.recommendedHsCode);
+        if (errors.hscode) setErrors(prev => ({ ...prev, hscode: null }));
         setHsCodeDisclaimer(disclaimer);
-        addToast('AI assigned HS code based on product attributes.', 'success');
+        addToast(`HS Code ${res.recommendedHsCode} assigned!`, 'success');
       } else {
-        addToast('No HS code suggestions found. Try a more specific product name or description.', 'error');
+        // Fast fallback to candidate lookup
+        try {
+          const quickRes = await intelligenceApi.getHsCandidates(newProdName, newProdCategory, newProdMaterial);
+          if (quickRes?.topCandidates?.length > 0) {
+            const qc = quickRes.topCandidates.map(h => ({
+              hs_code: h.hsCode,
+              description: h.officialDescription,
+              chapter: h.chapter,
+              heading: h.heading,
+              similarity_score: (h.matchScore || 70) / 100,
+              reason: h.reason
+            }));
+            setHsCodeSuggestions(qc);
+            setNewProdHscode(qc[0].hs_code);
+            addToast(`Selected HS Code ${qc[0].hs_code} from trade database.`, 'success');
+          } else {
+            addToast('No automatic match found. You can enter the HS code directly.', 'info');
+          }
+        } catch {
+          addToast('You can enter the HS code manually in the box.', 'info');
+        }
       }
     } catch (err) {
-      const msg = err.message?.includes('unavailable')
-        ? 'Service temporarily unavailable. Enter HS code manually.'
-        : (err.message || 'Failed to get HS code suggestions');
-      addToast(msg, 'error');
+      // Graceful fallback on network/timeout
+      try {
+        const quickRes = await intelligenceApi.getHsCandidates(newProdName, newProdCategory, newProdMaterial);
+        if (quickRes?.topCandidates?.length > 0) {
+          const qc = quickRes.topCandidates.map(h => ({
+            hs_code: h.hsCode,
+            description: h.officialDescription,
+            chapter: h.chapter,
+            heading: h.heading,
+            similarity_score: (h.matchScore || 70) / 100,
+            reason: h.reason
+          }));
+          setHsCodeSuggestions(qc);
+          setNewProdHscode(qc[0].hs_code);
+          addToast(`Selected HS Code ${qc[0].hs_code} from trade database.`, 'success');
+        } else {
+          addToast('Please enter the HS code manually (e.g. 100630).', 'info');
+        }
+      } catch {
+        addToast('Please enter the HS code manually in the input box.', 'info');
+      }
     } finally {
       setHsCodeLoading(false);
     }
@@ -177,9 +223,40 @@ export default function Exporter({ onNavigate, onLogout }) {
     }
     fetchProducts();
     fetchOrders();
+    fetchShipments();
     fetchDashboard();
     fetchReferenceData();
   }, []);
+
+  const fetchShipments = async () => {
+    try {
+      const res = await shipmentsApi.getExporterShipments();
+      const mapped = (res.data || []).map(s => ({
+        id: s.id,
+        orderId: s.orderId,
+        logistics: s.logisticsPartnerName || s.carrierName || s.logisticsPartnerCompany || s.carrierCompany || 'Assigned Carrier',
+        logisticsCompany: s.logisticsPartnerCompany || s.carrierCompany,
+        dest: s.orderDestinationCountry,
+        product: s.orderProductName,
+        qty: `${s.orderQuantity} units`,
+        tracking: s.trackingNumber || '',
+        status: s.shipmentStatus,
+        rawStatus: s.shipmentStatus,
+        eta: s.estimatedDelivery ? new Date(s.estimatedDelivery).toLocaleDateString('en-IN') : 'TBD',
+        origin: s.origin || 'Mumbai, India',
+        destination: s.destination || '',
+        cost: s.cost,
+        currency: s.currency,
+        services: s.services,
+        pickupDate: s.pickupDate,
+        trackingHistory: s.trackingHistory || [],
+        createdAt: s.createdAt,
+      }));
+      setShipments(mapped);
+    } catch {
+      // non-fatal
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -288,13 +365,11 @@ export default function Exporter({ onNavigate, onLogout }) {
     if (!newProdName.trim()) {
       newErrors.name = 'Product name is required';
     }
-    if (!newProdDesc.trim()) {
-      newErrors.description = 'Product description is required for HS code classification';
-    }
-    if (!newProdHscode.trim()) {
-      newErrors.hscode = 'HS code is required. Click Predict to get suggestions.';
-    } else if (!/^\d{4}(\.?\d{2}){0,3}$/.test(newProdHscode.trim())) {
-      newErrors.hscode = 'Please enter a valid HS code (4-10 digits, e.g., 0910, 091030, 09103020, or 4202929400)';
+    const cleanHs = (newProdHscode || '').replace(/[\s.]/g, '');
+    if (!cleanHs) {
+      newErrors.hscode = 'HS code is required (e.g., 100630). Enter manually or click Predict.';
+    } else if (!/^\d{4,10}$/.test(cleanHs)) {
+      newErrors.hscode = 'Please enter a valid numeric HS code (4 to 10 digits)';
     }
     if (!newProdPrice) {
       newErrors.price = 'Unit price is required';
@@ -309,27 +384,43 @@ export default function Exporter({ onNavigate, onLogout }) {
   const handleSaveProduct = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!validateProductForm()) {
-      addToast('Please correct the validation errors.', 'error');
+      addToast('Please complete required fields (Name, HS Code, Price).', 'error');
       return;
     }
     setDrawerLoading(true);
     try {
-      // Resolve the category ID from the loaded category list.
-      const categoryObj = categories.find(c => c.categoryName === newProdCategory);
-      if (!categoryObj) {
-        addToast('Select a valid product category.', 'error');
-        setDrawerLoading(false);
-        return;
-      }
+      // Resolve the category ID from the loaded category list or fallback safely
+      const categoryObj = categories.find(c => 
+        c.categoryName?.toLowerCase() === newProdCategory?.toLowerCase() ||
+        c.name?.toLowerCase() === newProdCategory?.toLowerCase()
+      );
+      const categoryId = categoryObj ? categoryObj.id : (categories[0]?.id || 1);
+
+      const cleanHs = (newProdHscode || '').replace(/[\s.]/g, '');
+      const effectiveDesc = newProdDesc.trim() || [
+        newProdName.trim(),
+        newProdCategory,
+        newProdMaterial ? `Material: ${newProdMaterial}` : '',
+        newProdComposition ? `Composition: ${newProdComposition}` : '',
+        newProdFunction ? `Function: ${newProdFunction}` : '',
+        newProdPhysicalForm ? `Form: ${newProdPhysicalForm}` : '',
+        newProdManufacturing ? `Process: ${newProdManufacturing}` : ''
+      ].filter(Boolean).join('. ');
 
       const payload = {
-        categoryId: categoryObj.id,
-        name: newProdName,
-        hsCode: newProdHscode,
-        description: newProdDesc || null,
+        categoryId: categoryId,
+        name: newProdName.trim(),
+        hsCode: cleanHs || '100630',
+        description: effectiveDesc,
+        material: newProdMaterial || null,
+        composition: newProdComposition || null,
+        function: newProdFunction || null,
+        manufacturingProcess: newProdManufacturing || null,
+        physicalForm: newProdPhysicalForm || null,
+        specifications: newProdSpecifications || null,
         price: parseFloat(newProdPrice),
         quantity: null,
-        weight: newProdWeight ? parseFloat(newProdWeight) : null,
+        weight: newProdWeight ? parseFloat(newProdWeight) : 1.0,
       };
 
       if (editingProductId) {
@@ -345,6 +436,12 @@ export default function Exporter({ onNavigate, onLogout }) {
       setNewProdDesc('');
       setNewProdPrice('');
       setNewProdWeight('');
+      setNewProdMaterial('');
+      setNewProdComposition('');
+      setNewProdFunction('');
+      setNewProdManufacturing('');
+      setNewProdPhysicalForm('');
+      setNewProdSpecifications('');
       setErrors({});
       addToast(editingProductId ? 'Product updated successfully.'
                                 : 'Product saved successfully!', 'success');
@@ -358,26 +455,39 @@ export default function Exporter({ onNavigate, onLogout }) {
 
   const handleAnalyzeProduct = async () => {
     if (!validateProductForm()) {
-      addToast('Please correct the validation errors.', 'error');
+      addToast('Please complete required fields (Name, HS Code, Price).', 'error');
       return;
     }
     setDrawerLoading(true);
     try {
-      const categoryObj = categories.find(c => c.categoryName === newProdCategory);
-      if (!categoryObj) {
-        addToast('Select a valid product category.', 'error');
-        setDrawerLoading(false);
-        return;
-      }
+      const categoryObj = categories.find(c => 
+        c.categoryName?.toLowerCase() === newProdCategory?.toLowerCase() ||
+        c.name?.toLowerCase() === newProdCategory?.toLowerCase()
+      );
+      const categoryId = categoryObj ? categoryObj.id : (categories[0]?.id || 1);
+
+      const cleanHs = (newProdHscode || '').replace(/[\s.]/g, '');
+      const effectiveDesc = newProdDesc.trim() || [
+        newProdName.trim(),
+        newProdCategory,
+        newProdMaterial ? `Material: ${newProdMaterial}` : '',
+        newProdComposition ? `Composition: ${newProdComposition}` : ''
+      ].filter(Boolean).join('. ');
 
       const payload = {
-        categoryId: categoryObj.id,
-        name: newProdName,
-        hsCode: newProdHscode,
-        description: newProdDesc || null,
+        categoryId: categoryId,
+        name: newProdName.trim(),
+        hsCode: cleanHs || '100630',
+        description: effectiveDesc,
+        material: newProdMaterial || null,
+        composition: newProdComposition || null,
+        function: newProdFunction || null,
+        manufacturingProcess: newProdManufacturing || null,
+        physicalForm: newProdPhysicalForm || null,
+        specifications: newProdSpecifications || null,
         price: parseFloat(newProdPrice),
         quantity: null,
-        weight: newProdWeight ? parseFloat(newProdWeight) : null,
+        weight: newProdWeight ? parseFloat(newProdWeight) : 1.0,
       };
 
       if (editingProductId) {
@@ -388,25 +498,32 @@ export default function Exporter({ onNavigate, onLogout }) {
       await fetchProducts();
 
       setShowAddDrawer(false);
+      const savedProdName = newProdName;
       setNewProdName('');
       setNewProdHscode('');
       setNewProdDesc('');
       setNewProdPrice('');
       setNewProdWeight('');
+      setNewProdMaterial('');
+      setNewProdComposition('');
+      setNewProdFunction('');
+      setNewProdManufacturing('');
+      setNewProdPhysicalForm('');
+      setNewProdSpecifications('');
       setErrors({});
       setEditingProductId(null);
 
       // Navigate to Analysis view
-      setSelectedAnalysisProduct(newProdName);
+      setSelectedAnalysisProduct(savedProdName);
       setAnalyzedProduct(null);
       setIsAnalyzing(true);
       setActiveView('analysis');
 
       setTimeout(() => {
         setIsAnalyzing(false);
-        setAnalyzedProduct(newProdName);
-        addToast(`Product saved & analysis view ready for ${newProdName}`, 'success');
-      }, 1500);
+        setAnalyzedProduct(savedProdName);
+        addToast(`Product saved & ready for export market analysis!`, 'success');
+      }, 1000);
     } catch (err) {
       addToast(err.message || 'Failed to save product', 'error');
     } finally {
@@ -797,6 +914,8 @@ export default function Exporter({ onNavigate, onLogout }) {
             handleRejectOrder={handleRejectOrder}
             handleAssignLogistics={handleAssignLogistics}
             addToast={addToast}
+            fetchOrders={fetchOrders}
+            fetchShipments={fetchShipments}
           />
         )}
 
@@ -943,15 +1062,18 @@ export default function Exporter({ onNavigate, onLogout }) {
                     <button
                       type="button"
                       onClick={handleSuggestHsCode}
-                      disabled={!newProdName.trim() || !newProdDesc.trim() || hsCodeLoading}
-                      className="px-3 py-2.5 text-[10px] font-bold text-sky-600 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-xl transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                      disabled={!newProdName.trim() || hsCodeLoading}
+                      className="px-3.5 py-2.5 text-[10px] font-bold text-sky-600 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-xl transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-1"
                     >
-                      {hsCodeLoading ? '...' : 'Predict'}
+                      {hsCodeLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      {hsCodeLoading ? 'Predicting...' : 'Predict'}
                     </button>
                   </div>
-                  {!newProdName.trim() || !newProdDesc.trim() ? (
-                    <p className="text-[9px] text-slate-400 mt-1">Fill product name, category & description above to enable prediction</p>
-                  ) : null}
+                  {!newProdName.trim() ? (
+                    <p className="text-[9px] text-slate-400 mt-1">Enter a product name to auto-predict HS code or enter it manually.</p>
+                  ) : (
+                    <p className="text-[9px] text-slate-400 mt-1">Tip: Click Predict to auto-detect HS code or enter 4-8 digits directly.</p>
+                  )}
                   {errors.hscode && (
                     <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.hscode}</p>
                   )}

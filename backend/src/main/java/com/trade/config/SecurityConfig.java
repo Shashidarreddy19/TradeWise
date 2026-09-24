@@ -4,6 +4,7 @@ import com.trade.security.JwtAccessDeniedHandler;
 import com.trade.security.JwtAuthenticationEntryPoint;
 import com.trade.security.JwtAuthenticationFilter;
 import com.trade.security.UserDetailsServiceImpl;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,6 +24,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -46,6 +48,9 @@ public class SecurityConfig {
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
 
+    @Value("${app.cors.allowed-origins:}")
+    private String extraAllowedOrigins;
+
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             UserDetailsServiceImpl userDetailsService,
@@ -65,6 +70,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/health", "/health", "/actuator/health").permitAll()
                 .requestMatchers("/api/countries").permitAll()
                 .requestMatchers("/api/categories").permitAll()
 
@@ -84,8 +90,11 @@ public class SecurityConfig {
                 // Logistics Shipment Planning APIs (authenticated — any role)
                 .requestMatchers("/api/shipment/**").authenticated()
 
-                // Shipments — LOGISTICS only
-                .requestMatchers("/api/shipments/**").hasRole("LOGISTICS")
+                // Shipments — EXPORTER (own) and LOGISTICS (assigned); method-level security enforces role
+                .requestMatchers("/api/shipments/**").authenticated()
+
+                // Logistics quotes / proposals
+                .requestMatchers("/api/proposals/**").authenticated()
 
                 // Dashboards
                 .requestMatchers("/api/dashboard/exporter").hasRole("EXPORTER")
@@ -131,13 +140,34 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+        List<String> origins = new ArrayList<>(List.of(
+            "http://localhost:[*]",
+            "http://localhost:*",
+            "http://127.0.0.1:[*]",
+            "http://127.0.0.1:*",
+            "https://*.vercel.app",
+            "https://*.netlify.app",
+            "https://*.onrender.com",
+            "https://*.koyeb.app",
+            "https://*.railway.app"
+        ));
+        if (extraAllowedOrigins != null && !extraAllowedOrigins.isBlank()) {
+            for (String origin : extraAllowedOrigins.split(",")) {
+                if (!origin.isBlank()) {
+                    origins.add(origin.trim());
+                }
+            }
+        }
+        config.setAllowedOriginPatterns(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Authorization", "Link", "X-Total-Count"));
         config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 }

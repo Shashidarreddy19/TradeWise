@@ -91,6 +91,44 @@ export default function Register({ onNavigate }) {
   const [shake, setShake] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // Real-time duplicate checking
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [checkingPhone, setCheckingPhone] = useState(false);
+
+  const handleEmailBlur = async () => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed || !EMAIL_REGEX.test(trimmed)) return;
+    try {
+      setCheckingEmail(true);
+      const res = await authApi.checkEmail(trimmed);
+      const available = res?.data?.available ?? res?.available;
+      if (available === false) {
+        setErrors(prev => ({ ...prev, email: res?.data?.message || res?.message || 'This email is already registered.' }));
+      }
+    } catch {
+      // Network or API check fallback gracefully
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
+
+  const handlePhoneBlur = async () => {
+    const clean = phone.trim().replace(/[\s\-]/g, '');
+    if (!clean) return;
+    try {
+      setCheckingPhone(true);
+      const res = await authApi.checkPhone(clean);
+      const available = res?.data?.available ?? res?.available;
+      if (available === false) {
+        setErrors(prev => ({ ...prev, phone: res?.data?.message || res?.message || 'This phone number is already registered.' }));
+      }
+    } catch {
+      // Network or API check fallback gracefully
+    } finally {
+      setCheckingPhone(false);
+    }
+  };
+
   const triggerToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 4000);
@@ -524,14 +562,16 @@ export default function Register({ onNavigate }) {
             </div>
 
             {/* Title / Quote Text */}
-            <h2 className="text-xl font-bold tracking-tight text-slate-850 mb-3">
-              Compliance Intelligence Built for Global Growth
+            <h2 className="text-xl font-bold tracking-tight text-slate-800 mb-3">
+              {role === 'logistics' ? 'Global Freight & Logistics Coordination Network' : 'Compliance Intelligence Built for Global Growth'}
             </h2>
             <p className="text-sm text-slate-500 font-medium leading-relaxed max-w-sm">
-              "Trade allowed us to index new custom tariffs and clear our freight compliance audits in record time."
+              {role === 'logistics'
+                ? '"TradeWise connected our logistics fleet with verified international exporters, streamlining route dispatch and customs clearance documentation."'
+                : '"Trade allowed us to index new custom tariffs and clear our freight compliance audits in record time."'}
             </p>
             <div className="mt-4 text-xs font-bold text-indigo-600 tracking-wider uppercase">
-              Exporter, Textile Council backing
+              {role === 'logistics' ? 'Logistics Partner · Multi-Modal Freight' : 'Exporter · Textile Council Backing'}
             </div>
           </div>
         </div>
@@ -659,12 +699,16 @@ export default function Register({ onNavigate }) {
 
                   {/* Email Address */}
                   <div className="col-span-1 space-y-1 relative">
-                    <label className="text-[10px] font-bold text-slate-555 uppercase tracking-widest">Email</label>
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold text-slate-555 uppercase tracking-widest">Email</label>
+                      {checkingEmail && <span className="text-[9px] text-sky-500 font-medium">Checking...</span>}
+                    </div>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                       <input
                         type="email"
                         value={email}
+                        onBlur={handleEmailBlur}
                         onChange={(e) => {
                           setEmail(e.target.value);
                           if (errors.email) setErrors({ ...errors, email: null });
@@ -681,17 +725,21 @@ export default function Register({ onNavigate }) {
 
                   {/* Phone Number */}
                   <div className="col-span-1 space-y-1 relative">
-                    <label className="text-[10px] font-bold text-slate-555 uppercase tracking-widest">Phone Number</label>
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold text-slate-555 uppercase tracking-widest">Phone Number</label>
+                      {checkingPhone && <span className="text-[9px] text-sky-500 font-medium">Checking...</span>}
+                    </div>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                       <input
                         type="tel"
                         value={phone}
+                        onBlur={handlePhoneBlur}
                         onChange={(e) => {
                           setPhone(e.target.value);
                           if (errors.phone) setErrors({ ...errors, phone: null });
                         }}
-                        placeholder="+91 98765"
+                        placeholder="+91 9876543210"
                         className={`w-full pl-9 pr-3 py-2 bg-white border rounded-xl text-xs text-slate-805 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 ${errors.phone ? 'border-red-500/50' : 'border-slate-200'
                           }`}
                       />
@@ -746,19 +794,6 @@ export default function Register({ onNavigate }) {
                     {errors.password && (
                       <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.password}</p>
                     )}
-                    {/* Live password strength checklist */}
-                    {password.length > 0 && (
-                      <div className="mt-1.5 space-y-0.5">
-                        {PASSWORD_RULES.map(rule => (
-                          <div key={rule.id} className="flex items-center gap-1.5">
-                            {rule.test(password)
-                              ? <Check className="w-3 h-3 text-emerald-500" />
-                              : <X className="w-3 h-3 text-slate-300" />}
-                            <span className={`text-[9px] font-medium ${rule.test(password) ? 'text-emerald-600' : 'text-slate-400'}`}>{rule.label}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
 
                   {/* Confirm Password */}
@@ -789,6 +824,37 @@ export default function Register({ onNavigate }) {
                       <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.confirmPassword}</p>
                     )}
                   </div>
+
+                  {/* Live password strength checklist spanning both columns symmetrically */}
+                  {password.length > 0 && (
+                    <div className="col-span-2 bg-slate-50/80 border border-slate-200/90 rounded-xl p-2.5 space-y-1.5">
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                        {PASSWORD_RULES.map(rule => {
+                          const passed = rule.test(password);
+                          return (
+                            <div key={rule.id} className="flex items-center gap-1.5">
+                              {passed
+                                ? <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                                : <X className="w-3 h-3 text-slate-300 shrink-0" />}
+                              <span className={`text-[9px] font-medium leading-tight ${passed ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                {rule.label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {confirmPassword.length > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            {password === confirmPassword
+                              ? <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                              : <X className="w-3 h-3 text-red-400 shrink-0" />}
+                            <span className={`text-[9px] font-medium leading-tight ${password === confirmPassword ? 'text-emerald-600' : 'text-red-500'}`}>
+                              {password === confirmPassword ? 'Passwords match' : 'Passwords do not match'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Role Selection Horizontal Cards */}
@@ -901,7 +967,12 @@ export default function Register({ onNavigate }) {
 
                     {/* Product Category Multi-Select (max 3) */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Product Categories <span className="text-slate-400 normal-case">(select 1-3)</span></label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                          Product Categories <span className="text-slate-400 normal-case">(select 1-3)</span>
+                        </label>
+                        <span className="text-[10px] font-semibold text-sky-600">{exporterCategories.length}/3 selected</span>
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         {PRODUCT_CATEGORIES.map((cat) => {
                           const active = exporterCategories.includes(cat);
@@ -994,27 +1065,33 @@ export default function Register({ onNavigate }) {
                 {/* RENDER LOGISTICS DETAILS */}
                 {role === 'logistics' && (
                   <div className="space-y-5">
-                    {/* Service Types (max 4) */}
+                    {/* Service Types (max 6) */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-555 uppercase tracking-widest">Service Types Offered <span className="text-slate-400 normal-case">(select 1-4)</span></label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                          Service Types Offered <span className="text-slate-400 normal-case">(select 1-6)</span>
+                        </label>
+                        <span className="text-[10px] font-semibold text-sky-600">{logisticsServices.length}/6 selected</span>
+                      </div>
                       <div className="grid grid-cols-3 gap-2">
-                        {['Air Freight', 'Sea Freight', 'Road Transport', 'Rail Transport', 'Customs Brokerage', 'Customs Clearance', 'Warehousing'].map((svc) => {
+                        {['Air Freight', 'Sea Freight', 'Road Transport', 'Rail Transport', 'Customs Clearance', 'Door-to-Door Delivery', 'Warehousing', 'Cargo Insurance', 'Express Courier'].map((svc) => {
                           const active = logisticsServices.includes(svc);
-                          const atMax = logisticsServices.length >= 4 && !active;
+                          const atMax = logisticsServices.length >= 6 && !active;
                           return (
                             <button
                               key={svc}
                               type="button"
                               disabled={atMax}
-                              onClick={() => { toggleSelection(logisticsServices, setLogisticsServices, svc, 4); if (errors.logisticsServices) setErrors({ ...errors, logisticsServices: null }); }}
-                              className={`py-1.5 px-1 rounded-xl text-xxs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${active
-                                  ? 'bg-sky-500 text-white border-sky-400 shadow-md scale-102'
+                              onClick={() => { toggleSelection(logisticsServices, setLogisticsServices, svc, 6); if (errors.logisticsServices) setErrors({ ...errors, logisticsServices: null }); }}
+                              className={`py-1.5 px-2 rounded-xl text-xxs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${active
+                                  ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white border-sky-400 shadow-md scale-102'
                                   : atMax
                                     ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
-                                    : 'bg-white border-slate-200 text-slate-550 hover:bg-slate-50'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
                                 }`}
                             >
                               <span>{svc}</span>
+                              {active && <Check className="w-3 h-3 text-white shrink-0" />}
                             </button>
                           );
                         })}
@@ -1024,7 +1101,12 @@ export default function Register({ onNavigate }) {
 
                     {/* Service Regions (max 5) */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Service Regions <span className="text-slate-400 normal-case">(select 1-5)</span></label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                          Service Regions <span className="text-slate-400 normal-case">(select 1-5)</span>
+                        </label>
+                        <span className="text-[10px] font-semibold text-sky-600">{logisticsRegions.length}/5 selected</span>
+                      </div>
                       <div className="grid grid-cols-3 gap-2">
                         {['India (Domestic)', 'Southeast Asia', 'East Asia', 'Middle East', 'Europe', 'North America', 'South America', 'Africa', 'Oceania'].map((reg) => {
                           const active = logisticsRegions.includes(reg);
@@ -1035,14 +1117,15 @@ export default function Register({ onNavigate }) {
                               type="button"
                               disabled={atMax}
                               onClick={() => { toggleSelection(logisticsRegions, setLogisticsRegions, reg, 5); if (errors.logisticsRegions) setErrors({ ...errors, logisticsRegions: null }); }}
-                              className={`py-1.5 px-1 rounded-xl text-xxs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${active
-                                  ? 'bg-sky-500 text-white border-sky-400 shadow-md scale-102'
+                              className={`py-1.5 px-2 rounded-xl text-xxs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${active
+                                  ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white border-sky-400 shadow-md scale-102'
                                   : atMax
                                     ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
-                                    : 'bg-white border-slate-200 text-slate-555 hover:bg-slate-50'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
                                 }`}
                             >
                               <span>{reg}</span>
+                              {active && <Check className="w-3 h-3 text-white shrink-0" />}
                             </button>
                           );
                         })}
@@ -1061,7 +1144,7 @@ export default function Register({ onNavigate }) {
                           if (errors.logisticsRegNo) setErrors({ ...errors, logisticsRegNo: null });
                         }}
                         placeholder="Enter GSTIN / Business Registration Number"
-                        maxLength={20}
+                        maxLength={25}
                         className={`w-full px-4 py-2 bg-white border rounded-xl text-xs placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 ${errors.logisticsRegNo ? 'border-red-500/50' : 'border-slate-200'}`}
                       />
                       {errors.logisticsRegNo && <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.logisticsRegNo}</p>}
@@ -1142,8 +1225,7 @@ export default function Register({ onNavigate }) {
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    disabled={role === 'logistics' && (!logisticsServices.length || !logisticsRegions.length || !logisticsRegNo.trim() || !logisticsExperience)}
-                    className="inline-flex items-center gap-1.5 px-6 py-2 font-bold text-white bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 hover:scale-103 shadow-md rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    className="inline-flex items-center gap-1.5 px-6 py-2.5 font-bold text-white bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 hover:scale-103 shadow-md rounded-xl transition-all cursor-pointer"
                   >
                     Continue
                     <ArrowRight className="w-4 h-4" />
@@ -1164,10 +1246,10 @@ export default function Register({ onNavigate }) {
                   <p className="text-xs text-slate-500 mt-1 font-medium">Step 3 of 3 · Verify Profile Details</p>
                 </div>
 
-                {/* Summary Card */}
-                <div className="bg-slate-50 border border-slate-200/80 p-5 rounded-2xl space-y-3.5">
+                {/* Summary Card: Account Information */}
+                <div className="bg-slate-50 border border-slate-200/80 p-4 sm:p-5 rounded-2xl space-y-3">
                   <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Account Summary</h3>
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Account Information</h3>
                     <button
                       type="button"
                       onClick={() => setStep(1)}
@@ -1178,7 +1260,7 @@ export default function Register({ onNavigate }) {
                   </div>
 
                   {/* Info Fields */}
-                  <div className="space-y-2.5 text-xs font-semibold">
+                  <div className="space-y-2 text-xs font-semibold">
                     <div className="flex justify-between">
                       <span className="text-slate-400">Full Name</span>
                       <span className="text-slate-800">{fullName}</span>
@@ -1199,10 +1281,85 @@ export default function Register({ onNavigate }) {
                       <span className="text-slate-400">Base Country</span>
                       <span className="text-slate-800">{country}</span>
                     </div>
-                    <div className="flex justify-between border-t border-slate-200 pt-2.5">
+                    <div className="flex justify-between border-t border-slate-200 pt-2">
                       <span className="text-slate-400 font-bold uppercase text-[10px]">Assigned Role</span>
                       <span className="text-sky-600 font-extrabold capitalize text-[10px]">{role}</span>
                     </div>
+                  </div>
+                </div>
+
+                {/* Summary Card: Business & Logistics Profile */}
+                <div className="bg-slate-50 border border-slate-200/80 p-4 sm:p-5 rounded-2xl space-y-3">
+                  <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                      {role === 'exporter' ? 'Exporter Profile' : 'Logistics Partner Profile'}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      className="text-xs font-bold text-sky-600 hover:underline cursor-pointer"
+                    >
+                      Edit Details
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 text-xs font-semibold">
+                    {role === 'exporter' ? (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Registration / GST</span>
+                          <span className="text-slate-800">{exporterGst || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Business Type</span>
+                          <span className="text-slate-800">{exporterType || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Categories</span>
+                          <span className="text-slate-800 text-right max-w-[200px] truncate">
+                            {exporterCategories.join(', ') || 'None selected'}
+                            {exporterCategories.includes('Others') && otherCategoryText ? ` (${otherCategoryText})` : ''}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Experience</span>
+                          <span className="text-slate-800">{exporterExp || 'N/A'}</span>
+                        </div>
+                        {exporterProducts && (
+                          <div className="flex flex-col gap-1 border-t border-slate-200/70 pt-2">
+                            <span className="text-slate-400 text-[10px]">Primary Products</span>
+                            <span className="text-slate-700 text-[11px] leading-relaxed line-clamp-2">{exporterProducts}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Registration No</span>
+                          <span className="text-slate-800">{logisticsRegNo || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Experience</span>
+                          <span className="text-slate-800">{logisticsExperience || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Services</span>
+                          <span className="text-slate-800 text-right max-w-[200px] truncate">{logisticsServices.join(', ') || 'None'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Regions</span>
+                          <span className="text-slate-800 text-right max-w-[200px] truncate">{logisticsRegions.join(', ') || 'None'}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-slate-200/70 pt-2">
+                          <span className="text-slate-400">Live Tracking</span>
+                          <span className={`text-xs font-bold ${logisticsTracking === 'Yes' ? 'text-emerald-600' : 'text-slate-600'}`}>{logisticsTracking}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Cargo Insurance</span>
+                          <span className={`text-xs font-bold ${logisticsInsurance === 'Yes' ? 'text-emerald-600' : 'text-slate-600'}`}>{logisticsInsurance}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 

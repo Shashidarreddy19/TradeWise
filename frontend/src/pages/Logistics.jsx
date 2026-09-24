@@ -14,12 +14,11 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, LogOut, ChevronDown, User as UserIcon } from 'lucide-react';
 import {
-  ordersApi, shipmentsApi, dashboardApi, authApi,
+  ordersApi, shipmentsApi, dashboardApi, authApi, proposalApi,
   clearAuth, getUser, isAuthenticated,
 } from '../services';
 import {
-  OverviewView, AssignedOrdersView, ShipmentsView,
-  LogisticsPlannerView, ProfileView,
+  OverviewView, AssignedOrdersView, ShipmentsView, ProfileView,
 } from './logistics/index';
 import { formatShipmentStatus, userInitials } from './logistics/utils';
 
@@ -39,6 +38,7 @@ export default function Logistics({ onNavigate, onLogout }) {
   // ── Data state ────────────────────────────────────────────────────────────
   const [orders, setOrders]               = useState([]);
   const [shipments, setShipments]         = useState([]);
+  const [myProposals, setMyProposals]     = useState([]);
   const [dashboardStats, setDashboardStats] = useState(null);
   const [loading, setLoading]             = useState(true);
 
@@ -69,7 +69,7 @@ export default function Logistics({ onNavigate, onLogout }) {
 
   const fetchAll = async () => {
     setLoading(true);
-    await Promise.allSettled([fetchOrders(), fetchShipments(), fetchDashboard()]);
+    await Promise.allSettled([fetchOrders(), fetchShipments(), fetchProposals(), fetchDashboard()]);
     setLoading(false);
   };
 
@@ -82,7 +82,9 @@ export default function Logistics({ onNavigate, onLogout }) {
         hscode: o.productHsCode || '',
         country: o.destinationCountryName,
         qty: `${o.quantity} units`,
+        rawQuantity: o.quantity,
         value: `₹${Number(o.totalPrice || 0).toLocaleString('en-IN')}`,
+        rawValue: o.totalPrice,
         status: o.status === 'PENDING_LOGISTICS' ? 'Pending' : 'Accepted',
         rawStatus: o.status,
         exporterName: o.exporterName || '',
@@ -95,6 +97,15 @@ export default function Logistics({ onNavigate, onLogout }) {
       })));
     } catch (err) {
       addToast(err.message || 'Failed to load orders', 'error');
+    }
+  };
+
+  const fetchProposals = async () => {
+    try {
+      const res = await proposalApi.getMyProposals();
+      setMyProposals(res.data || []);
+    } catch {
+      /* non-fatal */
     }
   };
 
@@ -115,6 +126,11 @@ export default function Logistics({ onNavigate, onLogout }) {
         eta: s.estimatedDelivery || 'TBD',
         origin: s.origin || 'Mumbai, India',
         destination: s.destination || '',
+        cost: s.cost,
+        currency: s.currency,
+        services: s.services,
+        pickupDate: s.pickupDate,
+        trackingHistory: s.trackingHistory || [],
         createdAt: s.createdAt,
       })));
     } catch (err) {
@@ -205,7 +221,6 @@ export default function Logistics({ onNavigate, onLogout }) {
             {navUnderline('assigned')}
           </button>
           <button onClick={() => setActiveView('shipments')} className={navLink('shipments')}>Shipments{navUnderline('shipments')}</button>
-          <button onClick={() => setActiveView('planner')} className={navLink('planner')}>Logistics Planner{navUnderline('planner')}</button>
         </div>
 
         {/* Right Controls */}
@@ -282,6 +297,7 @@ export default function Logistics({ onNavigate, onLogout }) {
               <OverviewView
                 orders={orders}
                 shipments={shipments}
+                myProposals={myProposals}
                 dashboardStats={dashboardStats}
                 setActiveView={setActiveView}
               />
@@ -289,9 +305,12 @@ export default function Logistics({ onNavigate, onLogout }) {
             {activeView === 'assigned' && (
               <AssignedOrdersView
                 orders={orders}
+                myProposals={myProposals}
+                onProposalSubmitted={fetchAll}
                 onAccept={handleAccept}
                 onReject={handleReject}
                 addToast={addToast}
+                fetchAll={fetchAll}
               />
             )}
             {activeView === 'shipments' && (
@@ -299,11 +318,6 @@ export default function Logistics({ onNavigate, onLogout }) {
                 shipments={shipments}
                 onStatusUpdated={fetchAll}
                 addToast={addToast}
-              />
-            )}
-            {activeView === 'planner' && (
-              <LogisticsPlannerView
-                shipments={shipments}
               />
             )}
             {activeView === 'profile' && (
