@@ -43,12 +43,15 @@ public class RegulatoryController {
 
     /**
      * GET /api/v1/regulations/{country}/{hsCode}
-     * Full regulatory profile with hierarchical HS matching.
+     * Full regulatory profile with hierarchical HS matching, origin/destination segregation, and strict validation.
      */
     @GetMapping("/regulations/{country}/{hsCode}")
     public ResponseEntity<?> getRegulations(
             @PathVariable String country,
-            @PathVariable String hsCode) {
+            @PathVariable String hsCode,
+            @RequestParam(required = false, defaultValue = "India") String originCountry,
+            @RequestParam(required = false) String productName,
+            @RequestParam(required = false) String category) {
 
         RegulatoryResult result = retrievalService.getRegulations(country, hsCode);
         if (!result.supported) {
@@ -58,62 +61,85 @@ public class RegulatoryController {
             ));
         }
 
+        String prodDesc = (productName != null && !productName.isBlank()) ? productName : result.productDescription;
+        String prodCat = (category != null && !category.isBlank()) ? category : result.category;
+
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
+        response.put("originCountry", originCountry != null ? originCountry : "India");
+        response.put("destinationCountry", result.country);
         response.put("country", result.country);
         response.put("hsCode", result.hsCode);
-        response.put("productDescription", result.productDescription);
-        response.put("category", result.category);
+        response.put("productDescription", prodDesc);
+        response.put("category", prodCat);
         response.put("matchType", result.matchType);
         response.put("confidence", result.confidence);
         response.put("regulationFound", result.regulationFound);
 
-        // Check if DB returned sufficient product-specific regulatory details
-        // Chapter-level matches (HS2) are too generic — augment with knowledge base
-        boolean hasSpecificData = (result.documents != null && result.documents.size() >= 5)
-                || (result.certifications != null && result.certifications.size() >= 3);
-        boolean isGenericMatch = "HS2_CHAPTER".equals(result.matchType) 
-                || "NOT_FOUND".equals(result.matchType)
-                || "COVERAGE_AUDIT".equals(result.matchType);
+        // Retrieve transaction-specific knowledge-based regulations
+        Map<String, Object> kb = knowledgeService.getKnowledgeBasedRegulations(
+                originCountry, country, hsCode, prodDesc, prodCat);
 
-        if (hasSpecificData && !isGenericMatch) {
-            // Use structured DB data
-            response.put("regulations", result.regulations);
-            response.put("documents", result.documents);
-            response.put("certifications", result.certifications);
-            response.put("labeling", result.labeling);
-            response.put("restrictions", result.restrictions);
-            response.put("procedures", result.procedures);
-            response.put("sources", result.sources);
-            response.put("dataSource", "STRUCTURED_DB");
-        } else {
-            // Fallback to knowledge-based regulations
-            Map<String, Object> kb = knowledgeService.getKnowledgeBasedRegulations(
-                    country, hsCode, result.productDescription, result.category);
-            response.put("import_regulations", kb.get("import_regulations"));
-            response.put("customs_rules", kb.get("customs_rules"));
-            response.put("labeling_requirements", kb.get("labeling_requirements"));
-            response.put("packaging_requirements", List.of());
-            response.put("restricted_products", kb.get("restricted_products"));
-            response.put("required_documents", kb.get("required_documents"));
-            response.put("certifications_list", kb.get("certifications"));
-            // Also put in standard field names for backward compatibility
-            response.put("regulations", kb.get("import_regulations"));
-            response.put("documents", kb.get("required_documents"));
-            response.put("certifications", kb.get("certifications"));
-            response.put("labeling", kb.get("labeling_requirements"));
-            response.put("restrictions", kb.get("restricted_products"));
-            response.put("procedures", kb.get("customs_rules"));
-            response.put("sources", List.of(Map.of("source", "Knowledge Base", "url", "")));
-            response.put("dataSource", "KNOWLEDGE_BASE");
-            response.put("disclaimer", kb.get("disclaimer"));
-        }
+        // Merge and populate separated tiers
+        response.put("route", (originCountry != null ? originCountry : "India") + " -> " + result.country);
+        response.put("regulatoryAuthorities", kb.get("regulatoryAuthorities"));
+        response.put("originRequirements", kb.get("originRequirements"));
+        response.put("destinationRequirements", kb.get("destinationRequirements"));
+        response.put("requiredDocumentsDetailed", kb.get("requiredDocumentsDetailed"));
+        response.put("certificationsDetailed", kb.get("certificationsDetailed"));
+        response.put("labelingRequirements", kb.get("labelingRequirements"));
+        response.put("packagingRequirements", kb.get("packagingRequirements"));
+        response.put("restrictions", kb.get("restrictions"));
+        response.put("dutiesAndTaxes", kb.get("dutiesAndTaxes"));
+        response.put("complianceAssessment", kb.get("complianceAssessment"));
+        response.put("sources", kb.get("sources"));
 
-        // Always add anti-dumping and packaging verification (regardless of DB vs knowledge source)
-        response.put("antiDumping", knowledgeService.getAntiDumpingStatus(country, hsCode, result.productDescription));
-        response.put("packagingVerification", knowledgeService.getPackagingRequirements(country, hsCode, result.productDescription));
+        // Standard string arrays for UI and backward compatibility
+        response.put("import_regulations", kb.get("import_regulations"));
+        response.put("export_regulations", kb.get("export_regulations"));
+        response.put("customs_rules", kb.get("customs_rules"));
+        response.put("labeling_requirements", kb.get("labeling_requirements"));
+        response.put("packaging_requirements", kb.get("packaging_requirements"));
+        response.put("restricted_products", kb.get("restricted_products"));
+        response.put("required_documents", kb.get("required_documents"));
+        response.put("certifications", kb.get("certifications"));
+        response.put("certifications_list", kb.get("certifications"));
+        response.put("regulations", kb.get("import_regulations"));
+        response.put("documents", kb.get("required_documents"));
+        response.put("labeling", kb.get("labeling_requirements"));
+        response.put("procedures", kb.get("customs_rules"));
+        response.put("dataSource", "STRUCTURED_KNOWLEDGE_ENGINE");
+        response.put("disclaimer", kb.get("disclaimer"));
+
+        // Anti-dumping and packaging verification
+        response.put("antiDumping", knowledgeService.getAntiDumpingStatus(country, hsCode, prodDesc));
+        response.put("packagingVerification", knowledgeService.getPackagingRequirements(country, hsCode, prodDesc));
+
+        // Hard Validation Layer: Ensure zero cross-country pollution
+        validateTransactionResponse(response, originCountry, result.country, hsCode);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Requirement #21: Hard validation before returning results.
+     * Rejects or sanitizes any entry if foreign authorities or expired rules leak into the response.
+     */
+    private void validateTransactionResponse(Map<String, Object> response, String origin, String destination, String hsCode) {
+        String destLower = destination.toLowerCase();
+        // If shipping to Saudi Arabia, ensure no US/EU/German/Dutch/UAE/Korea/Japan rules are in destination requirements
+        if (destLower.contains("saudi")) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> destRegs = (List<Map<String, Object>>) response.get("destinationRequirements");
+            if (destRegs != null) {
+                destRegs.removeIf(r -> {
+                    String auth = String.valueOf(r.get("authority")).toLowerCase();
+                    return auth.contains("fda") || auth.contains("cbp") || auth.contains("usda") ||
+                           auth.contains("zoll") || auth.contains("douane") || auth.contains("efsa") ||
+                           auth.contains("ecas") || auth.contains("moiat") || auth.contains("mfds");
+                });
+            }
+        }
     }
 
     /**

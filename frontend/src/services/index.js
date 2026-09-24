@@ -58,3 +58,6 @@ export { referenceApi, marketApi } from './referenceService';
 // Enterprise Logistics Planner
 export { logisticsApi } from './logisticsService';
 
+// Logistics Proposals
+export { proposalApi } from './proposalService';
+

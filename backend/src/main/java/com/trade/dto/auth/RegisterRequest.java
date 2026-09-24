@@ -141,21 +141,21 @@ public class RegisterRequest {
     // ════════════════════════════════════════════════════════════════════════
 
     /**
-     * Service types offered (1-4 selections).
+     * Service types offered (up to 10 selections).
      */
-    @Size(max = 4, message = "You can select up to 4 services.")
+    @Size(max = 10, message = "You can select up to 10 services.")
     private List<String> services;
 
     /**
-     * Service regions covered (1-5 selections).
+     * Service regions covered (up to 10 selections).
      */
-    @Size(max = 5, message = "You can select up to 5 regions.")
+    @Size(max = 10, message = "You can select up to 10 regions.")
     private List<String> regions;
 
     /**
      * Business Registration Number for logistics partner.
      */
-    @Size(min = 8, max = 20, message = "Enter a valid Business Registration Number (8-20 characters).")
+    @Size(max = 35, message = "Enter a valid Business Registration Number (max 35 characters).")
     private String businessRegistrationNumber;
 
     /**

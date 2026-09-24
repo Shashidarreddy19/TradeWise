@@ -6,15 +6,17 @@ import com.trade.dto.shipment.ShipmentStatusRequest;
 import java.util.List;
 
 /**
- * Contract for shipment management operations.
- * Shipments are auto-created when a logistics partner accepts a request.
- * Partners only list, view, and update status.
+ * Contract for shipment management and tracking operations.
  */
 public interface ShipmentService {
 
     List<ShipmentResponse> getAllShipmentsForPartner(String partnerEmail);
 
-    ShipmentResponse getShipmentById(Long id, String partnerEmail);
+    List<ShipmentResponse> getAllShipmentsForExporter(String exporterEmail);
+
+    ShipmentResponse getShipmentById(Long id, String userEmail);
+
+    ShipmentResponse getShipmentByOrderId(Long orderId, String userEmail);
 
     ShipmentResponse updateShipmentStatus(Long id, ShipmentStatusRequest request, String partnerEmail);
 }

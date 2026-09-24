@@ -12,5 +12,4 @@
 export { default as OverviewView }         from './OverviewView';
 export { default as AssignedOrdersView }   from './AssignedOrdersView';
 export { default as ShipmentsView }        from './ShipmentsView';
-export { default as LogisticsPlannerView } from './LogisticsPlannerView';
 export { default as ProfileView }          from './ProfileView';

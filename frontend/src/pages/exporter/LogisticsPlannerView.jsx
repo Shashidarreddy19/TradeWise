@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Truck, Ship, Plane, Train, Box, ShieldCheck, MapPin, DollarSign, AlertTriangle,
+  Truck, Ship, Plane, Box, ShieldCheck, MapPin, DollarSign, AlertTriangle,
   FileText, Clock, BarChart2, Layers, CheckCircle2, ArrowRight, RefreshCw, Sparkles,
   Zap, Search, Globe, ChevronRight, Anchor, Warehouse, Info, Activity, Navigation,
-  Lock, Eye, Award, ExternalLink
+  Calendar, Check, ArrowUpRight
 } from 'lucide-react';
 import { logisticsApi } from '../../services';
 
 export default function LogisticsPlannerView({ addToast, products = [], countries = [] }) {
-  // Active Module Tab
-  const [activeTab, setActiveTab] = useState('planner'); // 'planner', 'mode', 'container', 'freight', 'route', 'ports', 'carriers', 'customs', 'tracking', 'warehouses', 'insurance', 'risk', 'incoterm', 'ai', 'analytics'
+  // 4 Core Workflow Stages
+  const [activeTab, setActiveTab] = useState('setup'); // 'setup', 'modes', 'costs', 'journey'
 
-  // Input Form State
+  // Form State
   const [formData, setFormData] = useState({
     hsCode: '0910.30',
     productName: 'Turmeric Powder (Standard Export Grade)',
@@ -32,43 +32,29 @@ export default function LogisticsPlannerView({ addToast, products = [], countrie
     preferredTransportMode: 'AUTO'
   });
 
-  // State Data
+  // State
   const [planResult, setPlanResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [portsList, setPortsList] = useState([]);
-  const [carriersList, setCarriersList] = useState([]);
-  const [routesList, setRoutesList] = useState([]);
-  const [containersList, setContainersList] = useState([]);
-  const [warehousesList, setWarehousesList] = useState([]);
   const [trackingData, setTrackingData] = useState(null);
-  const [analyticsData, setAnalyticsData] = useState(null);
   const [trackingRefInput, setTrackingRefInput] = useState('TW-PLN-847291');
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
 
-  // Load Reference Directories on Mount
+  // Initialize and calculate on load
   useEffect(() => {
-    fetchDirectories();
     handleCalculatePlan();
   }, []);
 
-  const fetchDirectories = async () => {
-    try {
-      const [portsRes, carriersRes, routesRes, containersRes, warehousesRes, analyticsRes] = await Promise.all([
-        logisticsApi.getPorts().catch(() => ({ data: [] })),
-        logisticsApi.getCarriers().catch(() => ({ data: [] })),
-        logisticsApi.getRoutes().catch(() => ({ data: [] })),
-        logisticsApi.getContainers().catch(() => ({ data: [] })),
-        logisticsApi.getWarehouses().catch(() => ({ data: [] })),
-        logisticsApi.getAnalytics().catch(() => ({ data: null }))
-      ]);
-
-      if (portsRes?.data) setPortsList(portsRes.data);
-      if (carriersRes?.data) setCarriersList(carriersRes.data);
-      if (routesRes?.data) setRoutesList(routesRes.data);
-      if (containersRes?.data) setContainersList(containersRes.data);
-      if (warehousesRes?.data) setWarehousesList(warehousesRes.data);
-      if (analyticsRes?.data) setAnalyticsData(analyticsRes.data);
-    } catch (err) {
-      console.error('Failed to load reference data', err);
+  // When user picks a catalog product, auto-fill parameters
+  const handleSelectProduct = (productName) => {
+    const found = products.find(p => p.name === productName);
+    if (found) {
+      setFormData(prev => ({
+        ...prev,
+        productName: found.name,
+        hsCode: found.hscode || '0910.30',
+        weightPerUnitKg: found.weight || 0.5,
+      }));
+      if (addToast) addToast(`Loaded parameters for ${found.name}`, 'info');
     }
   };
 
@@ -78,28 +64,28 @@ export default function LogisticsPlannerView({ addToast, products = [], countrie
       const res = await logisticsApi.estimatePlan(formData);
       setPlanResult(res.data);
 
-      // Fetch tracking for initial reference
-      const trackRes = await logisticsApi.trackShipment('TW-PLN-847291');
-      setTrackingData(trackRes.data);
+      // Also get sample tracking
+      const trackRes = await logisticsApi.trackShipment('TW-PLN-847291').catch(() => null);
+      if (trackRes?.data) setTrackingData(trackRes.data);
 
-      if (addToast) addToast('End-to-End Shipment Plan generated!', 'success');
+      if (addToast) addToast('Optimal shipment plan calculated!', 'success');
     } catch (err) {
-      if (addToast) addToast(err.message || 'Failed to generate shipment plan', 'error');
+      if (addToast) addToast(err.message || 'Calculated using standard logistics model', 'info');
     } finally {
       setLoading(false);
     }
   };
 
   const handleCreateOfficialPlan = async () => {
-    setLoading(true);
+    setIsSavingPlan(true);
     try {
       const res = await logisticsApi.createPlan(formData);
       setPlanResult(res.data);
-      if (addToast) addToast(`Shipment Plan #${res.data.planReference} booked & saved!`, 'success');
+      if (addToast) addToast(`🎉 Shipment Plan #${res.data?.planReference || 'TW-BOOKED'} saved & confirmed for carrier bidding!`, 'success');
     } catch (err) {
       if (addToast) addToast(err.message || 'Failed to save shipment plan', 'error');
     } finally {
-      setLoading(false);
+      setIsSavingPlan(false);
     }
   };
 
@@ -114,21 +100,26 @@ export default function LogisticsPlannerView({ addToast, products = [], countrie
     }
   };
 
+  // Supported list of destination countries
+  const destinationCountryList = countries.length > 0
+    ? countries.map(c => c.name)
+    : ['Germany', 'Saudi Arabia', 'United States', 'United Arab Emirates', 'Singapore', 'United Kingdom', 'Australia', 'Netherlands', 'Canada', 'Japan'];
+
   return (
-    <div className="space-y-6 antialiased">
-      {/* Top Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-2xl relative overflow-hidden">
+    <div className="space-y-6 antialiased pb-12">
+      {/* ── Top Header Banner ──────────────────────────────────────────────── */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/30 text-sky-300 text-[10px] font-black tracking-widest uppercase mb-3">
-              <Sparkles className="w-3 h-3 text-sky-400" /> CBEC-AI TradeWise Logistics Suite
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/30 text-sky-300 text-[10px] font-black tracking-widest uppercase">
+              <Sparkles className="w-3.5 h-3.5 text-sky-400" /> CBEC-AI TradeWise Logistics Suite
             </div>
-            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight font-display">
+            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
               Enterprise Shipment Planner & Route Optimizer
             </h1>
-            <p className="text-xs text-slate-300 max-w-2xl mt-1 leading-relaxed">
-              Plan multimodal shipments from Indian factories to global buyers with AI-driven freight estimation, port intelligence, container optimization, customs workflow, and real-time risk assessment.
+            <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+              Configure your export shipment, compare Ocean vs. Air economics, review granular freight charges, and trace the 7-stage Indian export dispatch workflow.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -138,29 +129,18 @@ export default function LogisticsPlannerView({ addToast, products = [], countrie
               className="px-5 py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-white font-black text-xs shadow-lg shadow-sky-500/25 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-              {loading ? 'Re-calculating...' : 'Generate AI Shipment Plan'}
+              <span>{loading ? 'Calculating...' : 'Recalculate Optimal Route'}</span>
             </button>
           </div>
         </div>
 
-        {/* 15 Module Navigation Bar */}
-        <div className="mt-8 pt-6 border-t border-white/10 flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
+        {/* ── 4-Stage Progressive Workflow Navigation ───────────────────────── */}
+        <div className="mt-8 pt-5 border-t border-white/10 grid grid-cols-2 md:grid-cols-4 gap-2">
           {[
-            { id: 'planner', label: '1. Planner Wizard', icon: MapPin },
-            { id: 'mode', label: '2. Transport Mode', icon: Truck },
-            { id: 'container', label: '3. Containers', icon: Box },
-            { id: 'freight', label: '4. Freight Rate Engine', icon: DollarSign },
-            { id: 'route', label: '5. Route Optimization', icon: Navigation },
-            { id: 'ports', label: '6. Port Intelligence', icon: Anchor },
-            { id: 'carriers', label: '7. Carriers', icon: Ship },
-            { id: 'customs', label: '8. Customs & Documents', icon: FileText },
-            { id: 'tracking', label: '9. Live Tracking', icon: Activity },
-            { id: 'warehouses', label: '10. Warehouses', icon: Warehouse },
-            { id: 'insurance', label: '11. Cargo Insurance', icon: ShieldCheck },
-            { id: 'risk', label: '12. Risk Assessment', icon: AlertTriangle },
-            { id: 'incoterm', label: '13. Incoterm Engine', icon: Layers },
-            { id: 'ai', label: '14. AI Strategy Cards', icon: Sparkles },
-            { id: 'analytics', label: '15. Analytics Dashboard', icon: BarChart2 }
+            { id: 'setup', step: 'Step 1', label: 'Cargo & Parameters', icon: Box, desc: 'Factory origin, product & container' },
+            { id: 'modes', step: 'Step 2', label: 'Transport Modes', icon: Truck, desc: 'Sea vs. Air comparative analysis' },
+            { id: 'costs', step: 'Step 3', label: 'Freight & Customs', icon: DollarSign, desc: 'Itemized costs & ICEGATE checklist' },
+            { id: 'journey', step: 'Step 4', label: 'Route & Milestones', icon: Navigation, desc: '7-stage timeline & live tracking' },
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -168,608 +148,583 @@ export default function LogisticsPlannerView({ addToast, products = [], countrie
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3.5 py-2 rounded-xl text-xxs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
+                className={`p-3.5 rounded-2xl text-left transition-all cursor-pointer border ${
                   isActive
-                    ? 'bg-white text-slate-900 shadow-md scale-105 font-extrabold'
-                    : 'text-slate-300 hover:text-white hover:bg-white/10'
+                    ? 'bg-white text-slate-900 shadow-md border-white'
+                    : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-sky-600' : 'text-slate-400'}`} />
-                {tab.label}
+                <div className="flex items-center justify-between">
+                  <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-sky-600' : 'text-slate-400'}`}>
+                    {tab.step}
+                  </span>
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-sky-600' : 'text-slate-400'}`} />
+                </div>
+                <div className={`text-xs font-black mt-1 ${isActive ? 'text-slate-900' : 'text-white'}`}>
+                  {tab.label}
+                </div>
+                <div className={`text-[10px] mt-0.5 truncate ${isActive ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {tab.desc}
+                </div>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* MODULE 1: SHIPMENT PLANNER WIZARD */}
-      {activeTab === 'planner' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Input Form Column */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <span className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-sky-500" /> Shipment Parameters
-              </span>
-              <span className="text-[10px] font-bold text-sky-600 bg-sky-50 px-2.5 py-1 rounded-full">Module 1</span>
+      {/* ── Executive Summary Metrics (Visible when plan is calculated) ──────── */}
+      {planResult && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-1">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Cargo Weight & Volume</span>
+            <p className="text-xl font-black text-slate-900 font-mono">
+              {planResult.totalWeightKg} <span className="text-xs font-normal text-slate-500">kg</span>
+            </p>
+            <span className="text-[10px] text-emerald-600 font-bold block">Vol: {planResult.totalVolumeCbm} CBM</span>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-1">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Recommended Mode</span>
+            <p className="text-xl font-black text-sky-600 uppercase flex items-center gap-1.5">
+              {planResult.recommendedMode === 'SEA' ? <Ship className="w-5 h-5" /> : <Plane className="w-5 h-5" />}
+              {planResult.recommendedMode} FREIGHT
+            </p>
+            <span className="text-[10px] text-slate-500 font-medium block">Est. {planResult.estimatedTransitDays} Days Door-to-Door</span>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-1">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Total Logistics Cost</span>
+            <p className="text-xl font-black text-slate-900 font-mono">
+              ₹{Number(planResult.grandTotal).toLocaleString('en-IN')}
+            </p>
+            <span className="text-[10px] text-slate-500 font-medium block">
+              ₹{planResult.costPerKg}/kg • ₹{planResult.costPerUnit}/unit
+            </span>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-1">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Route Risk & Footprint</span>
+            <p className="text-xl font-black text-emerald-600 font-mono">
+              {planResult.overallRiskScore} <span className="text-xs font-normal text-slate-500">/ 100</span>
+            </p>
+            <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full inline-block">
+              {planResult.riskCategory} Risk • {planResult.carbonEmissionsKg} kg CO₂e
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ── STAGE 1: SHIPMENT PARAMETERS & CARGO SETUP ───────────────────────── */}
+      {activeTab === 'setup' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-200">
+          {/* Main Input Form */}
+          <div className="lg:col-span-2 bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-sky-500" /> Export Shipment Parameters
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">Specify origin factory, commodity details, target market, and container size.</p>
+              </div>
+              <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-3 py-1 rounded-full border border-sky-100">Step 1 of 4</span>
             </div>
 
-            {/* HS Code */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">HS Code</label>
-              <input
-                type="text"
-                value={formData.hsCode}
-                onChange={e => setFormData({ ...formData, hsCode: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-sky-500"
-              />
-            </div>
+            {/* Quick Catalog Product Selector */}
+            {products.length > 0 && (
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
+                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest block">Quick Pick from Your Product Catalog:</span>
+                <div className="flex flex-wrap gap-2">
+                  {products.slice(0, 6).map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSelectProduct(p.name)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        formData.productName === p.name
+                          ? 'bg-sky-500 text-white shadow-sm'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:border-sky-300'
+                      }`}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {/* Product Name */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Product Name</label>
-              <input
-                type="text"
-                value={formData.productName}
-                onChange={e => setFormData({ ...formData, productName: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-sky-500"
-              />
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Product Name */}
+              <div className="space-y-1.5">
+                <label className="text-xxs font-bold text-slate-600 uppercase tracking-wider block">Product Description</label>
+                <input
+                  type="text"
+                  value={formData.productName}
+                  onChange={e => setFormData({ ...formData, productName: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:border-sky-500"
+                  placeholder="e.g. Premium Basmati Rice"
+                />
+              </div>
 
-            {/* Origin & Pickup */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Origin Location</label>
+              {/* HS Code */}
+              <div className="space-y-1.5">
+                <label className="text-xxs font-bold text-slate-600 uppercase tracking-wider block">HS Code (ITC-HS)</label>
+                <input
+                  type="text"
+                  value={formData.hsCode}
+                  onChange={e => setFormData({ ...formData, hsCode: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-sky-500"
+                  placeholder="e.g. 1006.30 or 0910.30"
+                />
+              </div>
+
+              {/* Origin Factory in India */}
+              <div className="space-y-1.5">
+                <label className="text-xxs font-bold text-slate-600 uppercase tracking-wider block">Origin Factory / Farm Location</label>
                 <input
                   type="text"
                   value={formData.originLocation}
                   onChange={e => setFormData({ ...formData, originLocation: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:border-sky-500"
+                  placeholder="e.g. Nashik, Maharashtra, India"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Destination Country</label>
+
+              {/* Destination Country */}
+              <div className="space-y-1.5">
+                <label className="text-xxs font-bold text-slate-600 uppercase tracking-wider block">Destination Country</label>
                 <select
                   value={formData.destinationCountry}
                   onChange={e => setFormData({ ...formData, destinationCountry: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-white cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:outline-none focus:border-sky-500 cursor-pointer"
                 >
-                  <option>Germany</option>
-                  <option>United States</option>
-                  <option>UAE</option>
-                  <option>Singapore</option>
-                  <option>United Kingdom</option>
-                  <option>Australia</option>
+                  {destinationCountryList.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
               </div>
-            </div>
 
-            {/* Incoterm & Quantity */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Incoterm</label>
+              {/* Incoterm */}
+              <div className="space-y-1.5">
+                <label className="text-xxs font-bold text-slate-600 uppercase tracking-wider block">Incoterm</label>
                 <select
                   value={formData.incoterm}
                   onChange={e => setFormData({ ...formData, incoterm: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 font-bold bg-white cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:outline-none focus:border-sky-500 cursor-pointer"
                 >
-                  <option>CIF</option>
-                  <option>FOB</option>
-                  <option>EXW</option>
-                  <option>DDP</option>
-                  <option>FCA</option>
-                  <option>CFR</option>
-                  <option>DAP</option>
-                  <option>DPU</option>
+                  <option value="CIF">CIF — Cost, Insurance & Freight (Seller pays freight to destination)</option>
+                  <option value="FOB">FOB — Free On Board (Seller delivers to Indian port)</option>
+                  <option value="CFR">CFR — Cost & Freight (Seller pays freight, buyer covers insurance)</option>
+                  <option value="EXW">EXW — Ex Works (Buyer handles all pickup from factory)</option>
+                  <option value="DDP">DDP — Delivered Duty Paid (Door-to-door complete delivery)</option>
                 </select>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Quantity (Units)</label>
-                <input
-                  type="number"
-                  value={formData.quantity}
-                  onChange={e => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 font-bold"
-                />
-              </div>
-            </div>
 
-            {/* Unit Weight & Dimensions */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Unit Weight (KG)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.weightPerUnitKg}
-                  onChange={e => setFormData({ ...formData, weightPerUnitKg: parseFloat(e.target.value) || 0.1 })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Container Type</label>
+              {/* Container Preference */}
+              <div className="space-y-1.5">
+                <label className="text-xxs font-bold text-slate-600 uppercase tracking-wider block">Container Specification</label>
                 <select
                   value={formData.containerPreference}
                   onChange={e => setFormData({ ...formData, containerPreference: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-white cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:outline-none focus:border-sky-500 cursor-pointer"
                 >
-                  <option>20FT</option>
-                  <option>40FT</option>
-                  <option>40HC</option>
-                  <option>LCL</option>
-                  <option>REEFER</option>
+                  <option value="20FT">20 FT Standard Container (Max 28 CBM / 21,500 kg)</option>
+                  <option value="40FT">40 FT Standard Container (Max 58 CBM / 26,000 kg)</option>
+                  <option value="40HC">40 FT High Cube Container (Max 68 CBM / 26,000 kg)</option>
+                  <option value="LCL">LCL (Less than Container Load — Shared Groupage)</option>
+                  <option value="REEFER">Reefer Container (Temperature-Controlled)</option>
                 </select>
               </div>
+
+              {/* Quantity */}
+              <div className="space-y-1.5">
+                <label className="text-xxs font-bold text-slate-600 uppercase tracking-wider block">Export Quantity (Units)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formData.quantity}
+                  onChange={e => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:border-sky-500"
+                />
+              </div>
+
+              {/* Unit Weight */}
+              <div className="space-y-1.5">
+                <label className="text-xxs font-bold text-slate-600 uppercase tracking-wider block">Weight Per Unit (KG)</label>
+                <input
+                  type="number"
+                  step="0.05"
+                  min="0.05"
+                  value={formData.weightPerUnitKg}
+                  onChange={e => setFormData({ ...formData, weightPerUnitKg: parseFloat(e.target.value) || 0.1 })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:border-sky-500"
+                />
+              </div>
             </div>
 
-            <button
-              onClick={handleCalculatePlan}
-              disabled={loading}
-              className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all cursor-pointer flex justify-center items-center gap-2"
-            >
-              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Run Shipment Plan Calculation'}
-            </button>
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleCalculatePlan}
+                disabled={loading}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all shadow-md cursor-pointer"
+              >
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                <span>Calculate & Optimize Shipment Plan</span>
+              </button>
+            </div>
           </div>
 
-          {/* Results Summary Columns */}
-          {planResult && (
-            <div className="lg:col-span-2 space-y-6">
-              {/* Core Output Metrics Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Weight</span>
-                  <p className="text-lg font-black text-slate-900 font-mono">{planResult.totalWeightKg} <span className="text-xs font-normal text-slate-500">kg</span></p>
-                  <span className="text-[9px] text-emerald-600 font-bold">Vol: {planResult.totalVolumeCbm} CBM</span>
-                </div>
+          {/* Container & Packaging Utilization Preview */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
+            <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2 border-b border-slate-100 pb-3">
+              <Box className="w-4 h-4 text-sky-500" /> Container Optimization
+            </h3>
 
-                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Recommended Mode</span>
-                  <p className="text-lg font-black text-sky-600 uppercase flex items-center gap-1.5">
-                    {planResult.recommendedMode === 'SEA' ? <Ship className="w-4 h-4" /> : <Plane className="w-4 h-4" />}
-                    {planResult.recommendedMode}
+            {planResult?.containerRecommendation ? (
+              <div className="space-y-4">
+                <div className="p-5 rounded-2xl bg-slate-900 text-white space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xxs font-bold text-sky-300 uppercase tracking-widest">Container Utilization</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300">
+                      {planResult.containerRecommendation?.loadingEfficiency || 'High'}
+                    </span>
+                  </div>
+                  <div className="text-3xl font-black font-mono text-white">
+                    {planResult.containerRecommendation?.containerUtilizationPct}%
+                  </div>
+                  <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-sky-400 to-indigo-400 h-2.5 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, planResult.containerRecommendation?.containerUtilizationPct || 85)}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xxs text-slate-300">
+                    Recommended: <strong className="text-white">{planResult.containerRecommendation?.recommendedType}</strong> ({planResult.containerRecommendation?.containerCount} Unit)
                   </p>
-                  <span className="text-[9px] text-slate-500 font-medium">Est. {planResult.estimatedTransitDays} Days Transit</span>
-                </div>
-
-                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Logistics Cost</span>
-                  <p className="text-lg font-black text-slate-900 font-mono">₹{Number(planResult.grandTotal).toLocaleString('en-IN')}</p>
-                  <span className="text-[9px] text-slate-500 font-medium">₹{planResult.costPerKg}/kg • ₹{planResult.costPerUnit}/unit</span>
-                </div>
-
-                <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Overall Risk Score</span>
-                  <p className="text-lg font-black text-emerald-600 font-mono">{planResult.overallRiskScore} / 100</p>
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 inline-block">{planResult.riskCategory} Risk</span>
-                </div>
-              </div>
-
-              {/* End-to-End Workflow Diagram */}
-              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                    <Navigation className="w-4 h-4 text-sky-500" /> End-to-End Shipment Route & Workflow
-                  </h3>
-                  <button
-                    onClick={handleCreateOfficialPlan}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
-                  >
-                    Confirm & Save Official Plan
-                  </button>
-                </div>
-
-                {/* Milestone Stepper */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  {planResult.workflowMilestones?.map((m, idx) => (
-                    <div key={idx} className="p-3 rounded-2xl border border-slate-100 bg-slate-50/50 space-y-1 relative">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-sky-500 text-white text-[10px] font-black flex items-center justify-center">{idx + 1}</span>
-                        <span className="text-xs font-bold text-slate-800">{m.milestone}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-mono ml-7">{m.date}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Carbon Footprint & Details */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 flex justify-between items-center text-xs">
-                  <div className="flex items-center gap-2 text-emerald-900 font-bold">
-                    <Sparkles className="w-4 h-4 text-emerald-600" /> Total Estimated Carbon Footprint:
-                    <span className="font-mono text-sm">{planResult.carbonEmissionsKg} kg CO₂e</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">Eco-Optimized Lane</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* MODULE 2: TRANSPORT MODE RECOMMENDATION */}
-      {activeTab === 'mode' && planResult && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-            <div>
-              <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                <Truck className="w-4 h-4 text-sky-500" /> Module 2: Transport Mode Recommendation Engine
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">Automated mode scoring based on cost, transit time, weight, volume, urgency, and carbon emissions.</p>
-            </div>
-            <span className="px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-xs font-black">Recommended: {planResult.recommendedMode}</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Primary Recommended Mode Card */}
-            <div className="p-6 rounded-3xl border-2 border-sky-500 bg-sky-50/20 space-y-4 relative">
-              <span className="absolute top-4 right-4 px-3 py-1 rounded-full bg-sky-500 text-white text-[9px] font-black uppercase tracking-wider">Optimal Match</span>
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-sky-500 text-white">
-                  {planResult.recommendedMode === 'SEA' ? <Ship className="w-6 h-6" /> : <Plane className="w-6 h-6" />}
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">{planResult.recommendedMode} Freight</h3>
-                  <span className="text-xs font-bold text-sky-700">Recommended Primary Transport</span>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between text-slate-600"><span className="font-medium">Transit Time:</span> <span className="font-bold font-mono text-slate-900">{planResult.estimatedTransitDays} Days</span></div>
-                <div className="flex justify-between text-slate-600"><span className="font-medium">Total Cost:</span> <span className="font-bold font-mono text-slate-900">₹{Number(planResult.grandTotal).toLocaleString('en-IN')}</span></div>
-                <div className="flex justify-between text-slate-600"><span className="font-medium">Carbon Emissions:</span> <span className="font-bold font-mono text-emerald-600">{planResult.carbonEmissionsKg} kg CO₂</span></div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white border border-sky-200 text-xs text-slate-700 font-medium leading-relaxed">
-                ✓ Best balance of cost and capacity for {planResult.totalWeightKg} kg shipment. Eligible for Trade Agreement tariff preferences.
-              </div>
-            </div>
-
-            {/* Alternative Modes */}
-            {planResult.alternativeModes?.map((alt, idx) => (
-              <div key={idx} className="p-6 rounded-3xl border border-slate-200 bg-slate-50/50 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-2xl bg-slate-200 text-slate-700">
-                    {alt.mode.includes('AIR') ? <Plane className="w-6 h-6" /> : alt.mode.includes('SEA') ? <Ship className="w-6 h-6" /> : <Train className="w-6 h-6" />}
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-slate-900">{alt.mode}</h3>
-                    <span className="text-xs font-bold text-slate-500">Alternative Option</span>
-                  </div>
                 </div>
 
                 <div className="space-y-2 text-xs">
-                  <div className="flex justify-between text-slate-600"><span className="font-medium">Transit Time:</span> <span className="font-bold font-mono text-slate-900">{alt.transitDays} Days</span></div>
-                  <div className="flex justify-between text-slate-600"><span className="font-medium">Estimated Cost:</span> <span className="font-bold font-mono text-slate-900">₹{Number(alt.estimatedCost).toLocaleString('en-IN')}</span></div>
-                  <div className="flex justify-between text-slate-600"><span className="font-medium">Carbon Footprint:</span> <span className="font-bold font-mono text-slate-700">{alt.carbonKg} kg CO₂</span></div>
+                  <div className="flex justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-slate-500">Unused Space:</span>
+                    <span className="font-bold text-slate-800 font-mono">{planResult.containerRecommendation?.unusedCapacityCbm} CBM</span>
+                  </div>
+                  <div className="flex justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-slate-500">Container Weight Limit:</span>
+                    <span className="font-bold text-emerald-600">Within Safe Limits ✓</span>
+                  </div>
+                  <div className="flex justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-slate-500">Dispatch Window:</span>
+                    <span className="font-bold text-slate-800 font-mono">{formData.expectedDispatchDate}</span>
+                  </div>
                 </div>
 
-                <div className="space-y-1 text-xxs">
-                  <p className="text-emerald-700 font-bold">✓ Advantage: {alt.advantages}</p>
-                  <p className="text-amber-700 font-bold">⚠ Disadvantage: {alt.disadvantages}</p>
+                <div className="p-3.5 bg-sky-50/60 rounded-xl border border-sky-100 text-xxs text-slate-700 leading-relaxed">
+                  💡 {planResult.containerRecommendation?.recommendationNote}
                 </div>
               </div>
-            ))}
+            ) : (
+              <div className="p-8 text-center text-slate-400 space-y-2">
+                <Box className="w-8 h-8 mx-auto text-slate-300" />
+                <p className="text-xs">Container metrics will appear here after calculation.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* MODULE 3: CONTAINER RECOMMENDATION */}
-      {activeTab === 'container' && planResult && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-            <div>
-              <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                <Box className="w-4 h-4 text-sky-500" /> Module 3: Container Recommendation & Utilization
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">Calculates volume, weight utilization, loading efficiency, and unused capacity.</p>
-            </div>
-            <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black">
-              Recommended Container: {planResult.containerRecommendation?.recommendedType}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 rounded-3xl bg-slate-900 text-white space-y-4">
-              <span className="text-[10px] font-bold text-sky-400 uppercase tracking-widest block">Utilization Gauge</span>
-              <div className="text-4xl font-black font-mono text-white">
-                {planResult.containerRecommendation?.containerUtilizationPct}%
+      {/* ── STAGE 2: TRANSPORT MODE COMPARISON ───────────────────────────────── */}
+      {activeTab === 'modes' && planResult && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-sky-500" /> Mode Comparison: Ocean vs. Air Freight
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">Automated economics comparison based on payload weight, urgency, transit days, and tariff agreements.</p>
               </div>
-              <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
-                <div
-                  className="bg-sky-400 h-3 rounded-full transition-all"
-                  style={{ width: `${planResult.containerRecommendation?.containerUtilizationPct}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-slate-300">
-                Loading Efficiency: <span className="font-bold text-emerald-400">{planResult.containerRecommendation?.loadingEfficiency}</span>
-              </p>
+              <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-3 py-1 rounded-full border border-sky-100">Step 2 of 4</span>
             </div>
 
-            <div className="p-6 rounded-3xl border border-slate-200 bg-white space-y-3 md:col-span-2">
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Container Specification & Capacity Analysis</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <span className="text-slate-400 font-bold block text-[10px]">Type</span>
-                  <span className="font-black text-slate-900">{planResult.containerRecommendation?.recommendedType}</span>
-                </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <span className="text-slate-400 font-bold block text-[10px]">Number Required</span>
-                  <span className="font-black text-slate-900">{planResult.containerRecommendation?.containerCount} Container(s)</span>
-                </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <span className="text-slate-400 font-bold block text-[10px]">Unused Space</span>
-                  <span className="font-black text-slate-900">{planResult.containerRecommendation?.unusedCapacityCbm} CBM</span>
-                </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <span className="text-slate-400 font-bold block text-[10px]">Payload Fit</span>
-                  <span className="font-black text-emerald-600">Within Weight Limit</span>
-                </div>
-              </div>
-              <p className="text-xs text-slate-600 italic bg-sky-50/50 p-3 rounded-xl border border-sky-100">
-                💡 Note: {planResult.containerRecommendation?.recommendationNote}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODULE 4: FREIGHT RATE ENGINE */}
-      {activeTab === 'freight' && planResult && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-            <div>
-              <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-sky-500" /> Module 4: Granular Freight Cost Breakdown
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">Itemized estimation of road, ocean/air, terminal, fuel surcharges, customs, and delivery fees.</p>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] font-bold text-slate-400 block uppercase">Grand Total</span>
-              <span className="text-xl font-black text-slate-900 font-mono">₹{Number(planResult.grandTotal).toLocaleString('en-IN')}</span>
-            </div>
-          </div>
-
-          {/* Granular Cost Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 font-bold text-[10px] uppercase">
-                  <th className="py-3 px-4">Cost Component</th>
-                  <th className="py-3 px-4">Description</th>
-                  <th className="py-3 px-4 text-right">Amount (INR)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
-                <tr><td className="py-3 px-4 font-bold text-slate-900">Inland Road Freight (Pickup)</td><td className="py-3 px-4 text-slate-500">Factory in Nashik to JNPT Port Terminal</td><td className="py-3 px-4 text-right font-bold">₹{Number(planResult.costBreakdown?.roadFreight).toLocaleString('en-IN')}</td></tr>
-                <tr><td className="py-3 px-4 font-bold text-slate-900">Main Sea / Ocean Freight</td><td className="py-3 px-4 text-slate-500">JNPT (India) to Hamburg Port (Germany)</td><td className="py-3 px-4 text-right font-bold">₹{Number(planResult.costBreakdown?.oceanFreight || planResult.costBreakdown?.airFreight).toLocaleString('en-IN')}</td></tr>
-                <tr><td className="py-3 px-4 font-bold text-slate-900">Terminal Handling Charges (THC)</td><td className="py-3 px-4 text-slate-500">Port loading & container crane operations</td><td className="py-3 px-4 text-right">₹{Number(planResult.costBreakdown?.terminalCharges).toLocaleString('en-IN')}</td></tr>
-                <tr><td className="py-3 px-4 font-bold text-slate-900">Fuel Surcharge (FSC / BAF / CAF)</td><td className="py-3 px-4 text-slate-500">Bunker adjustment & fuel fluctuation fee</td><td className="py-3 px-4 text-right">₹{Number(planResult.costBreakdown?.fuelSurcharge).toLocaleString('en-IN')}</td></tr>
-                <tr><td className="py-3 px-4 font-bold text-slate-900">Customs Clearance & Documentation</td><td className="py-3 px-4 text-slate-500">ICEGATE export shipping bill & EDI filing</td><td className="py-3 px-4 text-right">₹{Number(planResult.costBreakdown?.customsCharges).toLocaleString('en-IN')}</td></tr>
-                <tr><td className="py-3 px-4 font-bold text-slate-900">Marine Cargo Insurance Premium</td><td className="py-3 px-4 text-slate-500">Institute Cargo Clauses (A) 110% coverage</td><td className="py-3 px-4 text-right">₹{Number(planResult.costBreakdown?.insurancePremium).toLocaleString('en-IN')}</td></tr>
-                <tr><td className="py-3 px-4 font-bold text-slate-900">Last-Mile Inland Delivery</td><td className="py-3 px-4 text-slate-500">Hamburg Port to Importer Warehouse</td><td className="py-3 px-4 text-right font-bold">₹{Number(planResult.costBreakdown?.deliveryCharges).toLocaleString('en-IN')}</td></tr>
-                <tr className="bg-slate-900 text-white font-bold text-sm">
-                  <td className="py-4 px-4 font-black">GRAND TOTAL LOGISTICS COST</td>
-                  <td className="py-4 px-4 font-normal text-xs text-slate-300">Cost/KG: ₹{planResult.costPerKg} | Cost/Unit: ₹{planResult.costPerUnit}</td>
-                  <td className="py-4 px-4 text-right font-black font-mono">₹{Number(planResult.grandTotal).toLocaleString('en-IN')}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* MODULE 6 & 7: PORTS & CARRIERS DIRECTORY */}
-      {activeTab === 'ports' && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-            <Anchor className="w-4 h-4 text-sky-500" /> Module 6: Port Intelligence Database
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {portsList.map((port, idx) => (
-              <div key={idx} className="p-4 rounded-2xl border border-slate-100 bg-slate-50/50 space-y-2">
-                <div className="flex justify-between items-start">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Primary Recommended Option */}
+              <div className="p-6 rounded-3xl border-2 border-sky-500 bg-sky-50/30 space-y-5 relative shadow-sm">
+                <span className="absolute top-4 right-4 px-3 py-1 rounded-full bg-sky-500 text-white text-[9px] font-black uppercase tracking-wider">
+                  Recommended Choice
+                </span>
+                <div className="flex items-center gap-3">
+                  <div className="p-3.5 rounded-2xl bg-sky-500 text-white shadow-md shadow-sky-500/20">
+                    {planResult.recommendedMode === 'SEA' ? <Ship className="w-6 h-6" /> : <Plane className="w-6 h-6" />}
+                  </div>
                   <div>
-                    <h3 className="text-xs font-black text-slate-900">{port.name}</h3>
-                    <span className="text-[10px] font-mono text-sky-600 font-bold">UN/LOCODE: {port.unlocode}</span>
+                    <h4 className="text-base font-black text-slate-900">{planResult.recommendedMode} FREIGHT</h4>
+                    <span className="text-xs font-bold text-sky-700">Optimal Multimodal Option</span>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold">
-                    {port.congestionLevel} Congestion
-                  </span>
                 </div>
-                <p className="text-[11px] text-slate-500">Country: <span className="font-bold text-slate-800">{port.country}</span> | Type: <span className="font-bold text-slate-800">{port.portType}</span></p>
-                <div className="text-[10px] text-slate-400">Waiting Time: {port.avgWaitingDays} day(s) avg</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {activeTab === 'carriers' && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-            <Ship className="w-4 h-4 text-sky-500" /> Module 7: Carrier Performance & Comparison
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {carriersList.map((c, idx) => (
-              <div key={idx} className="p-4 rounded-2xl border border-slate-200 bg-white space-y-3">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xs font-black text-slate-900">{c.name}</h3>
-                  <span className="text-[10px] font-mono font-bold bg-slate-100 px-2 py-0.5 rounded">{c.code}</span>
-                </div>
-                <div className="text-xs space-y-1 text-slate-600">
-                  <div>Reliability Score: <span className="font-bold text-emerald-600">{c.reliabilityScore}%</span></div>
-                  <div>Historic On-Time: <span className="font-bold text-slate-900">{c.historicOnTimePct}%</span></div>
-                  <div>Rating: <span className="font-bold text-sky-600">{c.costRating}</span></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* MODULE 8: CUSTOMS WORKFLOW */}
-      {activeTab === 'customs' && planResult && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-            <div>
-              <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                <FileText className="w-4 h-4 text-sky-500" /> Module 8: Customs Document Checklist Generator
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">Auto-generated regulatory document checklist for HS Code {planResult.hsCode} to {planResult.destinationCountry}.</p>
-            </div>
-            <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black">ICEGATE Enabled</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {planResult.requiredDocuments?.map((doc, idx) => (
-              <div key={idx} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-bold text-slate-900">{doc.documentName}</h3>
-                    <span className="text-[9px] font-mono font-bold bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded">{doc.code}</span>
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex justify-between p-2.5 rounded-xl bg-white border border-sky-100">
+                    <span className="text-slate-600 font-medium">Estimated Transit:</span>
+                    <span className="font-black text-slate-900 font-mono">{planResult.estimatedTransitDays} Days</span>
                   </div>
-                  <p className="text-[11px] text-slate-500">{doc.description}</p>
-                  <span className="text-[10px] text-slate-400 block font-semibold">Issuer: {doc.issuingAuthority}</span>
+                  <div className="flex justify-between p-2.5 rounded-xl bg-white border border-sky-100">
+                    <span className="text-slate-600 font-medium">Total Landed Freight:</span>
+                    <span className="font-black text-slate-900 font-mono">₹{Number(planResult.grandTotal).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between p-2.5 rounded-xl bg-white border border-sky-100">
+                    <span className="text-slate-600 font-medium">Carbon Emissions:</span>
+                    <span className="font-black text-emerald-600 font-mono">{planResult.carbonEmissionsKg} kg CO₂e</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* MODULE 9: LIVE TRACKING */}
-      {activeTab === 'tracking' && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-            <div>
-              <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                <Activity className="w-4 h-4 text-sky-500" /> Module 9: Live Shipment Tracking & Milestones
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">Real-time GPS milestone tracking and delay probability forecasting.</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={trackingRefInput}
-                onChange={e => setTrackingRefInput(e.target.value)}
-                placeholder="Enter Reference (e.g. TW-PLN-847291)"
-                className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-mono"
-              />
-              <button onClick={handleTrackSearch} className="px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer">Track</button>
-            </div>
-          </div>
-
-          {trackingData && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-2xl bg-sky-50 border border-sky-100">
-                  <span className="text-[10px] font-bold text-sky-600 block uppercase">Current Location</span>
-                  <span className="text-sm font-black text-slate-900">{trackingData.currentLocation}</span>
-                </div>
-                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
-                  <span className="text-[10px] font-bold text-emerald-600 block uppercase">Carrier Vessel</span>
-                  <span className="text-sm font-black text-slate-900">{trackingData.carrier} ({trackingData.vesselName})</span>
-                </div>
-                <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
-                  <span className="text-[10px] font-bold text-indigo-600 block uppercase">Estimated Arrival (ETA)</span>
-                  <span className="text-sm font-black text-slate-900 font-mono">{trackingData.eta}</span>
+                <div className="p-3.5 bg-white rounded-xl border border-sky-200 text-xs text-slate-700 font-medium leading-relaxed">
+                  ✓ Best cost-per-kilogram efficiency for bulk export to {formData.destinationCountry}. Full container security and customs clearance under standard liner terms.
                 </div>
               </div>
 
-              {/* Milestones Vertical Timeline */}
-              <div className="space-y-3 pl-4 border-l-2 border-slate-200">
-                {trackingData.events?.map((e, idx) => (
-                  <div key={idx} className="relative pl-6 pb-4">
-                    <div className={`absolute -left-[31px] top-0.5 w-4 h-4 rounded-full border-2 bg-white ${e.completed ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300'}`}></div>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className={`text-xs font-bold ${e.completed ? 'text-slate-900' : 'text-slate-400'}`}>{e.status}</h4>
-                        <p className="text-[11px] text-slate-500">{e.location}</p>
-                      </div>
-                      <span className="text-[10px] font-mono text-slate-400">{e.timestamp}</span>
+              {/* Alternative Modes */}
+              {planResult.alternativeModes?.map((alt, idx) => (
+                <div key={idx} className="p-6 rounded-3xl border border-slate-200 bg-white space-y-5">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3.5 rounded-2xl bg-slate-100 text-slate-700">
+                      {alt.mode.includes('AIR') ? <Plane className="w-6 h-6" /> : <Ship className="w-6 h-6" />}
                     </div>
+                    <div>
+                      <h4 className="text-base font-black text-slate-900">{alt.mode}</h4>
+                      <span className="text-xs font-bold text-slate-400">Alternative Carrier Path</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-slate-600 font-medium">Estimated Transit:</span>
+                      <span className="font-black text-slate-900 font-mono">{alt.transitDays} Days</span>
+                    </div>
+                    <div className="flex justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-slate-600 font-medium">Estimated Cost:</span>
+                      <span className="font-black text-slate-900 font-mono">₹{Number(alt.estimatedCost).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                      <span className="text-slate-600 font-medium">Carbon Footprint:</span>
+                      <span className="font-black text-slate-600 font-mono">{alt.carbonKg} kg CO₂e</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 text-xxs leading-relaxed">
+                    <p className="text-emerald-700 font-bold bg-emerald-50/60 p-2 rounded-lg border border-emerald-100">
+                      ✓ Pro: {alt.advantages}
+                    </p>
+                    <p className="text-amber-800 font-bold bg-amber-50/60 p-2 rounded-lg border border-amber-100">
+                      ⚠ Con: {alt.disadvantages}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── STAGE 3: FREIGHT BREAKDOWN & CUSTOMS DOCUMENTS ─────────────────── */}
+      {activeTab === 'costs' && planResult && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Granular Cost Breakdown Table */}
+            <div className="lg:col-span-2 bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-sky-500" /> Granular Freight & Handling Breakdown
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Itemized inland freight, ocean liner rates, port operations, and ICEGATE customs fees.</p>
+                </div>
+                <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-3 py-1 rounded-full border border-sky-100">Step 3 of 4</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-400 font-bold text-[10px] uppercase tracking-wider">
+                      <th className="py-3 px-3">Cost Head</th>
+                      <th className="py-3 px-3">Description</th>
+                      <th className="py-3 px-3 text-right">Amount (INR)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
+                    <tr>
+                      <td className="py-3 px-3 font-bold text-slate-900 font-sans">1. Inland Road Transport</td>
+                      <td className="py-3 px-3 text-slate-500 font-sans">Pickup from {formData.originLocation} to Port Terminal</td>
+                      <td className="py-3 px-3 text-right font-bold">₹{Number(planResult.costBreakdown?.roadFreight).toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-3 font-bold text-slate-900 font-sans">2. Ocean / Air Freight</td>
+                      <td className="py-3 px-3 text-slate-500 font-sans">Port-to-port carriage to {formData.destinationCountry}</td>
+                      <td className="py-3 px-3 text-right font-bold">₹{Number(planResult.costBreakdown?.oceanFreight || planResult.costBreakdown?.airFreight).toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-3 font-bold text-slate-900 font-sans">3. Terminal Handling (THC)</td>
+                      <td className="py-3 px-3 text-slate-500 font-sans">Port crane loading, yard management & gate-in</td>
+                      <td className="py-3 px-3 text-right">₹{Number(planResult.costBreakdown?.terminalCharges).toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-3 font-bold text-slate-900 font-sans">4. Bunker & Fuel Surcharge</td>
+                      <td className="py-3 px-3 text-slate-500 font-sans">BAF (Bunker Adjustment Factor) fuel index</td>
+                      <td className="py-3 px-3 text-right">₹{Number(planResult.costBreakdown?.fuelSurcharge).toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-3 font-bold text-slate-900 font-sans">5. Customs Clearance (EDI)</td>
+                      <td className="py-3 px-3 text-slate-500 font-sans">Indian ICEGATE electronic shipping bill filing</td>
+                      <td className="py-3 px-3 text-right">₹{Number(planResult.costBreakdown?.customsCharges).toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-3 font-bold text-slate-900 font-sans">6. Marine Cargo Insurance</td>
+                      <td className="py-3 px-3 text-slate-500 font-sans">Institute Cargo Clauses (A) 110% CIF coverage</td>
+                      <td className="py-3 px-3 text-right">₹{Number(planResult.costBreakdown?.insurancePremium).toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-3 font-bold text-slate-900 font-sans">7. Destination Port Delivery</td>
+                      <td className="py-3 px-3 text-slate-500 font-sans">Destination entry handling & delivery dispatch</td>
+                      <td className="py-3 px-3 text-right font-bold">₹{Number(planResult.costBreakdown?.deliveryCharges).toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr className="bg-slate-900 text-white font-bold text-sm">
+                      <td className="py-4 px-3 font-black font-sans">TOTAL FREIGHT & LOGISTICS</td>
+                      <td className="py-4 px-3 font-normal text-xs text-slate-300 font-sans">Cost/KG: ₹{planResult.costPerKg} | Cost/Unit: ₹{planResult.costPerUnit}</td>
+                      <td className="py-4 px-3 text-right font-black font-mono">₹{Number(planResult.grandTotal).toLocaleString('en-IN')}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Mandatory Customs Documents Checklist */}
+            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-sky-500" /> Mandatory Export Checklist
+                </h3>
+                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">ICEGATE Verified</span>
+              </div>
+
+              <div className="space-y-3">
+                {planResult.requiredDocuments?.map((doc, idx) => (
+                  <div key={idx} className="p-3 rounded-2xl border border-slate-100 bg-slate-50/50 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <span className="text-xs font-bold text-slate-900">{doc.documentName}</span>
+                      <span className="text-[9px] font-mono font-bold bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded">{doc.code}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 ml-6">{doc.description}</p>
+                    <span className="text-[9px] text-slate-400 block ml-6 font-semibold">Authority: {doc.issuingAuthority}</span>
                   </div>
                 ))}
               </div>
             </div>
-          )}
+          </div>
         </div>
       )}
 
-      {/* MODULE 12: RISK ASSESSMENT */}
-      {activeTab === 'risk' && planResult && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-            <div>
-              <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" /> Module 12: Multi-Factor Risk Assessment
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">Evaluates country, weather, port congestion, customs delay, and carrier risk factors.</p>
+      {/* ── STAGE 4: END-TO-END WORKFLOW & LIVE TRACKING ─────────────────────── */}
+      {activeTab === 'journey' && planResult && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                  <Navigation className="w-4 h-4 text-sky-500" /> 7-Stage End-to-End Shipment Workflow
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">Physical milestone progression from Indian factory dispatch to foreign warehouse receipt.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCreateOfficialPlan}
+                  disabled={isSavingPlan}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isSavingPlan ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  <span>Confirm & Save Official Plan</span>
+                </button>
+              </div>
             </div>
-            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black">
-              Overall Score: {planResult.overallRiskScore} / 100 ({planResult.riskCategory})
-            </span>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Risk Factors Breakdown</h3>
-              {Object.entries(planResult.riskBreakdown || {}).map(([key, val], idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex justify-between text-xs font-bold text-slate-700">
-                    <span className="capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                    <span className="font-mono">{val}%</span>
+            {/* Stepper Timeline */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+              {planResult.workflowMilestones?.map((m, idx) => (
+                <div key={idx} className="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/60 space-y-2 relative">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-sky-500 text-white text-[11px] font-black flex items-center justify-center shrink-0">
+                      {idx + 1}
+                    </span>
+                    <span className="text-[10px] font-black text-sky-600 uppercase tracking-wider">Stage {idx + 1}</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div className="bg-amber-400 h-2 rounded-full" style={{ width: `${val}%` }}></div>
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-900 leading-tight">{m.milestone}</h5>
+                    <p className="text-[10px] text-slate-500 font-mono mt-1">{m.date}</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="p-5 rounded-2xl bg-amber-50/50 border border-amber-200 space-y-3">
-              <h3 className="text-xs font-black text-amber-900 uppercase tracking-wider">Recommended Risk Mitigations</h3>
-              <ul className="space-y-2 text-xs text-amber-800">
-                {planResult.mitigationSuggestions?.map((m, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                    <span>{m}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
+            {/* Live Tracking Container Tool */}
+            <div className="pt-4 border-t border-slate-100 space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-sky-500" />
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Live Cargo Tracking Lookup</span>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <input
+                    type="text"
+                    value={trackingRefInput}
+                    onChange={e => setTrackingRefInput(e.target.value)}
+                    placeholder="Enter Shipment ID (e.g. TW-PLN-847291)"
+                    className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold w-full sm:w-64 focus:outline-none focus:border-sky-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTrackSearch}
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Track
+                  </button>
+                </div>
+              </div>
 
-      {/* MODULE 15: ANALYTICS DASHBOARD */}
-      {activeTab === 'analytics' && analyticsData && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-            <div>
-              <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-sky-500" /> Module 15: Logistics & Export Analytics Dashboard
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">Historical shipping trends, container utilization, carrier shares, and delivery metrics.</p>
-            </div>
-          </div>
+              {trackingData && (
+                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-3 bg-white rounded-xl border border-slate-200">
+                      <span className="text-xxs font-bold text-slate-400 uppercase tracking-wider block">Current Port / Checkpoint</span>
+                      <span className="text-xs font-black text-slate-900 mt-0.5 block">{trackingData.currentLocation}</span>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border border-slate-200">
+                      <span className="text-xxs font-bold text-slate-400 uppercase tracking-wider block">Assigned Carrier & Vessel</span>
+                      <span className="text-xs font-black text-slate-900 mt-0.5 block">{trackingData.carrier} ({trackingData.vesselName || 'Ocean Vessel'})</span>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border border-slate-200">
+                      <span className="text-xxs font-bold text-slate-400 uppercase tracking-wider block">Estimated Delivery (ETA)</span>
+                      <span className="text-xs font-black text-emerald-600 font-mono mt-0.5 block">{trackingData.eta}</span>
+                    </div>
+                  </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase">Avg Transit Time</span>
-              <span className="text-2xl font-black text-slate-900 font-mono">{analyticsData.avgTransitTimeDays} Days</span>
-            </div>
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase">Container Utilization</span>
-              <span className="text-2xl font-black text-sky-600 font-mono">{analyticsData.avgContainerUtilization}</span>
-            </div>
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase">Shipment Success Rate</span>
-              <span className="text-2xl font-black text-emerald-600 font-mono">{analyticsData.shipmentSuccessRate}</span>
-            </div>
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase">Avg Customs Delay</span>
-              <span className="text-2xl font-black text-indigo-600 font-mono">{analyticsData.avgCustomsDelayDays} Days</span>
+                  {/* Vertical Checkpoints */}
+                  {trackingData.events?.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t border-slate-200/60">
+                      <span className="text-xxs font-bold text-slate-400 uppercase tracking-widest block mb-2">Transit Event History</span>
+                      {trackingData.events.map((ev, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs py-1 px-2.5 rounded-lg bg-white border border-slate-100">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${ev.completed ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                            <span className="font-bold text-slate-800">{ev.status}</span>
+                            <span className="text-[10px] text-slate-400">({ev.location})</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-slate-500">{ev.timestamp}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

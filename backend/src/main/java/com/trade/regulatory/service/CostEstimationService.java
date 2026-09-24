@@ -24,17 +24,21 @@ public class CostEstimationService {
     // Known official MFN tariff rates (from pipeline's tariff data)
     // These are real published rates — NOT fabricated
     private static final Map<String, Map<String, Double>> KNOWN_TARIFFS = Map.ofEntries(
-        Map.entry("United States", Map.of("DEFAULT", 3.5, "30", 0.0, "61", 16.0, "62", 16.0, "85", 2.5, "84", 2.0)),
-        Map.entry("India", Map.of("DEFAULT", 10.0, "30", 10.0, "61", 20.0, "85", 15.0)),
-        Map.entry("Germany", Map.of("DEFAULT", 4.2, "30", 0.0, "61", 12.0, "85", 2.5)),
-        Map.entry("United Arab Emirates", Map.of("DEFAULT", 5.0)),
-        Map.entry("Singapore", Map.of("DEFAULT", 0.0)),
-        Map.entry("Hong Kong", Map.of("DEFAULT", 0.0)),
-        Map.entry("Australia", Map.of("DEFAULT", 5.0, "30", 0.0, "85", 0.0)),
-        Map.entry("Canada", Map.of("DEFAULT", 3.5, "30", 0.0)),
-        Map.entry("Japan", Map.of("DEFAULT", 3.5, "30", 0.0, "85", 0.0)),
-        Map.entry("South Korea", Map.of("DEFAULT", 8.0, "30", 8.0)),
-        Map.entry("United Kingdom", Map.of("DEFAULT", 4.0, "30", 0.0, "85", 2.5))
+        Map.entry("United States", Map.of("DEFAULT", 3.5, "10", 0.0, "30", 0.0, "61", 16.0, "62", 16.0, "85", 2.5, "84", 2.0)),
+        Map.entry("India", Map.of("DEFAULT", 10.0, "10", 0.0, "30", 10.0, "61", 20.0, "85", 15.0)),
+        Map.entry("Germany", Map.of("DEFAULT", 4.2, "10", 0.0, "30", 0.0, "61", 12.0, "85", 2.5)),
+        Map.entry("Netherlands", Map.of("DEFAULT", 4.2, "10", 0.0, "30", 0.0, "61", 12.0, "85", 2.5)),
+        Map.entry("Saudi Arabia", Map.of("DEFAULT", 5.0, "10", 0.0, "30", 0.0, "85", 5.0)),
+        Map.entry("United Arab Emirates", Map.of("DEFAULT", 5.0, "10", 0.0, "30", 0.0)),
+        Map.entry("Singapore", Map.of("DEFAULT", 0.0, "10", 0.0)),
+        Map.entry("Hong Kong", Map.of("DEFAULT", 0.0, "10", 0.0)),
+        Map.entry("Australia", Map.of("DEFAULT", 5.0, "10", 0.0, "30", 0.0, "85", 0.0)),
+        Map.entry("Canada", Map.of("DEFAULT", 3.5, "10", 0.0, "30", 0.0)),
+        Map.entry("Japan", Map.of("DEFAULT", 3.5, "10", 0.0, "30", 0.0, "85", 0.0)),
+        Map.entry("South Korea", Map.of("DEFAULT", 8.0, "10", 5.0, "30", 8.0)),
+        Map.entry("United Kingdom", Map.of("DEFAULT", 4.0, "10", 0.0, "30", 0.0, "85", 2.5)),
+        Map.entry("Bangladesh", Map.of("DEFAULT", 15.0, "10", 0.0, "30", 5.0)),
+        Map.entry("China", Map.of("DEFAULT", 7.5, "10", 1.0, "30", 0.0, "85", 4.0))
     );
 
     // Known VAT/GST rates (official published rates)
@@ -43,6 +47,7 @@ public class CostEstimationService {
         Map.entry("India", 18.0),
         Map.entry("Germany", 19.0),
         Map.entry("Netherlands", 21.0),
+        Map.entry("Saudi Arabia", 15.0),
         Map.entry("United Arab Emirates", 5.0),
         Map.entry("Singapore", 9.0),
         Map.entry("Hong Kong", 0.0),
@@ -50,7 +55,9 @@ public class CostEstimationService {
         Map.entry("Canada", 5.0),
         Map.entry("Japan", 10.0),
         Map.entry("South Korea", 10.0),
-        Map.entry("United Kingdom", 20.0)
+        Map.entry("United Kingdom", 20.0),
+        Map.entry("Bangladesh", 15.0),
+        Map.entry("China", 13.0)
     );
 
     public CostEstimationService(HsMasterRepository hsMasterRepo,

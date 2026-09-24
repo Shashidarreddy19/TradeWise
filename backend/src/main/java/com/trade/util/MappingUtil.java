@@ -4,8 +4,15 @@ import com.trade.dto.category.CategoryResponse;
 import com.trade.dto.country.CountryResponse;
 import com.trade.dto.order.OrderResponse;
 import com.trade.dto.product.ProductResponse;
+import com.trade.dto.proposal.ProposalResponse;
 import com.trade.dto.shipment.ShipmentResponse;
+import com.trade.dto.shipment.ShipmentTrackingResponse;
 import com.trade.entity.*;
+
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Static utility methods for mapping JPA entities to response DTOs.
@@ -54,13 +61,11 @@ public final class MappingUtil {
     }
 
     public static OrderResponse toOrderResponse(Order order) {
-        // Resolve exporter company name safely
         String exporterCompany = null;
         if (order.getExporter().getExporterProfile() != null) {
             exporterCompany = order.getExporter().getExporterProfile().getCompanyName();
         }
 
-        // Resolve assigned logistics partner details safely
         Long logisticsId = null;
         String logisticsName = null;
         String logisticsCompany = null;
@@ -98,12 +103,35 @@ public final class MappingUtil {
                 .build();
     }
 
+    public static ShipmentTrackingResponse toShipmentTrackingResponse(ShipmentTracking tracking) {
+        return ShipmentTrackingResponse.builder()
+                .id(tracking.getId())
+                .shipmentId(tracking.getShipment().getId())
+                .status(tracking.getStatus())
+                .statusLabel(formatStatusLabel(tracking.getStatus()))
+                .location(tracking.getLocation())
+                .description(tracking.getDescription())
+                .createdAt(tracking.getCreatedAt())
+                .build();
+    }
+
     public static ShipmentResponse toShipmentResponse(Shipment shipment) {
-        // Resolve exporter company safely
         String exporterCompany = null;
         if (shipment.getOrder().getExporter().getExporterProfile() != null) {
             exporterCompany = shipment.getOrder().getExporter()
                     .getExporterProfile().getCompanyName();
+        }
+
+        String logisticsCompany = null;
+        if (shipment.getLogisticsPartner().getLogisticsProfile() != null) {
+            logisticsCompany = shipment.getLogisticsPartner().getLogisticsProfile().getCompanyName();
+        }
+
+        List<ShipmentTrackingResponse> trackingList = Collections.emptyList();
+        if (shipment.getTrackingEvents() != null) {
+            trackingList = shipment.getTrackingEvents().stream()
+                    .map(MappingUtil::toShipmentTrackingResponse)
+                    .toList();
         }
 
         return ShipmentResponse.builder()
@@ -117,13 +145,90 @@ public final class MappingUtil {
                 .exporterCompany(exporterCompany)
                 .logisticsPartnerId(shipment.getLogisticsPartner().getId())
                 .logisticsPartnerName(shipment.getLogisticsPartner().getName())
+                .logisticsPartnerCompany(logisticsCompany)
                 .trackingNumber(shipment.getTrackingNumber())
                 .shipmentStatus(shipment.getShipmentStatus())
                 .origin(shipment.getOrigin())
                 .destination(shipment.getDestination())
+                .services(shipment.getServices())
+                .cost(shipment.getCost())
+                .currency(shipment.getCurrency())
+                .pickupDate(shipment.getPickupDate())
                 .estimatedDelivery(shipment.getEstimatedDelivery())
                 .statusUpdatedAt(shipment.getStatusUpdatedAt())
                 .createdAt(shipment.getCreatedAt())
+                .trackingHistory(trackingList)
                 .build();
+    }
+
+    public static ProposalResponse toProposalResponse(LogisticsProposal proposal) {
+        String partnerCompany = null;
+        String partnerExperience = null;
+        String partnerServiceArea = null;
+        Boolean tracking = false;
+        Boolean insurance = false;
+
+        LogisticsProfile profile = proposal.getLogisticsPartner().getLogisticsProfile();
+        if (profile != null) {
+            partnerCompany = profile.getCompanyName();
+            partnerExperience = profile.getExperience();
+            partnerServiceArea = profile.getServiceArea();
+            tracking = profile.getTrackingSupport();
+            insurance = profile.getCargoInsurance();
+        }
+
+        List<String> servicesList = Collections.emptyList();
+        if (proposal.getServices() != null && !proposal.getServices().isBlank()) {
+            servicesList = Arrays.stream(proposal.getServices().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList();
+        }
+
+        BigDecimal extra = proposal.getAdditionalCharges() != null ? proposal.getAdditionalCharges() : BigDecimal.ZERO;
+        BigDecimal total = proposal.getEstimatedCost().add(extra);
+
+        return ProposalResponse.builder()
+                .id(proposal.getId())
+                .orderId(proposal.getOrder().getId())
+                .orderProductName(proposal.getOrder().getProduct().getName())
+                .orderDestinationCountry(proposal.getOrder().getDestinationCountry().getName())
+                .orderQuantity(proposal.getOrder().getQuantity())
+                .logisticsPartnerId(proposal.getLogisticsPartner().getId())
+                .logisticsPartnerName(proposal.getLogisticsPartner().getName())
+                .logisticsPartnerCompany(partnerCompany)
+                .logisticsPartnerPhone(proposal.getLogisticsPartner().getPhone())
+                .logisticsPartnerEmail(proposal.getLogisticsPartner().getEmail())
+                .logisticsPartnerExperience(partnerExperience)
+                .logisticsPartnerServiceArea(partnerServiceArea)
+                .trackingSupport(tracking)
+                .cargoInsurance(insurance)
+                .services(servicesList)
+                .estimatedCost(proposal.getEstimatedCost())
+                .currency(proposal.getCurrency())
+                .estimatedTransitDays(proposal.getEstimatedTransitDays())
+                .pickupDate(proposal.getPickupDate())
+                .expectedDeliveryDate(proposal.getExpectedDeliveryDate())
+                .additionalCharges(extra)
+                .totalAmount(total)
+                .notes(proposal.getNotes())
+                .status(proposal.getStatus())
+                .createdAt(proposal.getCreatedAt())
+                .updatedAt(proposal.getUpdatedAt())
+                .build();
+    }
+
+    private static String formatStatusLabel(ShipmentStatus status) {
+        if (status == null) return "Unknown";
+        switch (status) {
+            case ASSIGNED: return "Booking Confirmed";
+            case PICKED_UP: return "Cargo Picked Up";
+            case AT_EXPORT_CUSTOMS: return "At Export Customs";
+            case IN_TRANSIT: return "In Transit";
+            case AT_IMPORT_CUSTOMS: return "At Import Customs";
+            case OUT_FOR_DELIVERY: return "Out for Delivery";
+            case DELIVERED: return "Delivered";
+            default: return status.name();
+        }
     }
 }

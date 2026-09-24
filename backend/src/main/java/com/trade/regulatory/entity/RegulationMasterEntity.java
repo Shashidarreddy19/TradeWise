@@ -55,6 +55,7 @@ public class RegulationMasterEntity {
     public String getRegulationType() { return regulationType; }
     public String getSummary() { return summary; }
     public LocalDateTime getEffectiveDate() { return effectiveDate; }
+    public LocalDateTime getExpiryDate() { return expiryDate; }
     public String getSourceUrl() { return sourceUrl; }
     public Double getConfidenceScore() { return confidenceScore; }
 }

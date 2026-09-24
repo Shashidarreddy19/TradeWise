@@ -9,10 +9,13 @@ import { get } from './httpClient';
 
 export const regulatoryApi = {
   /**
-   * GET /api/v1/regulations/{country}/{hsCode} — Full regulatory profile
+   * GET /api/v1/regulations/{country}/{hsCode} — Full regulatory profile with transaction context
    */
-  getRegulations(country, hsCode) {
-    return get(`/v1/regulations/${encodeURIComponent(country)}/${hsCode}`);
+  getRegulations(country, hsCode, originCountry = 'India', productName = '', category = '') {
+    let url = `/v1/regulations/${encodeURIComponent(country)}/${hsCode}?originCountry=${encodeURIComponent(originCountry)}`;
+    if (productName) url += `&productName=${encodeURIComponent(productName)}`;
+    if (category) url += `&category=${encodeURIComponent(category)}`;
+    return get(url);
   },
 
   /**

@@ -15,6 +15,13 @@ export const shipmentsApi = {
   },
 
   /**
+   * GET /api/shipments/exporter — list all shipments for current exporter
+   */
+  getExporterShipments() {
+    return get('/shipments/exporter');
+  },
+
+  /**
    * GET /api/shipments/:id
    */
   getById(id) {
@@ -22,10 +29,22 @@ export const shipmentsApi = {
   },
 
   /**
-   * PATCH /api/shipments/:id/status — update shipment status
-   * @param {string} shipmentStatus - one of: ASSIGNED, PICKED_UP, IN_TRANSIT, CUSTOMS_HOLD, OUT_FOR_DELIVERY, DELIVERED
+   * GET /api/shipments/order/:orderId — get shipment linked to an order
    */
-  updateStatus(id, shipmentStatus) {
-    return patch(`/shipments/${id}/status`, { shipmentStatus });
+  getByOrderId(orderId) {
+    return get(`/shipments/order/${orderId}`);
+  },
+
+  /**
+   * PATCH /api/shipments/:id/status — update shipment status & log tracking milestone
+   * @param {number|string} id
+   * @param {string|object} statusOrPayload - status string or { shipmentStatus, location, description }
+   */
+  updateStatus(id, statusOrPayload) {
+    const payload = typeof statusOrPayload === 'string'
+      ? { shipmentStatus: statusOrPayload }
+      : statusOrPayload;
+    return patch(`/shipments/${id}/status`, payload);
   },
 };
+

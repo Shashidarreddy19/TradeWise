@@ -1,24 +1,34 @@
 services:
+  # ────────────────────────────────────────────────────────────────────────────
+  # MySQL 8 — dual-database: InternationalTrade + TradeData
+  # ────────────────────────────────────────────────────────────────────────────
   mysql:
     image: mysql:8.0
     container_name: tradewise-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-TradeWise@2024Prod}
       MYSQL_ROOT_HOST: "%"
     ports:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - tradewise_mysql_data:/var/lib/mysql
       - ./deploy/mysql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1",
+             "-uroot", "-p${MYSQL_ROOT_PASSWORD:-TradeWise@2024Prod}"]
       interval: 8s
       timeout: 5s
       retries: 20
-      start_period: 25s
+      start_period: 30s
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # Spring Boot 3.3 Backend — port 8081
+  # ────────────────────────────────────────────────────────────────────────────
   backend:
     build:
       context: ./backend
@@ -33,16 +43,27 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8081
+
+      # Primary DB
       DB_MAIN_URL: jdbc:mysql://mysql:3306/InternationalTrade?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&zeroDateTimeBehavior=CONVERT_TO_NULL
       DB_MAIN_USERNAME: root
-      DB_MAIN_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      DB_MAIN_PASSWORD: ${MYSQL_ROOT_PASSWORD:-TradeWise@2024Prod}
+
+      # Secondary DB (regulatory data)
       DB_TRADEDATA_URL: jdbc:mysql://mysql:3306/TradeData?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&zeroDateTimeBehavior=CONVERT_TO_NULL
       DB_TRADEDATA_USERNAME: root
-      DB_TRADEDATA_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      DB_TRADEDATA_PASSWORD: ${MYSQL_ROOT_PASSWORD:-TradeWise@2024Prod}
       TRADEDATA_DDL_AUTO: ${TRADEDATA_DDL_AUTO:-update}
-      JWT_SECRET: ${JWT_SECRET:-TradePlatformSecretKey2024XYZChangeMeForProd32}
+
+      # Auth
+      JWT_SECRET: ${JWT_SECRET:-TradeWisePlatformSecureJwtKey2024XYZMustBe32Chars}
+
+      # NVIDIA AI (optional — leave blank to disable AI features gracefully)
       NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
       NVIDIA_BASE_URL: ${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      NVIDIA_RERANK_URL: ${NVIDIA_RERANK_URL:-https://ai.api.nvidia.com/v1/retrieval/nvidia/llama-nemotron-rerank-vl-1b-v2/reranking}
+
+      # CORS (add your deployed frontend domain if not on same host)
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8081/api/health"]
@@ -51,6 +72,10 @@ services:
       retries: 10
       start_period: 70s
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # React + Vite SPA — served by nginx on port 80
+  # nginx proxies /api/* → backend:8081
+  # ────────────────────────────────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
@@ -64,6 +89,13 @@ services:
         condition: service_healthy
     ports:
       - "${FRONTEND_PORT:-80}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   tradewise_mysql_data:
+    driver: local

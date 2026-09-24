@@ -7,6 +7,7 @@ import com.trade.exception.ResourceNotFoundException;
 import com.trade.exception.UnauthorizedException;
 import com.trade.repository.OrderRepository;
 import com.trade.repository.ShipmentRepository;
+import com.trade.repository.ShipmentTrackingRepository;
 import com.trade.repository.UserRepository;
 import com.trade.service.ShipmentService;
 import com.trade.util.MappingUtil;
@@ -18,16 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Handles shipment queries and status updates for logistics partners.
- * Shipment creation is handled inside OrderServiceImpl when a request is accepted.
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ShipmentServiceImpl implements ShipmentService {
 
     private final ShipmentRepository shipmentRepository;
+    private final ShipmentTrackingRepository trackingRepository;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
 
@@ -43,9 +41,28 @@ public class ShipmentServiceImpl implements ShipmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public ShipmentResponse getShipmentById(Long id, String partnerEmail) {
+    public List<ShipmentResponse> getAllShipmentsForExporter(String exporterEmail) {
+        User exporter = findUserByEmail(exporterEmail);
+        return shipmentRepository.findByOrderExporter(exporter)
+                .stream()
+                .map(MappingUtil::toShipmentResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ShipmentResponse getShipmentById(Long id, String userEmail) {
         Shipment shipment = findShipmentById(id);
-        verifyShipmentOwnership(shipment, partnerEmail);
+        verifyShipmentAccess(shipment, userEmail);
+        return MappingUtil.toShipmentResponse(shipment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ShipmentResponse getShipmentByOrderId(Long orderId, String userEmail) {
+        Shipment shipment = shipmentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipment for order", "orderId", orderId));
+        verifyShipmentAccess(shipment, userEmail);
         return MappingUtil.toShipmentResponse(shipment);
     }
 
@@ -53,7 +70,10 @@ public class ShipmentServiceImpl implements ShipmentService {
     @Transactional
     public ShipmentResponse updateShipmentStatus(Long id, ShipmentStatusRequest request, String partnerEmail) {
         Shipment shipment = findShipmentById(id);
-        verifyShipmentOwnership(shipment, partnerEmail);
+
+        if (!shipment.getLogisticsPartner().getEmail().equals(partnerEmail)) {
+            throw new UnauthorizedException("You do not have permission to manage this shipment");
+        }
 
         shipment.setShipmentStatus(request.getShipmentStatus());
         shipment.setStatusUpdatedAt(LocalDateTime.now());
@@ -73,13 +93,26 @@ public class ShipmentServiceImpl implements ShipmentService {
         }
 
         shipment = shipmentRepository.save(shipment);
-        log.info("Shipment [id={}] status updated to [{}] by partner [{}]",
-                id, request.getShipmentStatus(), partnerEmail);
+
+        // Record tracking event history
+        String desc = request.getDescription();
+        if (desc == null || desc.isBlank()) {
+            desc = "Status updated to " + request.getShipmentStatus().name();
+        }
+
+        ShipmentTracking tracking = ShipmentTracking.builder()
+                .shipment(shipment)
+                .status(request.getShipmentStatus())
+                .location(request.getLocation())
+                .description(desc)
+                .build();
+        trackingRepository.save(tracking);
+
+        log.info("Shipment [id={}] status updated to [{}] at location [{}] by partner [{}]",
+                id, request.getShipmentStatus(), request.getLocation(), partnerEmail);
 
         return MappingUtil.toShipmentResponse(shipment);
     }
-
-    // ── Private helpers ──────────────────────────────────────────────────────
 
     private Shipment findShipmentById(Long id) {
         return shipmentRepository.findById(id)
@@ -91,8 +124,11 @@ public class ShipmentServiceImpl implements ShipmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
     }
 
-    private void verifyShipmentOwnership(Shipment shipment, String partnerEmail) {
-        if (!shipment.getLogisticsPartner().getEmail().equals(partnerEmail)) {
+    private void verifyShipmentAccess(Shipment shipment, String userEmail) {
+        User user = findUserByEmail(userEmail);
+        boolean isPartner = shipment.getLogisticsPartner().getId().equals(user.getId());
+        boolean isExporter = shipment.getOrder().getExporter().getId().equals(user.getId());
+        if (!isPartner && !isExporter) {
             throw new UnauthorizedException("You do not have permission to access this shipment");
         }
     }

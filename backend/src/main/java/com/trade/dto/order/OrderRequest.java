@@ -15,8 +15,12 @@ public class OrderRequest {
     @NotNull(message = "Product ID is required")
     private Long productId;
 
-    @NotNull(message = "Destination country ID is required")
     private Long destinationCountryId;
+
+    private String destinationCountryName;
+
+    private String destinationCountryCode;
+
 
     @NotNull(message = "Quantity is required")
     @Min(value = 1, message = "Quantity must be at least 1")

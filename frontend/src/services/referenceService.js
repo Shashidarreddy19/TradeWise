@@ -18,12 +18,20 @@ export const referenceApi = {
   },
 
   /**
+   * POST /api/countries/ensure — ensure a country exists and retrieve its record
+   */
+  ensureCountry(name, code, currency) {
+    return post('/countries/ensure', { name, code, currency });
+  },
+
+  /**
    * GET /api/categories — list product categories
    */
   getCategories() {
     return get('/categories');
   },
 };
+
 
 export const marketApi = {
   /**

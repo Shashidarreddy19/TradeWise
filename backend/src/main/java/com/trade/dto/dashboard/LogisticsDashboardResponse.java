@@ -10,15 +10,18 @@ import lombok.Data;
 @Builder
 public class LogisticsDashboardResponse {
 
-    // Requests in PENDING_LOGISTICS state (available to accept)
+    // Requests in PENDING_LOGISTICS state (available to quote / accept)
+    private long totalAvailableOrders;
     private long availableRequests;
 
-    // Shipments this partner accepted (all statuses except DELIVERED)
+    // Quotes / Proposals
+    private long pendingQuotes;
+    private long acceptedQuotes;
+
+    // Shipments
+    private long pendingRequests;
     private long acceptedShipments;
-
-    // Shipments actively moving (IN_TRANSIT, AT_IMPORT_CUSTOMS, OUT_FOR_DELIVERY)
     private long activeShipments;
-
-    // Shipments fully delivered
+    private long completedShipments;
     private long completedDeliveries;
 }

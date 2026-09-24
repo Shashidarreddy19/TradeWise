@@ -94,8 +94,10 @@ public class RegulatoryRetrievalService {
             }
         }
 
-        // 4. Hierarchical regulation matching
-        List<RegulationHsMappingEntity> mappings = hsMappingRepo.findHierarchical(nationalCode, hs6, hs4, hs2);
+        // 4. Hierarchical regulation matching with STRICT country isolation
+        String countryCode = countryEntity.get().getCountryCode();
+        List<RegulationHsMappingEntity> mappings = hsMappingRepo.findHierarchicalByCountry(
+                resolvedCountry, countryCode, nationalCode, hs6, hs4, hs2);
 
         if (mappings.isEmpty()) {
             // Check coverage audit for this country + HS
@@ -107,7 +109,7 @@ public class RegulatoryRetrievalService {
                 result.confidence = cov.getConfidenceScore() != null ? cov.getConfidenceScore() : 0.0;
                 result.regulationFound = cov.getRegulationFound() != null && cov.getRegulationFound();
                 if (cov.getRegulationId() != null) {
-                    loadRegulationDetails(result, List.of(cov.getRegulationId()));
+                    loadRegulationDetails(result, List.of(cov.getRegulationId()), resolvedCountry, hs2);
                 }
             } else {
                 result.matchType = "NOT_FOUND";
@@ -125,7 +127,7 @@ public class RegulatoryRetrievalService {
                     .map(RegulationHsMappingEntity::getRegulationId)
                     .distinct()
                     .collect(Collectors.toList());
-            loadRegulationDetails(result, regIds);
+            loadRegulationDetails(result, regIds, resolvedCountry, hs2);
         }
 
         // 5. Load sources for the country
@@ -134,13 +136,62 @@ public class RegulatoryRetrievalService {
         return result;
     }
 
-    private void loadRegulationDetails(RegulatoryResult result, List<Long> regIds) {
-        result.regulations = regMasterRepo.findAllById(regIds);
-        result.documents = docRepo.findByRegulationIdIn(regIds);
-        result.certifications = certRepo.findByRegulationIdIn(regIds);
-        result.labeling = labelRepo.findByRegulationIdIn(regIds);
-        result.restrictions = restrictRepo.findByRegulationIdIn(regIds);
-        result.procedures = procRepo.findByRegulationIdIn(regIds);
+    private void loadRegulationDetails(RegulatoryResult result, List<Long> regIds, String country, String chapter) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        List<RegulationMasterEntity> allRegs = regMasterRepo.findAllById(regIds);
+
+        // Filter: country match + not expired
+        List<RegulationMasterEntity> validRegs = allRegs.stream()
+                .filter(r -> r.getCountry() != null && (
+                        r.getCountry().equalsIgnoreCase(country) ||
+                        country.toLowerCase().contains(r.getCountry().toLowerCase()) ||
+                        r.getCountry().toLowerCase().contains(country.toLowerCase())
+                ))
+                .filter(r -> r.getExpiryDate() == null || r.getExpiryDate().isAfter(now))
+                .filter(r -> isProductApplicable(r, chapter))
+                .collect(Collectors.toList());
+
+        List<Long> validRegIds = validRegs.stream().map(RegulationMasterEntity::getId).collect(Collectors.toList());
+
+        result.regulations = validRegs;
+        if (!validRegIds.isEmpty()) {
+            result.documents = docRepo.findByRegulationIdIn(validRegIds);
+            result.certifications = certRepo.findByRegulationIdIn(validRegIds);
+            result.labeling = labelRepo.findByRegulationIdIn(validRegIds);
+            result.restrictions = restrictRepo.findByRegulationIdIn(validRegIds);
+            result.procedures = procRepo.findByRegulationIdIn(validRegIds);
+        } else {
+            result.documents = new ArrayList<>();
+            result.certifications = new ArrayList<>();
+            result.labeling = new ArrayList<>();
+            result.restrictions = new ArrayList<>();
+            result.procedures = new ArrayList<>();
+        }
+    }
+
+    /**
+     * Hard validation guard: rejects regulations belonging exclusively to unrelated categories.
+     * e.g., For food/rice (chapters 01-24), reject FCC, CPSC, TSCA, Lacey Act, telecom, medical devices.
+     */
+    private boolean isProductApplicable(RegulationMasterEntity reg, String chapter) {
+        if (reg == null) return false;
+        String auth = (reg.getAuthority() != null ? reg.getAuthority() : "").toUpperCase();
+        String title = (reg.getTitle() != null ? reg.getTitle() : "").toUpperCase();
+        String summary = (reg.getSummary() != null ? reg.getSummary() : "").toUpperCase();
+        String text = auth + " " + title + " " + summary;
+
+        // If food/cereals/agricultural (Ch 01-24)
+        if (chapter != null && chapter.matches("0[1-9]|1[0-9]|2[0-4]")) {
+            if (text.contains("FCC") || text.contains("TELECOM") || text.contains("RADIO") ||
+                text.contains("CPSC") || text.contains("CHILDREN") || text.contains("TOY") ||
+                text.contains("TSCA") || text.contains("CHEMICAL SUBSTANCE") ||
+                text.contains("LACEY ACT") || text.contains("TIMBER") || text.contains("WOOD") ||
+                text.contains("MEDICAL DEVICE") || text.contains("PHARMACEUTICAL") ||
+                text.contains("AUTOMOTIVE") || text.contains("VEHICLE")) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private String determineMatchType(RegulationHsMappingEntity mapping,

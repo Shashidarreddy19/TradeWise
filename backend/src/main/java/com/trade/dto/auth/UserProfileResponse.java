@@ -20,13 +20,18 @@ public class UserProfileResponse {
     private Role role;
     private LocalDateTime createdAt;
 
-    // Exporter profile fields (null if role is LOGISTICS)
+    // Common / Exporter profile fields
     private String companyName;
     private String iecCode;
     private String gstNumber;
     private String address;
 
-    // Logistics profile fields (null if role is EXPORTER)
+    // Logistics profile fields
     private String serviceArea;
+    private String services;
+    private String businessRegistrationNumber;
+    private String experience;
+    private Boolean trackingSupport;
+    private Boolean cargoInsurance;
     private String fleetSize;
 }

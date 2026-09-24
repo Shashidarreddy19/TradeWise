@@ -156,6 +156,32 @@ public class MarketOpportunityService {
         entry.put("opportunityScore", opportunityScore);
         entry.put("scoreSource", scoreSource);
 
+        // 5. Dynamic Reliability Tier & Score Calculation
+        String reliabilityTier;
+        int reliabilityPct;
+        if ("ML_MODEL_V4".equals(scoreSource)) {
+            if (opportunityScore >= 80) {
+                reliabilityTier = "High";
+                reliabilityPct = Math.min(99, 88 + (int)((opportunityScore - 80) * 0.55));
+            } else if (opportunityScore >= 55) {
+                reliabilityTier = "Moderate";
+                reliabilityPct = 65 + (int)((opportunityScore - 55) * 0.6);
+            } else {
+                reliabilityTier = "Low";
+                reliabilityPct = Math.max(20, (int)(opportunityScore * 0.8));
+            }
+        } else {
+            if (opportunityScore >= 75 && dutyRate != null) {
+                reliabilityTier = "Moderate";
+                reliabilityPct = 70;
+            } else {
+                reliabilityTier = "Low";
+                reliabilityPct = Math.max(25, (int)(opportunityScore * 0.5));
+            }
+        }
+        entry.put("reliabilityTier", reliabilityTier);
+        entry.put("reliabilityScore", reliabilityPct);
+
         // Regulatory / tariff explanation (always included)
         if (compScore >= 80) reasons.add("Low regulatory complexity");
         else if (compScore >= 50) reasons.add("Medium regulatory complexity");

@@ -43,7 +43,21 @@ export default function ProfileView({ addToast }) {
     e.preventDefault();
     setSaving(true);
     try {
-      addToast('Profile information saved successfully.', 'success');
+      const res = await authApi.updateProfile({
+        companyName: form.companyName,
+        contactPerson: form.contactPerson,
+        phone: form.phone,
+        businessRegistrationNumber: form.businessRegistrationNumber,
+        experience: form.experience,
+        serviceArea: form.serviceArea,
+        services: form.services,
+        trackingSupport: form.trackingSupport,
+        cargoInsurance: form.cargoInsurance,
+      });
+      if (res?.data) {
+        setProfile(res.data);
+      }
+      addToast('Profile information saved and synced successfully.', 'success');
     } catch (err) {
       addToast(err.message || 'Failed to save profile', 'error');
     } finally {

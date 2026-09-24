@@ -83,14 +83,14 @@ public class NvidiaAiService {
             "- Cite the source document / authority / page number when possible.\n" +
             "- Be precise and conservative: exporters rely on this for legal compliance.";
 
-    /** Retry attempts for transient upstream errors (5xx / 404 / timeouts). */
-    private static final int MAX_ATTEMPTS = 3;
+    /** Retry attempts for transient upstream errors. */
+    private static final int MAX_ATTEMPTS = 1;
 
     public NvidiaAiService() {
-        // Explicit timeouts: frontier models can be slow, but we don't want to hang forever.
+        // Fast timeouts: fail fast to local database fallback so UI stays responsive.
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(15_000);   // 15s to connect
-        factory.setReadTimeout(180_000);      // 180s to read (550B generation can be slow)
+        factory.setConnectTimeout(4_000);   // 4s to connect
+        factory.setReadTimeout(8_000);     // 8s to read
         this.restTemplate = new RestTemplate(factory);
     }
 

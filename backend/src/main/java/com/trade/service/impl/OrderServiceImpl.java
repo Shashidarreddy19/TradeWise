@@ -64,8 +64,7 @@ public class OrderServiceImpl implements OrderService {
             throw new UnauthorizedException("You can only create shipment requests for your own products");
         }
 
-        Country destination = countryRepository.findById(request.getDestinationCountryId())
-                .orElseThrow(() -> new ResourceNotFoundException("Country", "id", request.getDestinationCountryId()));
+        Country destination = resolveDestinationCountry(request);
 
         BigDecimal totalPrice = product.getPrice()
                 .multiply(BigDecimal.valueOf(request.getQuantity()));
@@ -103,11 +102,11 @@ public class OrderServiceImpl implements OrderService {
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", request.getProductId()));
 
-        Country destination = countryRepository.findById(request.getDestinationCountryId())
-                .orElseThrow(() -> new ResourceNotFoundException("Country", "id", request.getDestinationCountryId()));
+        Country destination = resolveDestinationCountry(request);
 
         BigDecimal totalPrice = product.getPrice()
                 .multiply(BigDecimal.valueOf(request.getQuantity()));
+
 
         order.setProduct(product);
         order.setDestinationCountry(destination);
@@ -257,4 +256,43 @@ public class OrderServiceImpl implements OrderService {
         } while (shipmentRepository.findByTrackingNumber(tracking).isPresent());
         return tracking;
     }
+
+    private Country resolveDestinationCountry(OrderRequest request) {
+        Country destination = null;
+        if (request.getDestinationCountryId() != null) {
+            destination = countryRepository.findById(request.getDestinationCountryId()).orElse(null);
+        }
+        if (destination == null && request.getDestinationCountryName() != null && !request.getDestinationCountryName().isBlank()) {
+            String name = request.getDestinationCountryName().trim();
+            destination = countryRepository.findByNameIgnoreCase(name)
+                    .or(() -> countryRepository.findByCodeIgnoreCase(name))
+                    .orElse(null);
+        }
+        if (destination == null && request.getDestinationCountryCode() != null && !request.getDestinationCountryCode().isBlank()) {
+            destination = countryRepository.findByCodeIgnoreCase(request.getDestinationCountryCode().trim())
+                    .orElse(null);
+        }
+        if (destination == null) {
+            String name = request.getDestinationCountryName();
+            if (name != null && !name.isBlank()) {
+                String trimmedName = name.trim();
+                String code = request.getDestinationCountryCode();
+                if (code == null || code.isBlank()) {
+                    code = trimmedName.length() >= 2 ? trimmedName.substring(0, 2).toUpperCase() : "XX";
+                }
+                destination = countryRepository.save(Country.builder()
+                        .name(trimmedName)
+                        .code(code.trim().toUpperCase())
+                        .currency("USD")
+                        .active(true)
+                        .build());
+            } else if (request.getDestinationCountryId() != null) {
+                throw new ResourceNotFoundException("Country", "id", request.getDestinationCountryId());
+            } else {
+                throw new BadRequestException("Destination country ID or Name is required");
+            }
+        }
+        return destination;
+    }
 }
+

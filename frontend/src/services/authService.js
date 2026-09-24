@@ -5,7 +5,7 @@
  * Endpoints: register, login, profile, check-email, check-phone
  */
 
-import { get, post } from './httpClient';
+import { get, post, put } from './httpClient';
 
 export const authApi = {
   /**
@@ -29,6 +29,14 @@ export const authApi = {
    */
   getProfile() {
     return get('/auth/profile');
+  },
+
+  /**
+   * PUT /api/auth/profile — update current user profile
+   * @param {object} data
+   */
+  updateProfile(data) {
+    return put('/auth/profile', data);
   },
 
   /**

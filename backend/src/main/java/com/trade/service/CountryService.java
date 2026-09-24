@@ -10,4 +10,7 @@ import java.util.List;
 public interface CountryService {
 
     List<CountryResponse> getAllCountries();
+
+    CountryResponse ensureCountry(String name, String code, String currency);
 }
+
