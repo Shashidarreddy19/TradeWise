@@ -1,4 +1,4 @@
-﻿# ===== Java / Maven =====
+# ===== Java / Maven =====
 backend/target/
 *.class
 *.jar
@@ -17,11 +17,17 @@ frontend/.env.local
 !**/.env.example
 !.env.example
 
-# ===== IDE =====
+# ===== IDE & Virtual Environments =====
 .vscode/
 .idea/
 *.iml
 .claude/
+.venv/
+venv/
+ENV/
+__pycache__/
+*.pyc
+import_to_tidb.py
 
 # ===== OS =====
 .DS_Store
