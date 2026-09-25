@@ -8,13 +8,13 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: DB_MAIN_URL
-        value: jdbc:mysql://gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/InternationalTrade?useSSL=true&enabledTLSProtocols=TLSv1.2,TLSv1.3&serverTimezone=UTC
+        value: jdbc:mysql://gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/InternationalTrade?useSSL=true&enabledTLSProtocols=TLSv1.2,TLSv1.3&serverTimezone=UTC&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true&useLocalSessionState=true&rewriteBatchedStatements=true&connectTimeout=10000&socketTimeout=30000
       - key: DB_MAIN_USERNAME
         value: 4E6jkkzgnyWdQrr.root
       - key: DB_MAIN_PASSWORD
         value: rXmp8hKhKz7mgl9r
       - key: DB_TRADEDATA_URL
-        value: jdbc:mysql://gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/TradeData?useSSL=true&enabledTLSProtocols=TLSv1.2,TLSv1.3&serverTimezone=UTC
+        value: jdbc:mysql://gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/TradeData?useSSL=true&enabledTLSProtocols=TLSv1.2,TLSv1.3&serverTimezone=UTC&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true&useLocalSessionState=true&rewriteBatchedStatements=true&connectTimeout=10000&socketTimeout=30000
       - key: DB_TRADEDATA_USERNAME
         value: 4E6jkkzgnyWdQrr.root
       - key: DB_TRADEDATA_PASSWORD

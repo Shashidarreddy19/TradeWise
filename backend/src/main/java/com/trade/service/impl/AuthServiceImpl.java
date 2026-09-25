@@ -181,8 +181,13 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("New {} registered: {}", request.getRole(), request.getEmail());
 
-        // 9. Generate JWT
-        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
+        // 9. Generate JWT directly from user in memory without redundant DB round-trip
+        String roleName = normalizeRole(user.getRole()).name();
+        UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
+                .username(user.getEmail())
+                .password(user.getPassword())
+                .authorities(List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + roleName)))
+                .build();
         String token = jwtUtil.generateToken(userDetails);
 
         return AuthResponse.builder()
@@ -205,27 +210,14 @@ public class AuthServiceImpl implements AuthService {
         String email = request.getEmail() != null
                 ? request.getEmail().trim().toLowerCase() : "";
 
-        // Check lockout before attempting authentication
-        Optional<User> optUser = userRepository.findByEmail(email);
-        if (optUser.isPresent()) {
-            User u = optUser.get();
-            if (u.getLockoutUntil() != null && u.getLockoutUntil().isAfter(LocalDateTime.now())) {
-                long minutesLeft = java.time.Duration.between(
-                        LocalDateTime.now(), u.getLockoutUntil()).toMinutes() + 1;
-                throw new BadRequestException(
-                        "Account is locked due to multiple failed login attempts. "
-                        + "Please try again in " + minutesLeft + " minute(s).");
-            }
-        }
-
+        // Fast authentication via Spring Security (loads user and verifies BCrypt in 1 step)
+        org.springframework.security.core.Authentication authentication;
         try {
-            // Authenticate — throws BadCredentialsException on failure
-            authenticationManager.authenticate(
+            authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(email, request.getPassword())
             );
         } catch (BadCredentialsException | LockedException ex) {
-            // Increment failed attempts
-            optUser.ifPresent(u -> {
+            userRepository.findByEmail(email).ifPresent(u -> {
                 int attempts = (u.getFailedLoginAttempts() != null ? u.getFailedLoginAttempts() : 0) + 1;
                 u.setFailedLoginAttempts(attempts);
                 if (attempts >= MAX_FAILED_ATTEMPTS) {
@@ -237,16 +229,24 @@ public class AuthServiceImpl implements AuthService {
             throw new BadCredentialsException("Invalid email or password.");
         }
 
-        // Successful login — reset failure counters
-        User user = optUser.orElseThrow(
-                () -> new ResourceNotFoundException("User", "email", email));
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+
+        if (user.getLockoutUntil() != null && user.getLockoutUntil().isAfter(LocalDateTime.now())) {
+            long minutesLeft = java.time.Duration.between(
+                    LocalDateTime.now(), user.getLockoutUntil()).toMinutes() + 1;
+            throw new BadRequestException(
+                    "Account is locked due to multiple failed login attempts. "
+                    + "Please try again in " + minutesLeft + " minute(s).");
+        }
+
         if (user.getFailedLoginAttempts() != null && user.getFailedLoginAttempts() > 0) {
             user.setFailedLoginAttempts(0);
             user.setLockoutUntil(null);
             userRepository.save(user);
         }
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String token = jwtUtil.generateToken(userDetails);
 
         log.info("User logged in: {}", email);
@@ -360,12 +360,14 @@ public class AuthServiceImpl implements AuthService {
     // ════════════════════════════════════════════════════════════════════════
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isEmailAvailable(String email) {
         if (email == null || email.isBlank()) return true;
         return !userRepository.existsByEmail(email.trim().toLowerCase());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isPhoneAvailable(String phone) {
         if (phone == null || phone.isBlank()) return true;
         String trimmed = phone.trim();
