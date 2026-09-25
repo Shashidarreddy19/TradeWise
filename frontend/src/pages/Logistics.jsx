@@ -1,18 +1,10 @@
 /**
  * Logistics.jsx — Logistics Partner Dashboard (Orchestrator).
- *
- * Responsibilities:
- *  - Auth guard
- *  - Fetch all data from API on mount (pending orders, shipments, dashboard stats)
- *  - Hold shared state and handlers
- *  - Render navbar, toasts, and active sub-view component
- *
- * Sub-views (pages/logistics/):
- *  OverviewView, AssignedOrdersView, ShipmentsView, LogisticsPlannerView, ProfileView
+ * Redesigned with Claude-inspired shadcn/ui design system.
  */
 
 import React, { useState, useEffect } from 'react';
-import { Bell, LogOut, ChevronDown, User as UserIcon } from 'lucide-react';
+import { Bell, LogOut, ChevronDown, User as UserIcon, Truck, Package, Clock, ShieldCheck } from 'lucide-react';
 import {
   ordersApi, shipmentsApi, dashboardApi, authApi, proposalApi,
   clearAuth, getUser, isAuthenticated,
@@ -21,6 +13,7 @@ import {
   OverviewView, AssignedOrdersView, ShipmentsView, ProfileView,
 } from './logistics/index';
 import { formatShipmentStatus, userInitials } from './logistics/utils';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function Logistics({ onNavigate, onLogout }) {
   // ── Active view ───────────────────────────────────────────────────────────
@@ -172,11 +165,11 @@ export default function Logistics({ onNavigate, onLogout }) {
 
   // ── Navbar active style ───────────────────────────────────────────────────
   const navLink = (view) =>
-    `transition-colors h-full px-1 cursor-pointer relative ${
-      activeView === view ? 'text-sky-500 font-extrabold' : 'hover:text-slate-900'
+    `transition-colors h-full px-1 flex items-center font-medium text-xs cursor-pointer relative ${
+      activeView === view ? 'text-primary font-semibold' : 'text-muted-foreground hover:text-foreground'
     }`;
   const navUnderline = (view) =>
-    activeView === view ? <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-sky-500 rounded-t-full"></div> : null;
+    activeView === view ? <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full"></div> : null;
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const markAllRead = () => {
@@ -187,34 +180,39 @@ export default function Logistics({ onNavigate, onLogout }) {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-700 flex flex-col antialiased font-sans">
+    <div className="min-h-screen bg-background text-foreground flex flex-col antialiased">
 
       {/* ── TOAST STACK ── */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
         {toasts.map(t => (
-          <div key={t.id} className="flex items-center gap-3 px-5 py-4 rounded-xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-2xl animate-in fade-in slide-in-from-bottom-5 duration-300">
-            <div className={`w-2 h-2 rounded-full shrink-0 ${t.type === 'success' ? 'bg-emerald-500' : t.type === 'error' ? 'bg-red-500' : 'bg-sky-500'}`}></div>
-            <span className="text-xs font-bold text-slate-800">{t.message}</span>
+          <div key={t.id} className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-card/95 backdrop-blur-md shadow-lg animate-in fade-in slide-in-from-bottom-5 duration-200">
+            <div className={`w-2 h-2 rounded-full shrink-0 ${t.type === 'success' ? 'bg-emerald-500' : t.type === 'error' ? 'bg-destructive' : 'bg-primary'}`}></div>
+            <span className="text-xs font-medium text-foreground">{t.message}</span>
           </div>
         ))}
       </div>
 
       {/* ── NAVBAR ── */}
-      <nav className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200/80 shadow-sm z-30 flex items-center justify-between px-6">
+      <nav className="fixed top-0 left-0 right-0 h-16 bg-card/90 backdrop-blur-md border-b border-border z-30 flex items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => onNavigate('/')}>
-          <span className="text-lg font-black text-slate-900 tracking-tight">Trade</span>
-          <span className="text-[9px] bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">Logistics</span>
+          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-base">
+            T
+          </div>
+          <span className="text-base font-semibold text-foreground tracking-tight">TradeWise</span>
+          <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-medium tracking-wide">
+            Logistics
+          </span>
         </div>
 
         {/* Nav Links */}
-        <div className="hidden md:flex items-center gap-6 h-full text-xs font-bold text-slate-500">
-          <button onClick={() => onNavigate('/')} className="hover:text-slate-900 transition-colors h-full px-1 cursor-pointer">Home</button>
+        <div className="hidden md:flex items-center gap-6 h-full text-xs">
+          <button onClick={() => onNavigate('/')} className="text-muted-foreground hover:text-foreground transition-colors h-full px-1 cursor-pointer flex items-center font-medium">Home</button>
           <button onClick={() => setActiveView('overview')} className={navLink('overview')}>Overview{navUnderline('overview')}</button>
           <button onClick={() => setActiveView('assigned')} className={navLink('assigned')}>
             Assigned Orders
             {orders.filter(o => o.rawStatus === 'PENDING_LOGISTICS').length > 0 && (
-              <span className="ml-1.5 bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">
+              <span className="ml-1.5 bg-primary text-primary-foreground text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
                 {orders.filter(o => o.rawStatus === 'PENDING_LOGISTICS').length}
               </span>
             )}
@@ -224,28 +222,30 @@ export default function Logistics({ onNavigate, onLogout }) {
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-3 relative">
+        <div className="flex items-center gap-2.5 relative">
+          <ThemeToggle />
+
           {/* Notifications */}
           <div className="relative">
             <button onClick={(e) => { e.stopPropagation(); setShowNotifications(!showNotifications); setShowProfileMenu(false); markAllRead(); }}
-              className="p-2 text-slate-500 hover:text-slate-800 rounded-full hover:bg-slate-50 cursor-pointer relative">
-              <Bell className="w-5 h-5" />
+              className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/60 cursor-pointer relative transition-colors">
+              <Bell className="w-4 h-4" />
               {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse">
+                <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-primary text-primary-foreground text-[9px] font-semibold rounded-full flex items-center justify-center">
                   {unreadCount}
                 </span>
               )}
             </button>
             {showNotifications && (
-              <div onClick={e => e.stopPropagation()} className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl p-4 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                <span className="block text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2 mb-2.5">Logistics Alerts</span>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
+              <div onClick={e => e.stopPropagation()} className="absolute right-0 mt-2 w-80 bg-popover border border-border rounded-xl p-3 shadow-xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 text-popover-foreground">
+                <span className="block text-xs font-semibold text-foreground uppercase tracking-wider border-b border-border pb-2 mb-2">Logistics Alerts</span>
+                <div className="space-y-1.5 max-h-60 overflow-y-auto">
                   {notifications.length === 0 ? (
-                    <span className="text-center text-xxs text-slate-400 py-4 font-semibold block">No alerts yet.</span>
+                    <span className="text-center text-xs text-muted-foreground py-4 block">No alerts yet.</span>
                   ) : notifications.map(n => (
-                    <div key={n.id} className="text-xxs font-semibold text-slate-700 p-2 rounded-lg border border-slate-50 hover:bg-slate-50 transition-colors">
+                    <div key={n.id} className="text-xs text-foreground p-2 rounded-md border border-border/40 hover:bg-muted/40 transition-colors">
                       <span className="block leading-relaxed">{n.text}</span>
-                      <span className="block text-[9px] text-slate-400 mt-1 font-bold">{n.time}</span>
+                      <span className="block text-[10px] text-muted-foreground mt-1">{n.time}</span>
                     </div>
                   ))}
                 </div>
@@ -256,25 +256,25 @@ export default function Logistics({ onNavigate, onLogout }) {
           {/* Profile Dropdown */}
           <div className="relative">
             <button onClick={(e) => { e.stopPropagation(); setShowProfileMenu(!showProfileMenu); setShowNotifications(false); }}
-              className="flex items-center gap-1.5 cursor-pointer p-1 rounded-full hover:bg-slate-50">
-              <div className="w-8 h-8 rounded-full bg-sky-500 text-white flex items-center justify-center text-[11px] font-extrabold shadow-sm">
+              className="flex items-center gap-1.5 cursor-pointer p-1 rounded-lg hover:bg-muted/60 transition-colors">
+              <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">
                 {userInitials(user?.name || '')}
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-500 hidden sm:block" />
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground hidden sm:block" />
             </button>
             {showProfileMenu && (
-              <div onClick={e => e.stopPropagation()} className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-2xl p-3 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="px-3 py-2.5 border-b border-slate-100 mb-1.5">
-                  <span className="block text-xs font-extrabold text-slate-900 truncate">{user?.name || 'Logistics Partner'}</span>
-                  <span className="block text-[10px] text-slate-400 truncate mt-0.5">{user?.email || ''}</span>
+              <div onClick={e => e.stopPropagation()} className="absolute right-0 mt-2 w-52 bg-popover border border-border rounded-xl p-2 shadow-xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 text-popover-foreground">
+                <div className="px-3 py-2 border-b border-border mb-1">
+                  <span className="block text-xs font-semibold text-foreground truncate">{user?.name || 'Logistics Partner'}</span>
+                  <span className="block text-[10px] text-muted-foreground truncate mt-0.5">{user?.email || ''}</span>
                 </div>
                 <button onClick={() => { setActiveView('profile'); setShowProfileMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 text-xxs font-bold text-slate-600 cursor-pointer transition-colors">
-                  <UserIcon className="w-4 h-4 text-slate-400" /> Logistics Profile
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted text-xs font-medium text-foreground cursor-pointer transition-colors">
+                  <UserIcon className="w-3.5 h-3.5 text-muted-foreground" /> Logistics Profile
                 </button>
                 <button onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-red-50 text-xxs font-bold text-red-500 cursor-pointer transition-colors mt-1 border-t border-slate-100 pt-2">
-                  <LogOut className="w-4 h-4 text-red-400" /> Logout
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-destructive/10 text-xs font-medium text-destructive cursor-pointer transition-colors mt-1 border-t border-border pt-2">
+                  <LogOut className="w-3.5 h-3.5" /> Logout
                 </button>
               </div>
             )}
@@ -283,12 +283,12 @@ export default function Logistics({ onNavigate, onLogout }) {
       </nav>
 
       {/* ── MAIN CONTENT ── */}
-      <main className="flex-grow pt-24 pb-12 px-6 max-w-7xl mx-auto w-full">
+      <main className="flex-grow pt-24 pb-12 px-4 sm:px-6 max-w-7xl mx-auto w-full">
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-sky-500/30 border-t-sky-500 rounded-full animate-spin"></div>
-              <span className="text-xs font-bold text-slate-400">Loading logistics data...</span>
+              <div className="w-7 h-7 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+              <span className="text-xs text-muted-foreground">Loading logistics data...</span>
             </div>
           </div>
         ) : (
@@ -329,3 +329,4 @@ export default function Logistics({ onNavigate, onLogout }) {
     </div>
   );
 }
+

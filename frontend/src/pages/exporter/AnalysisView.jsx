@@ -1104,37 +1104,37 @@ export default function AnalysisView({
             {analysisSubView === 'select' && (
               <div className="max-w-xl mx-auto py-8">
                 {isAnalyzing ? (
-                  <div className="bg-white border border-slate-200/85 rounded-2xl p-12 text-center shadow-lg flex flex-col items-center justify-center min-h-[350px] animate-in fade-in duration-300">
-                    <div className="w-16 h-16 rounded-full bg-sky-50 flex items-center justify-center mb-6">
-                      <Loader2 className="w-8 h-8 text-sky-500 animate-spin" />
+                  <div className="bg-card border border-border rounded-2xl p-12 text-center shadow-sm flex flex-col items-center justify-center min-h-[350px] animate-in fade-in duration-300">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
                     </div>
-                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Running Market Analysis</h3>
-                    <p className="text-xxs text-slate-450 mt-2 max-w-xs leading-relaxed">
+                    <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Running Market Analysis</h3>
+                    <p className="text-xs text-muted-foreground mt-2 max-w-xs leading-relaxed">
                       Evaluating tariff indices, phytosanitary requirements, shipping freight costs, and country credit risks for <strong>{selectedAnalysisProduct}</strong>...
                     </p>
                   </div>
                 ) : (
-                  <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in duration-300">
-                    <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                      <div className="p-3 rounded-xl bg-sky-50 text-sky-500">
+                  <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in duration-300">
+                    <div className="flex items-center gap-3 border-b border-border pb-4">
+                      <div className="p-3 rounded-xl bg-primary/10 text-primary">
                         <Globe className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Select Product to Analyze</h3>
-                        <p className="text-[10px] text-slate-400 font-medium">Access compliance complexity ratings and landed cost estimates</p>
+                        <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Select Product to Analyze</h3>
+                        <p className="text-xs text-muted-foreground font-normal">Access compliance complexity ratings and landed cost estimates</p>
                       </div>
                     </div>
 
                     <div className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Choose Catalog Product</label>
+                        <label className="text-xs font-medium text-foreground block">Choose Catalog Product</label>
                         <select 
                           value={selectedAnalysisProduct}
                           onChange={(e) => {
                             setSelectedAnalysisProduct(e.target.value);
                             setAnalyzedProduct(null);
                           }}
-                          className="w-full px-4 py-3 border border-slate-200 bg-white rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500 cursor-pointer"
+                          className="input-claude cursor-pointer"
                         >
                           {products.length === 0 ? (
                             <option value="">No products in catalog - add one first</option>
@@ -1151,7 +1151,7 @@ export default function AnalysisView({
 
                       <button
                         onClick={handleStartAnalysis}
-                        className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 font-bold text-xs text-white bg-sky-500 hover:bg-sky-400 shadow-md shadow-sky-500/10 rounded-xl transition-all cursor-pointer"
+                        className="btn-primary w-full py-3 text-xs font-semibold cursor-pointer"
                       >
                         <span>Start Market Analysis</span>
                         <ArrowRight className="w-4 h-4" />
@@ -1160,37 +1160,37 @@ export default function AnalysisView({
                       <button
                         onClick={handleFetchCountryRankings}
                         disabled={rankingsLoading}
-                        className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 font-bold text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                        className="btn-outline w-full py-3 text-xs font-semibold cursor-pointer disabled:opacity-50"
                       >
                         {rankingsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                         <span>{rankingsLoading ? 'Ranking countries...' : 'Country Ranking'}</span>
                       </button>
 
                       {countryRankings.length > 0 && (
-                        <div className="border border-indigo-100 rounded-xl overflow-hidden mt-2">
-                          <div className="bg-indigo-50 px-4 py-2 text-[10px] font-black text-indigo-700 uppercase tracking-widest">Country Rankings</div>
-                          <div className="divide-y divide-slate-100">
+                        <div className="border border-border rounded-xl overflow-hidden mt-2">
+                          <div className="bg-muted px-4 py-2 text-[10px] font-bold text-foreground uppercase tracking-wider">Country Rankings</div>
+                          <div className="divide-y divide-border">
                             {countryRankings.slice(0, 5).map((r, i) => (
                               <div key={r.country_code} className="flex items-center justify-between px-4 py-2.5">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-black text-slate-400">#{r.rank}</span>
-                                  <span className="text-xs font-bold text-slate-800">{r.country_name || r.country_code}</span>
-                                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold inline-flex items-center gap-1 ${
-                                    r.reliability_tier === 'High' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' :
-                                    r.reliability_tier === 'Moderate' ? 'bg-amber-50 text-amber-700 border border-amber-200/60' :
-                                    'bg-rose-50 text-rose-700 border border-rose-200/60'
+                                  <span className="text-xs font-bold text-muted-foreground">#{r.rank}</span>
+                                  <span className="text-xs font-semibold text-foreground">{r.country_name || r.country_code}</span>
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ${
+                                    r.reliability_tier === 'High' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                                    r.reliability_tier === 'Moderate' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
+                                    'bg-destructive/10 text-destructive border border-destructive/20'
                                   }`}>
                                     <span className={`w-1.5 h-1.5 rounded-full ${
                                       r.reliability_tier === 'High' ? 'bg-emerald-500' :
                                       r.reliability_tier === 'Moderate' ? 'bg-amber-500' :
-                                      'bg-rose-500'
+                                      'bg-destructive'
                                     }`}></span>
                                     {r.reliability_tier}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs font-extrabold text-sky-600">{r.xgb_predicted_score?.toFixed(1)}</span>
-                                  <button onClick={() => handleExplainCountry(r.country_code, r.country_name || r.country_code)} className="text-[10px] px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-lg cursor-pointer">Explain</button>
+                                  <span className="text-xs font-bold text-primary">{r.xgb_predicted_score?.toFixed(1)}</span>
+                                  <button onClick={() => handleExplainCountry(r.country_code, r.country_name || r.country_code)} className="btn-ghost text-xs px-2 py-1 text-primary font-medium cursor-pointer">Explain</button>
                                 </div>
                               </div>
                             ))}
@@ -1206,90 +1206,98 @@ export default function AnalysisView({
             {/* SUB-VIEW: RECOMMENDATIONS TABLE */}
             {analysisSubView === 'recommendations' && (
               <div className="space-y-5 animate-in fade-in duration-300">
-                <div className="bg-sky-50/50 border border-sky-100 rounded-2xl p-4 flex items-center justify-between text-xs font-bold text-sky-700">
+                <div className="bg-accent/60 border border-border rounded-2xl p-4 flex items-center justify-between text-xs font-medium text-foreground">
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                     <span>Export suggestions matching <strong>{selectedAnalysisProduct}</strong> parameters:</span>
                   </div>
-                  <span className="bg-sky-100 text-sky-800 px-2.5 py-0.5 rounded-full text-[10px]">
+                  <span className="bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">
                     {countryRankings.filter(c => c.reliability_tier === 'High').length || 3} Target Markets
                   </span>
                 </div>
 
-                <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+                <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                   {rankingsLoading ? (
-                    <div className="p-12 flex flex-col items-center gap-3"><Loader2 className="w-6 h-6 text-sky-500 animate-spin"/><span className="text-xs font-bold text-slate-500">Ranking countries...</span></div>
+                    <div className="p-12 flex flex-col items-center gap-3"><Loader2 className="w-6 h-6 text-primary animate-spin"/><span className="text-xs font-semibold text-muted-foreground">Ranking countries...</span></div>
                   ) : countryRankings.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-black text-slate-450 uppercase tracking-widest">
-                          <th className="py-4 px-5">#</th>
-                          <th className="py-4 px-5">Country</th>
-                          <th className="py-4 px-5">Score</th>
-                          <th className="py-4 px-5">Reliability</th>
-                          <th className="py-4 px-5 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                        {countryRankings.slice(0, 10).map((r, idx) => (
-                          <React.Fragment key={`${r.country_name}-${idx}`}>
-                          <tr className="hover:bg-slate-50/40 transition-colors">
-                            <td className="py-4 px-5 text-slate-400 font-black">#{r.rank}</td>
-                            <td className="py-4 px-5">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-black text-slate-500">{r.country_code}</span>
-                                <span className="font-bold text-slate-800">{r.country_name || r.country_code}</span>
-                              </div>
-                            </td>
-                            <td className="py-4 px-5">
-                              <span className="text-sky-655 font-extrabold text-sm">{r.xgb_predicted_score?.toFixed(1)}</span>
-                            </td>
-                            <td className="py-4 px-5">
-                              <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                                r.reliability_tier === 'High'
-                                  ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/80 shadow-xs'
-                                  : r.reliability_tier === 'Moderate'
-                                  ? 'text-amber-700 bg-amber-50 border border-amber-200/80 shadow-xs'
-                                  : 'text-rose-700 bg-rose-50 border border-rose-200/80 shadow-xs'
-                              }`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${
-                                  r.reliability_tier === 'High' ? 'bg-emerald-500 animate-pulse' :
-                                  r.reliability_tier === 'Moderate' ? 'bg-amber-500' :
-                                  'bg-rose-500'
-                                }`}></span>
-                                {r.reliability_tier || 'N/A'}
-                              </span>
-                            </td>
-                            <td className="py-4 px-5 text-right">
-                              <button
-                                onClick={() => { setSelectedCountry(r.country_name || r.country_code); setAnalysisSubView('country-overview'); setComplianceCheckData(null); setRegulationsData(null); setGuidanceData(null); setCalculationResult(null); setCompletedChecklist({}); setCountryRecoData(null); fetchCountryRecommendation(r.country_name || r.country_code); }}
-                                className="px-3.5 py-1.5 text-[10px] font-bold text-white bg-sky-500 hover:bg-sky-400 rounded-lg shadow transition-all cursor-pointer"
-                              >
-                                View Details
-                              </button>
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-border bg-muted/40 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                            <th className="py-3 px-4">#</th>
+                            <th className="py-3 px-4">Country</th>
+                            <th className="py-3 px-4">Score</th>
+                            <th className="py-3 px-4">Reliability</th>
+                            <th className="py-3 px-4 text-right">Actions</th>
                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border text-xs font-medium text-foreground">
+                          {countryRankings.slice(0, 10).map((r, idx) => (
+                            <React.Fragment key={`${r.country_name}-${idx}`}>
+                              <tr className="hover:bg-accent/40 transition-colors">
+                                <td className="py-3 px-4 text-muted-foreground font-bold">#{r.rank}</td>
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-muted-foreground">{r.country_code}</span>
+                                    <span className="font-semibold text-foreground">{r.country_name || r.country_code}</span>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className="text-primary font-bold text-sm">{r.xgb_predicted_score?.toFixed(1)}</span>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-1 rounded-full ${
+                                    r.reliability_tier === 'High'
+                                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                      : r.reliability_tier === 'Moderate'
+                                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                        : 'bg-destructive/10 text-destructive border border-destructive/20'
+                                  }`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${
+                                      r.reliability_tier === 'High' ? 'bg-emerald-500' :
+                                      r.reliability_tier === 'Moderate' ? 'bg-amber-500' :
+                                      'bg-destructive'
+                                    }`}></span>
+                                    {r.reliability_tier}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      onClick={() => handleExplainCountry(r.country_code, r.country_name || r.country_code)}
+                                      className="btn-ghost text-xs px-2.5 py-1 text-primary font-medium cursor-pointer"
+                                    >
+                                      Explain
+                                    </button>
+                                    <button
+                                      onClick={() => handleSelectCountryForDetail(r.country_name || r.country_code)}
+                                      className="btn-primary text-xs px-3 py-1 cursor-pointer"
+                                    >
+                                      Details
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
                           {/* Factor breakdown — shows why this country ranks here */}
                           {r.market_demand != null && (
-                            <tr className="bg-slate-50/40">
+                            <tr className="bg-muted/30">
                               <td></td>
-                              <td colSpan={4} className="px-5 pb-3 pt-0">
+                              <td colSpan={4} className="px-4 pb-3 pt-0">
                                 <div className="flex flex-wrap gap-1.5 items-center">
                                   {[['Demand', r.market_demand], ['Compliance', r.compliance_score],
                                     ['Tariff', r.tariff_score], ['Landed Cost', r.landed_cost_score],
                                     ['FTA', r.agreement_score], ['Competition', r.competition_score],
                                     ['Risk', r.risk_score]].map(([lbl, v]) => v != null && (
-                                    <span key={lbl} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-600">
+                                    <span key={lbl} className="text-[10px] font-medium px-2 py-0.5 rounded bg-card border border-border text-foreground">
                                       {lbl} {Math.round(v)}
                                     </span>
                                   ))}
-                                  {r.duty_rate != null && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 border border-amber-100 text-amber-700">Duty {r.duty_rate}%</span>}
-                                  {r.tax_rate != null && r.tax_rate > 0 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 border border-amber-100 text-amber-700">{r.tax_label} {r.tax_rate}%</span>}
-                                  {r.lead_time_days != null && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-sky-50 border border-sky-100 text-sky-700">{r.lead_time_days}d lead</span>}
-                                  {r.landed_cost_per_unit != null && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-indigo-700">INR {r.landed_cost_per_unit}/unit</span>}
+                                  {r.duty_rate != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">Duty {r.duty_rate}%</span>}
+                                  {r.tax_rate != null && r.tax_rate > 0 && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">{r.tax_label} {r.tax_rate}%</span>}
+                                  {r.lead_time_days != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">{r.lead_time_days}d lead</span>}
+                                  {r.landed_cost_per_unit != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">INR {r.landed_cost_per_unit}/unit</span>}
                                 </div>
-                                {r.reason && <p className="text-[10px] text-slate-500 leading-snug mt-1.5">{r.reason}</p>}
+                                {r.reason && <p className="text-xs text-muted-foreground leading-relaxed mt-1.5">{r.reason}</p>}
                               </td>
                             </tr>
                           )}
@@ -1300,7 +1308,7 @@ export default function AnalysisView({
                   </div>
                   ) : (
                     <div className="p-8 text-center">
-                      <p className="text-xs text-slate-500">No rankings yet. Click "Start Market Analysis" on the product selection page to generate recommendations.</p>
+                      <p className="text-xs text-muted-foreground">No rankings yet. Click "Start Market Analysis" on the product selection page to generate recommendations.</p>
                     </div>
                   )}
                 </div>
@@ -1311,99 +1319,99 @@ export default function AnalysisView({
             {analysisSubView === 'country-overview' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 {/* Header overview banner */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-black text-slate-600">
+                    <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-lg font-bold text-foreground">
                       {countries.find(c => c.name === selectedCountry)?.code || selectedCountry.slice(0,2).toUpperCase()}
                     </div>
                     <div>
-                      <h2 className="text-xl font-black text-slate-900 tracking-tight">{selectedCountry} Market Summary</h2>
-                      <p className="text-xxs text-slate-400 font-bold uppercase tracking-wider mt-0.5">Route evaluation for {selectedAnalysisProduct}</p>
+                      <h2 className="text-xl font-bold text-foreground tracking-tight">{selectedCountry} Market Summary</h2>
+                      <p className="text-xs text-muted-foreground font-medium mt-0.5">Route evaluation for {selectedAnalysisProduct}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xxs font-black tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 uppercase">* Recommended</span>
-                    <span className="text-[9px] text-slate-400">Updated: {new Date().toLocaleDateString()}</span>
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">Recommended</span>
+                    <span className="text-[10px] text-muted-foreground">Updated: {new Date().toLocaleDateString()}</span>
                   </div>
                 </div>
 
                 {/* AI Recommendation Summary - Enhanced Metrics */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-white border border-slate-200/80 p-4.5 rounded-2xl shadow-sm text-center space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Score</span>
-                    <span className="text-xl font-black text-sky-650 block">{(countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 90)}/100</span>
-                    <span className="text-[9px] text-sky-500 font-bold block">Source: {countryRecoData?.scoreSource === 'ML_MODEL_V4' ? 'ML Model v4' : countryRecoData?.scoreSource === 'KNOWLEDGE_ENGINE' ? 'Knowledge Engine' : countryRecoData?.scoreSource || 'Verified Tariff'}</span>
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Score</span>
+                    <span className="text-2xl font-bold text-primary block">{(countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 90)}/100</span>
+                    <span className="text-[10px] text-muted-foreground font-medium block">Source: {countryRecoData?.scoreSource === 'ML_MODEL_V4' ? 'ML Model v4' : countryRecoData?.scoreSource === 'KNOWLEDGE_ENGINE' ? 'Knowledge Engine' : countryRecoData?.scoreSource || 'Verified Tariff'}</span>
                   </div>
-                  <div className="bg-white border border-slate-200/80 p-4.5 rounded-2xl shadow-sm text-center space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Market Demand</span>
-                    <span className="text-xl font-black text-emerald-600 block">{((countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 90) >= 80 ? 'HIGH' : (countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 90) >= 50 ? 'MEDIUM' : 'LOW')}</span>
-                    <span className="text-[9px] text-emerald-500 font-bold block">Complexity: {countryRecoData?.complexity || countryRecoData?.compliance?.complexityLevel || 'Low'}</span>
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Market Demand</span>
+                    <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 block">{((countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 90) >= 80 ? 'HIGH' : (countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 90) >= 50 ? 'MEDIUM' : 'LOW')}</span>
+                    <span className="text-[10px] text-muted-foreground font-medium block">Complexity: {countryRecoData?.complexity || countryRecoData?.compliance?.complexityLevel || 'Low'}</span>
                   </div>
-                  <div className="bg-white border border-slate-200/80 p-4.5 rounded-2xl shadow-sm text-center space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Duty Rate</span>
-                    <span className="text-xl font-black text-slate-800 block">{(countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate) != null ? `${countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate}%` : '0%'}</span>
-                    <span className="text-[9px] text-slate-400 font-bold block">{(countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate) != null ? `+ ${countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate}% VAT` : '+ 15% VAT'}</span>
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Duty Rate</span>
+                    <span className="text-2xl font-bold text-foreground block">{(countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate) != null ? `${countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate}%` : '0%'}</span>
+                    <span className="text-[10px] text-muted-foreground font-medium block">{(countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate) != null ? `+ ${countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate}% VAT` : '+ 15% VAT'}</span>
                   </div>
-                  <div className="bg-white border border-slate-200/80 p-4.5 rounded-2xl shadow-sm text-center space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Compliance Index</span>
-                    <span className="text-xl font-black text-amber-600 block">{(countryRecoData?.compliance?.score ?? countryRecoData?.complianceScore ?? 90)}/100</span>
-                    <span className="text-[9px] text-amber-500 font-bold block">{(countryRecoData?.documentsRequired || countryRecoData?.compliance?.documentsCount || countryRecoData?.documents?.length || 9)} docs, {(countryRecoData?.certificationsRequired || countryRecoData?.compliance?.certificationsCount || countryRecoData?.certifications?.length || 3)} certs</span>
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Compliance Index</span>
+                    <span className="text-2xl font-bold text-amber-600 dark:text-amber-400 block">{(countryRecoData?.compliance?.score ?? countryRecoData?.complianceScore ?? 90)}/100</span>
+                    <span className="text-[10px] text-muted-foreground font-medium block">{(countryRecoData?.documentsRequired || countryRecoData?.compliance?.documentsCount || countryRecoData?.documents?.length || 9)} docs, {(countryRecoData?.certificationsRequired || countryRecoData?.compliance?.certificationsCount || countryRecoData?.certifications?.length || 3)} certs</span>
                   </div>
                 </div>
 
                 {/* Extended Metrics Row */}
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                  <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-center">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Export Difficulty</span>
-                    <span className="text-xs font-black text-slate-800 mt-0.5 block">{countryRecoData?.compliance?.complexityLevel || countryRecoData?.complexity || 'Low'}</span>
+                  <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase block">Export Difficulty</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5 block">{countryRecoData?.compliance?.complexityLevel || countryRecoData?.complexity || 'Low'}</span>
                   </div>
-                  <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-center">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Documents</span>
-                    <span className="text-xs font-black text-slate-800 mt-0.5 block">{(countryRecoData?.compliance?.documentsCount ?? countryRecoData?.documentsRequired ?? countryRecoData?.documents?.length ?? 9)}</span>
+                  <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase block">Documents</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.documentsCount ?? countryRecoData?.documentsRequired ?? countryRecoData?.documents?.length ?? 9)}</span>
                   </div>
-                  <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-center">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Certificates</span>
-                    <span className="text-xs font-black text-slate-800 mt-0.5 block">{(countryRecoData?.compliance?.certificationsCount ?? countryRecoData?.certificationsRequired ?? countryRecoData?.certifications?.length ?? 3)}</span>
+                  <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase block">Certificates</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.certificationsCount ?? countryRecoData?.certificationsRequired ?? countryRecoData?.certifications?.length ?? 3)}</span>
                   </div>
-                  <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-center">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Restrictions</span>
-                    <span className="text-xs font-black text-slate-800 mt-0.5 block">{(countryRecoData?.compliance?.restrictionsCount ?? countryRecoData?.restrictionsCount ?? countryRecoData?.restrictions?.length ?? 0)}</span>
+                  <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase block">Restrictions</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.restrictionsCount ?? countryRecoData?.restrictionsCount ?? countryRecoData?.restrictions?.length ?? 0)}</span>
                   </div>
-                  <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-center">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Country Risk</span>
-                    <span className="text-xs font-black text-slate-800 mt-0.5 block">{(countryRecoData?.compliance?.score || countryRecoData?.opportunityScore || 90) >= 80 ? 'Low' : (countryRecoData?.compliance?.score || countryRecoData?.opportunityScore || 90) >= 50 ? 'Medium' : 'High'}</span>
+                  <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase block">Country Risk</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.score || countryRecoData?.opportunityScore || 90) >= 80 ? 'Low' : (countryRecoData?.compliance?.score || countryRecoData?.opportunityScore || 90) >= 50 ? 'Medium' : 'High'}</span>
                   </div>
                 </div>
 
                 {/* AI Summary Box */}
                 {countryRecoData && (
-                  <div className="bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-100 rounded-2xl p-4">
+                  <div className="bg-accent/60 border border-border rounded-2xl p-5">
                     <div className="flex items-start gap-3">
-                      <span className="text-lg text-sky-500 font-black">✦</span>
+                      <span className="text-lg text-primary font-bold">✦</span>
                       <div>
-                        <span className="text-[10px] font-black text-sky-700 uppercase tracking-widest block mb-1">Recommendation Summary{countryRecoData?.verdict ? `: ${countryRecoData.verdict}` : ': RECOMMENDED'}</span>
-                        <p className="text-xs text-slate-700 leading-relaxed">{countryRecoData?.summary || `${selectedCountry} assessment for ${selectedAnalysisProduct}.`}</p>
+                        <span className="text-xs font-bold text-primary uppercase tracking-wider block mb-1">Recommendation Summary{countryRecoData?.verdict ? `: ${countryRecoData.verdict}` : ': RECOMMENDED'}</span>
+                        <p className="text-xs text-foreground leading-relaxed">{countryRecoData?.summary || `${selectedCountry} assessment for ${selectedAnalysisProduct}.`}</p>
                         {countryRecoData?.reasons?.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">{selectedCountry} is recommended because:</span>
+                          <div className="mt-2.5 space-y-1">
+                            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider block">{selectedCountry} is recommended because:</span>
                             {countryRecoData.reasons.map((rsn, i) => (
-                              <div key={i} className="flex gap-1.5 items-start"><span className="text-sky-500 shrink-0 text-[10px] leading-4">✓</span><span className="text-[10px] text-slate-600 leading-4">{rsn}</span></div>
+                              <div key={i} className="flex gap-1.5 items-start"><span className="text-primary shrink-0 text-xs">✓</span><span className="text-xs text-foreground/90 leading-relaxed">{rsn}</span></div>
                             ))}
                           </div>
                         )}
-                        <div className="flex items-center gap-3 mt-2 text-[9px] text-slate-400 flex-wrap">
-                          <span className="font-bold text-slate-500">Sources:</span>
+                        <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground flex-wrap">
+                          <span className="font-semibold text-foreground">Sources:</span>
                           {((countryRecoData?.sources && countryRecoData.sources.length > 0) ? countryRecoData.sources : [
                             { source: `${selectedCountry} Customs Authority (ZATCA)`, url: 'https://zatca.gov.sa' },
                             { source: 'Saudi Food and Drug Authority (SFDA)', url: 'https://sfda.gov.sa' },
                             { source: 'DGFT India / APEDA', url: 'https://apeda.gov.in' }
                           ]).map((s, i) => (
                             typeof s === 'string' ? (
-                              <span key={i} className="text-slate-600 font-medium">{s}</span>
+                              <span key={i} className="text-muted-foreground font-medium">{s}</span>
                             ) : s.url ? (
-                              <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="underline text-sky-600 hover:text-sky-700 cursor-pointer font-semibold">{s.source}</a>
+                              <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="underline text-primary hover:opacity-80 cursor-pointer font-medium">{s.source}</a>
                             ) : (
-                              <span key={i} className="text-slate-600 font-medium">{s.source}</span>
+                              <span key={i} className="text-muted-foreground font-medium">{s.source}</span>
                             )
                           ))}
                           <span>•</span>
@@ -1417,24 +1425,24 @@ export default function AnalysisView({
                 {/* Card navigation buttons (Workflow action cards) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Action 1: Compliance */}
-                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm hover:shadow transition-all space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
-                      <span className="text-xs font-black text-slate-850 uppercase tracking-wider block">Compliance Report</span>
-                      <p className="text-[10px] text-slate-400 font-medium">Verify customs documents, certifications status, labeling rules, and index parameters.</p>
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Compliance Report</span>
+                      <p className="text-xs text-muted-foreground font-normal">Verify customs documents, certifications status, labeling rules, and index parameters.</p>
                     </div>
                     <button
                       onClick={() => setAnalysisSubView('compliance')}
-                      className="w-full py-2.5 text-xs font-bold text-sky-655 bg-sky-50 hover:bg-sky-100 rounded-xl transition-all cursor-pointer text-center"
+                      className="btn-outline w-full py-2.5 text-xs font-semibold cursor-pointer text-center"
                     >
                       View Compliance Report
                     </button>
                   </div>
 
                   {/* Action 2: Cost Estimation */}
-                  <div className="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm hover:shadow transition-all space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
-                      <span className="text-xs font-black text-slate-850 uppercase tracking-wider block">Cost & Profit Estimation</span>
-                      <p className="text-[10px] text-slate-400 font-medium">Calculate product cost, transport freight, insurance, taxes, and net landed cost margins.</p>
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Cost & Profit Estimation</span>
+                      <p className="text-xs text-muted-foreground font-normal">Calculate product cost, transport freight, insurance, taxes, and net landed cost margins.</p>
                     </div>
                     <button
                       onClick={() => {
@@ -1442,52 +1450,56 @@ export default function AnalysisView({
                         setCostShippingMode('Sea');
                         setAnalysisSubView('cost');
                       }}
-                      className="w-full py-2.5 text-xs font-bold text-sky-655 bg-sky-50 hover:bg-sky-100 rounded-xl transition-all cursor-pointer text-center"
+                      className="btn-outline w-full py-2.5 text-xs font-semibold cursor-pointer text-center"
                     >
                       View Cost Estimation
                     </button>
                   </div>
 
-
                   {/* Action 4: Create Order */}
-                  <div className="bg-gradient-to-br from-sky-500/5 to-indigo-500/5 border border-indigo-100 p-5 rounded-2xl shadow-sm hover:shadow transition-all space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
-                      <span className="text-xs font-black text-slate-850 uppercase tracking-wider block">Commit & Export</span>
-                      <p className="text-[10px] text-slate-400 font-medium">Create a provisional Indian SME export order and lock this trade route in your tracking log.</p>
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Commit & Export</span>
+                      <p className="text-xs text-muted-foreground font-normal">Create a provisional Indian SME export order and lock this trade route in your tracking log.</p>
                     </div>
                     <button
                       onClick={handleOpenCommitExport}
-                      className="w-full py-2.5 text-xs font-bold text-white bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 rounded-xl shadow-md transition-all cursor-pointer text-center"
+                      className="btn-primary w-full py-2.5 text-xs font-semibold cursor-pointer text-center"
                     >
                       Create Export Order
                     </button>
                   </div>
 
                   {/* Action 5: Explain Recommendation */}
-                  <div className="bg-white border border-indigo-100 p-5 rounded-2xl shadow-sm hover:shadow transition-all space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
-                      <span className="text-xs font-black text-slate-850 uppercase tracking-wider block">Explain Recommendation</span>
-                      <p className="text-[10px] text-slate-400 font-medium">Why {selectedCountry} is recommended, required certificates, restrictions, labeling rules.</p>
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Explain Recommendation</span>
+                      <p className="text-xs text-muted-foreground font-normal">Why {selectedCountry} is recommended, required certificates, restrictions, labeling rules.</p>
                     </div>
-                    <button onClick={() => { const found = countries.find(c => c.name === selectedCountry); handleExplainCountry(found?.code || selectedCountry.slice(0,2).toUpperCase(), selectedCountry); }} className="w-full py-2.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-all cursor-pointer text-center">Get Explanation</button>
+                    <button
+                      onClick={() => { const found = countries.find(c => c.name === selectedCountry); handleExplainCountry(found?.code || selectedCountry.slice(0,2).toUpperCase(), selectedCountry); }}
+                      className="btn-outline w-full py-2.5 text-xs font-semibold cursor-pointer text-center"
+                    >
+                      Explain Recommendation
+                    </button>
                   </div>
 
                   {/* Action 6: Regulations */}
-                  <div className="bg-white border border-purple-100 p-5 rounded-2xl shadow-sm hover:shadow transition-all space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
-                      <span className="text-xs font-black text-slate-850 uppercase tracking-wider block">Export Regulations</span>
-                      <p className="text-[10px] text-slate-400 font-medium">Structured import regulations, customs rules, labeling and packaging requirements for {selectedCountry}.</p>
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Export Regulations</span>
+                      <p className="text-xs text-muted-foreground font-normal">Structured import regulations, customs rules, labeling and packaging requirements for {selectedCountry}.</p>
                     </div>
-                    <button onClick={() => handleFetchRegulations(selectedCountry)} className="w-full py-2.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition-all cursor-pointer text-center">View Regulations</button>
+                    <button onClick={() => handleFetchRegulations(selectedCountry)} className="btn-outline w-full py-2.5 text-xs font-semibold cursor-pointer text-center">View Regulations</button>
                   </div>
 
                   {/* Action 7: Step-by-Step Guidance */}
-                  <div className="bg-white border border-emerald-100 p-5 rounded-2xl shadow-sm hover:shadow transition-all space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
-                      <span className="text-xs font-black text-slate-850 uppercase tracking-wider block">Step-by-Step Guide</span>
-                      <p className="text-[10px] text-slate-400 font-medium">Personalized export guide for {selectedAnalysisProduct} to {selectedCountry}: IEC, documents, customs, payment.</p>
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Step-by-Step Guide</span>
+                      <p className="text-xs text-muted-foreground font-normal">Personalized export guide for {selectedAnalysisProduct} to {selectedCountry}: IEC, documents, customs, payment.</p>
                     </div>
-                    <button onClick={handleFetchGuidance} className="w-full py-2.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all cursor-pointer text-center">Generate Guide</button>
+                    <button onClick={handleFetchGuidance} className="btn-outline w-full py-2.5 text-xs font-semibold cursor-pointer text-center">Generate Guide</button>
                   </div>
                 </div>
 
@@ -1988,90 +2000,90 @@ export default function AnalysisView({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!guidanceData && <button onClick={handleFetchGuidance} disabled={guidanceLoading} className="px-4 py-2 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-400 rounded-xl cursor-pointer disabled:opacity-50 flex items-center gap-1.5">{guidanceLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Generate Plan'}</button>}
-                      <span className="text-[9px] bg-slate-50 text-slate-500 font-bold px-2 py-0.5 rounded-full border border-slate-100">{new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
+                      {!guidanceData && <button onClick={handleFetchGuidance} disabled={guidanceLoading} className="btn-primary text-xs px-4 py-2 cursor-pointer disabled:opacity-50 flex items-center gap-1.5">{guidanceLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Generate Plan'}</button>}
+                      <span className="text-[10px] bg-muted text-muted-foreground font-semibold px-2.5 py-0.5 rounded-full border border-border">{new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
                     </div>
                   </div>
                 </div>
 
                 {guidanceLoading ? (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-16 flex flex-col items-center gap-4">
-                    <Loader2 className="w-9 h-9 text-emerald-500 animate-spin"/>
-                    <span className="text-xs font-bold text-slate-500">Generating export execution plan for {selectedAnalysisProduct} to {selectedCountry}...</span>
-                    <div className="w-56 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-400 rounded-full animate-pulse w-2/3"></div></div>
+                  <div className="bg-card border border-border rounded-2xl p-16 flex flex-col items-center gap-4">
+                    <Loader2 className="w-9 h-9 text-primary animate-spin"/>
+                    <span className="text-xs font-semibold text-muted-foreground">Generating export execution plan for {selectedAnalysisProduct} to {selectedCountry}...</span>
+                    <div className="w-56 h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary rounded-full animate-pulse w-2/3"></div></div>
                   </div>
                 ) : guidanceData ? (
                   <div className="space-y-5">
                     {/* Progress & Summary */}
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                      <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center space-y-1">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Total Steps</span>
-                        <span className="text-2xl font-black text-slate-800 block">{totalSteps}</span>
+                      <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-1">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Total Steps</span>
+                        <span className="text-2xl font-bold text-foreground block">{totalSteps}</span>
                       </div>
-                      <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center space-y-1">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Est. Timeline</span>
-                        <span className="text-lg font-black text-sky-600 block">{guidanceData.total_estimated_time || '--'}</span>
+                      <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-1">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Est. Timeline</span>
+                        <span className="text-lg font-bold text-primary block">{guidanceData.total_estimated_time || '--'}</span>
                       </div>
-                      <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center space-y-1">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Difficulty</span>
-                        <span className="text-lg font-black text-amber-600 block">{totalSteps > 6 ? 'Medium' : 'Low'}</span>
+                      <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-1">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Difficulty</span>
+                        <span className="text-lg font-bold text-amber-600 dark:text-amber-400 block">{totalSteps > 6 ? 'Medium' : 'Low'}</span>
                       </div>
-                      <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center space-y-1">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Success Rate</span>
-                        <span className="text-lg font-black text-emerald-600 block">{totalSteps <= 6 ? '95%' : '88%'}</span>
+                      <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-1">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Success Rate</span>
+                        <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 block">{totalSteps <= 6 ? '95%' : '88%'}</span>
                       </div>
                     </div>
 
                     {/* AI Summary */}
-                    <div className="bg-gradient-to-r from-emerald-50 to-sky-50 border border-emerald-100 rounded-2xl p-5">
+                    <div className="bg-accent/60 border border-border rounded-2xl p-5">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-white border border-emerald-100 flex items-center justify-center shrink-0"><Sparkles className="w-4 h-4 text-emerald-500"/></div>
+                        <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center shrink-0"><Sparkles className="w-4 h-4 text-primary"/></div>
                         <div>
-                          <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest block mb-1">Export Execution Summary</span>
-                          <p className="text-xs text-slate-700 leading-relaxed">Your export plan for <strong>{selectedAnalysisProduct}</strong> (HS {hsCode}) to <strong>{selectedCountry}</strong> consists of {totalSteps} steps with an estimated timeline of {guidanceData.total_estimated_time || 'standard duration'}. {totalSteps <= 5 ? 'This is a straightforward export process.' : 'Complete each step sequentially for best results.'} Start with document preparation and IEC verification.</p>
+                          <span className="text-xs font-bold text-primary uppercase tracking-wider block mb-1">Export Execution Summary</span>
+                          <p className="text-xs text-foreground leading-relaxed">Your export plan for <strong>{selectedAnalysisProduct}</strong> (HS {hsCode}) to <strong>{selectedCountry}</strong> consists of {totalSteps} steps with an estimated timeline of {guidanceData.total_estimated_time || 'standard duration'}. {totalSteps <= 5 ? 'This is a straightforward export process.' : 'Complete each step sequentially for best results.'} Start with document preparation and IEC verification.</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Steps Timeline */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
-                      <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2">Execution Steps</h3>
+                    <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+                      <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2">Execution Steps</h3>
                       <div className="relative pl-10 space-y-4">
-                        <div className="absolute left-[15px] top-4 bottom-4 w-0.5 bg-slate-100"></div>
+                        <div className="absolute left-[15px] top-4 bottom-4 w-0.5 bg-border"></div>
                         {guidanceData.steps?.map((step) => (
-                          <div key={step.step_number} className="relative bg-slate-50/50 border border-slate-100 rounded-xl p-4 space-y-2 hover:border-slate-200 transition-colors">
-                            <div className="absolute -left-10 top-4 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-black text-white shadow-sm">{step.step_number}</div>
+                          <div key={step.step_number} className="relative bg-muted/30 border border-border rounded-xl p-4 space-y-2 hover:border-border/80 transition-colors">
+                            <div className="absolute -left-10 top-4 w-7 h-7 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-primary-foreground shadow-xs">{step.step_number}</div>
                             <div className="flex items-start justify-between gap-2">
-                              <h4 className="text-xs font-black text-slate-900">{step.title}</h4>
+                              <h4 className="text-xs font-bold text-foreground">{step.title}</h4>
                               <div className="flex items-center gap-1.5 shrink-0">
-                                {step.estimated_time && <span className="text-[9px] bg-sky-50 text-sky-600 font-bold px-2 py-0.5 rounded">{step.estimated_time}</span>}
-                                <span className="text-[8px] bg-amber-50 text-amber-600 font-bold px-1.5 py-0.5 rounded">{step.step_number <= 2 ? 'High' : step.step_number <= 4 ? 'Medium' : 'Low'}</span>
+                                {step.estimated_time && <span className="text-[10px] bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded">{step.estimated_time}</span>}
+                                <span className="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold px-1.5 py-0.5 rounded">{step.step_number <= 2 ? 'High' : step.step_number <= 4 ? 'Medium' : 'Low'}</span>
                               </div>
                             </div>
-                            <p className="text-[11px] text-slate-500 leading-relaxed">{step.description}</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
                             {step.documents_needed?.length > 0 && (
                               <div className="flex flex-wrap gap-1.5 pt-1">
-                                {step.documents_needed.map((d, i) => <span key={i} className="text-[9px] bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full font-bold border border-sky-100">{d}</span>)}
+                                {step.documents_needed.map((d, i) => <span key={i} className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-medium border border-primary/20">{d}</span>)}
                               </div>
                             )}
-                            {step.tips && <p className="text-[10px] text-amber-600 font-medium pt-1">Tip: {step.tips}</p>}
-                            {step.government_portal && <a href={step.government_portal} target="_blank" rel="noopener noreferrer" className="text-[10px] text-sky-500 font-bold hover:underline inline-block pt-1">Open Portal</a>}
+                            {step.tips && <p className="text-xs text-amber-600 dark:text-amber-400 font-medium pt-1">Tip: {step.tips}</p>}
+                            {step.government_portal && <a href={step.government_portal} target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium hover:underline inline-block pt-1">Open Portal</a>}
                           </div>
                         ))}
                       </div>
                     </div>
 
                     {/* Pre-Shipment Checklist - Interactive */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                        <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Export Readiness Checklist</h3>
+                    <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+                      <div className="flex items-center justify-between border-b border-border pb-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Export Readiness Checklist</h3>
                         <div className="flex items-center gap-3">
-                          <span className="text-[9px] font-bold text-slate-400">{Object.values(completedChecklist).filter(Boolean).length} / {(guidanceData.steps || []).length} completed</span>
-                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${Object.values(completedChecklist).filter(Boolean).length === (guidanceData.steps || []).length ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{Math.round((Object.values(completedChecklist).filter(Boolean).length / Math.max(1, (guidanceData.steps || []).length)) * 100)}%</span>
+                          <span className="text-[10px] font-medium text-muted-foreground">{Object.values(completedChecklist).filter(Boolean).length} / {(guidanceData.steps || []).length} completed</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${Object.values(completedChecklist).filter(Boolean).length === (guidanceData.steps || []).length ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>{Math.round((Object.values(completedChecklist).filter(Boolean).length / Math.max(1, (guidanceData.steps || []).length)) * 100)}%</span>
                         </div>
                       </div>
                       {/* Progress Bar */}
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                         <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{width: `${Math.round((Object.values(completedChecklist).filter(Boolean).length / Math.max(1, (guidanceData.steps || []).length)) * 100)}%`}}></div>
                       </div>
                       {/* Checklist Items */}
@@ -2080,27 +2092,27 @@ export default function AnalysisView({
                           const isComplete = completedChecklist[step.step_number];
                           const prevComplete = step.step_number === 1 || completedChecklist[step.step_number - 1];
                           return (
-                          <div key={step.step_number} className={`p-3 rounded-xl border transition-all ${isComplete ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-100 hover:border-slate-200'}`}>
+                          <div key={step.step_number} className={`p-3 rounded-xl border transition-all ${isComplete ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border hover:border-border/80'}`}>
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => { if (prevComplete || isComplete) { setCompletedChecklist(prev => ({...prev, [step.step_number]: !prev[step.step_number]})); addToast(isComplete ? `Unmarked: ${step.title}` : `Completed: ${step.title}`, isComplete ? 'info' : 'success'); }}}
                                 disabled={!prevComplete && !isComplete}
-                                className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 cursor-pointer transition-all ${isComplete ? 'bg-emerald-500 border-emerald-500' : prevComplete ? 'border-slate-300 hover:border-emerald-400' : 'border-slate-200 opacity-40 cursor-not-allowed'}`}
+                                className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 cursor-pointer transition-all ${isComplete ? 'bg-emerald-500 border-emerald-500' : prevComplete ? 'border-border hover:border-emerald-500' : 'border-border opacity-40 cursor-not-allowed'}`}
                               >
                                 {isComplete && <Check className="w-3 h-3 text-white"/>}
                               </button>
                               <div className="flex-grow">
-                                <span className={`text-xs font-bold ${isComplete ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{step.title}</span>
-                                {!isComplete && step.estimated_time && <span className="text-[9px] text-slate-400 ml-2">{step.estimated_time}</span>}
+                                <span className={`text-xs font-semibold ${isComplete ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{step.title}</span>
+                                {!isComplete && step.estimated_time && <span className="text-[10px] text-muted-foreground ml-2">{step.estimated_time}</span>}
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
-                                {!isComplete && <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${step.step_number <= 2 ? 'bg-red-50 text-red-500' : step.step_number <= 4 ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>{step.step_number <= 2 ? 'High' : step.step_number <= 4 ? 'Medium' : 'Low'}</span>}
-                                {isComplete && <span className="text-[8px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-bold">Done</span>}
+                                {!isComplete && <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${step.step_number <= 2 ? 'bg-destructive/10 text-destructive' : step.step_number <= 4 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-muted text-muted-foreground'}`}>{step.step_number <= 2 ? 'High' : step.step_number <= 4 ? 'Medium' : 'Low'}</span>}
+                                {isComplete && <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-semibold">Done</span>}
                               </div>
                             </div>
                             {!isComplete && step.documents_needed?.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-2 ml-8">
-                                {step.documents_needed.map((d, i) => <span key={i} className="text-[8px] bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded font-bold">{d}</span>)}
+                                {step.documents_needed.map((d, i) => <span key={i} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">{d}</span>)}
                               </div>
                             )}
                           </div>
@@ -2109,42 +2121,41 @@ export default function AnalysisView({
                       </div>
                       {/* All Complete State */}
                       {Object.values(completedChecklist).filter(Boolean).length === (guidanceData.steps || []).length && (guidanceData.steps || []).length > 0 && (
-                        <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-center space-y-2">
-                          <span className="text-lg">-</span>
-                          <p className="text-xs font-bold text-emerald-700">Export Ready! All mandatory tasks completed.</p>
-                          <button onClick={() => { setAnalysisSubView('country-overview'); }} className="px-4 py-2 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-400 rounded-xl cursor-pointer">Proceed to Create Export Order</button>
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center space-y-2">
+                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Export Ready! All mandatory tasks completed.</p>
+                          <button onClick={() => { setAnalysisSubView('country-overview'); }} className="btn-primary px-4 py-2 text-xs font-semibold cursor-pointer">Proceed to Create Export Order</button>
                         </div>
                       )}
                       {/* Next Action */}
                       {Object.values(completedChecklist).filter(Boolean).length < (guidanceData.steps || []).length && (
-                        <div className="bg-sky-50 border border-sky-100 rounded-xl p-3 flex items-center justify-between">
+                        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between">
                           <div>
-                            <span className="text-[9px] font-bold text-sky-600 uppercase block">Next Action</span>
-                            <span className="text-xs font-bold text-slate-700">{(guidanceData.steps || []).find(s => !completedChecklist[s.step_number])?.title || '--'}</span>
+                            <span className="text-[10px] font-bold text-primary uppercase block">Next Action</span>
+                            <span className="text-xs font-semibold text-foreground">{(guidanceData.steps || []).find(s => !completedChecklist[s.step_number])?.title || '--'}</span>
                           </div>
-                          <span className="text-[9px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded font-bold">{(guidanceData.steps || []).find(s => !completedChecklist[s.step_number])?.estimated_time || '--'}</span>
+                          <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">{(guidanceData.steps || []).find(s => !completedChecklist[s.step_number])?.estimated_time || '--'}</span>
                         </div>
                       )}
                     </div>
 
                     {/* Important Notes */}
                     {guidanceData.important_notes?.length > 0 && (
-                      <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 space-y-2">
-                        <h4 className="text-[10px] font-black text-amber-700 uppercase tracking-wider">Important Warnings</h4>
-                        {guidanceData.important_notes.map((n, i) => <p key={i} className="text-xs text-amber-700">- {n}</p>)}
+                      <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 space-y-2">
+                        <h4 className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Important Warnings</h4>
+                        {guidanceData.important_notes.map((n, i) => <p key={i} className="text-xs text-foreground leading-relaxed">• {n}</p>)}
                       </div>
                     )}
 
                     {/* Disclaimer */}
-                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center">
-                      <p className="text-[10px] text-slate-500 font-medium">This execution plan is generated dynamically based on HS Code {hsCode} and destination {selectedCountry}. Verify all steps with relevant authorities.</p>
+                    <div className="bg-muted/40 border border-border rounded-xl p-3 text-center">
+                      <p className="text-xs text-muted-foreground font-normal">This execution plan is generated dynamically based on HS Code {hsCode} and destination {selectedCountry}. Verify all steps with relevant authorities.</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-white border border-slate-200/80 p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
-                    <MapPin className="w-10 h-10 text-slate-200 mb-3"/>
-                    <span className="text-sm font-bold text-slate-500">Click "Generate Plan" to create your export execution plan</span>
-                    <span className="text-[10px] text-slate-400 mt-1">Personalized step-by-step guide for {selectedAnalysisProduct} to {selectedCountry}</span>
+                  <div className="bg-card border border-border p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
+                    <MapPin className="w-10 h-10 text-muted-foreground/40 mb-3"/>
+                    <span className="text-sm font-semibold text-foreground">Click "Generate Plan" to create your export execution plan</span>
+                    <span className="text-xs text-muted-foreground mt-1">Personalized step-by-step guide for {selectedAnalysisProduct} to {selectedCountry}</span>
                   </div>
                 )}
               </div>
@@ -2158,11 +2169,9 @@ export default function AnalysisView({
               const countryCode = countries.find(c => c.name === selectedCountry)?.code || '--';
               const compData = complianceCheckData;
               const score = compData?.compliance_score || 0;
-              // All values below come from the backend compliance engine so that
-              // each country + product pair renders its own independent report.
               const readyPct = compData?.readiness_percent ?? score;
               const readiness = compData?.export_readiness || (readyPct >= 85 ? 'Ready' : readyPct >= 70 ? 'Minor Actions Required' : readyPct >= 55 ? 'Moderate Actions Required' : 'High Preparation Required');
-              const readinessColor = readyPct >= 85 ? 'text-emerald-600' : readyPct >= 70 ? 'text-sky-600' : readyPct >= 55 ? 'text-amber-600' : 'text-red-600';
+              const readinessColor = readyPct >= 85 ? 'text-emerald-600 dark:text-emerald-400' : readyPct >= 70 ? 'text-primary' : readyPct >= 55 ? 'text-amber-600 dark:text-amber-400' : 'text-destructive';
               const allItems = [...(compData?.required_certifications || []), ...(compData?.required_licenses || []), ...(compData?.required_inspections || [])];
               const docsCount = (compData?.required_licenses || []).length;
               const certsCount = (compData?.required_certifications || []).length;
@@ -2174,91 +2183,91 @@ export default function AnalysisView({
               const riskData = compData?.risk_analysis || {};
               const tl = compData?.timeline || {};
               const dutyData = compData?.duties || {};
-              const riskColor = (lvl) => lvl === 'Low' || lvl === 'Very Low' ? 'text-emerald-600' : lvl === 'Medium' ? 'text-amber-600' : lvl === 'High' ? 'text-red-600' : 'text-slate-500';
+              const riskColor = (lvl) => lvl === 'Low' || lvl === 'Very Low' ? 'text-emerald-600 dark:text-emerald-400' : lvl === 'Medium' ? 'text-amber-600 dark:text-amber-400' : lvl === 'High' ? 'text-destructive' : 'text-muted-foreground';
 
               return (
               <div className="space-y-5 animate-in fade-in duration-300">
                 {/* Header */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
+                <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-sm font-black text-emerald-600">{countryCode}</div>
+                      <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-sm font-bold text-primary">{countryCode}</div>
                       <div>
-                        <h2 className="text-lg font-black text-slate-900">Compliance Audit Report</h2>
+                        <h2 className="text-lg font-bold text-foreground">Compliance Audit Report</h2>
                         <div className="flex items-center gap-3 mt-0.5">
-                          <span className="text-[10px] font-bold text-slate-500">{selectedAnalysisProduct}</span>
-                          <span className="text-[10px] text-slate-300">|</span>
-                          <span className="text-[10px] font-bold text-slate-500">HS: {hsCode}</span>
-                          <span className="text-[10px] text-slate-300">|</span>
-                          <span className="text-[10px] font-bold text-slate-500">{selectedCountry}</span>
+                          <span className="text-xs font-semibold text-foreground">{selectedAnalysisProduct}</span>
+                          <span className="text-xs text-muted-foreground/40">|</span>
+                          <span className="text-xs text-muted-foreground">HS: {hsCode}</span>
+                          <span className="text-xs text-muted-foreground/40">|</span>
+                          <span className="text-xs text-muted-foreground">{selectedCountry}</span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!compData && <button onClick={handleFetchComplianceCheck} disabled={complianceCheckLoading} className="px-4 py-2 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-400 rounded-xl cursor-pointer disabled:opacity-50 flex items-center gap-1.5">{complianceCheckLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Run Compliance Audit'}</button>}
-                      <span className="text-[9px] bg-slate-50 text-slate-500 font-bold px-2 py-0.5 rounded-full border border-slate-100">Updated: {new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
+                      {!compData && <button onClick={handleFetchComplianceCheck} disabled={complianceCheckLoading} className="btn-primary text-xs px-4 py-2 cursor-pointer disabled:opacity-50 flex items-center gap-1.5">{complianceCheckLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Run Compliance Audit'}</button>}
+                      <span className="text-[10px] bg-muted text-muted-foreground font-semibold px-2.5 py-0.5 rounded-full border border-border">Updated: {new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
                     </div>
                   </div>
                 </div>
 
                 {complianceCheckLoading ? (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-16 flex flex-col items-center gap-4">
-                    <Loader2 className="w-9 h-9 text-emerald-500 animate-spin"/>
-                    <span className="text-xs font-bold text-slate-500">Running compliance audit for {selectedAnalysisProduct} ({hsCode})...</span>
-                    <div className="w-56 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-400 rounded-full animate-pulse w-2/3"></div></div>
+                  <div className="bg-card border border-border rounded-2xl p-16 flex flex-col items-center gap-4">
+                    <Loader2 className="w-9 h-9 text-primary animate-spin"/>
+                    <span className="text-xs font-semibold text-muted-foreground">Running compliance audit for {selectedAnalysisProduct} ({hsCode})...</span>
+                    <div className="w-56 h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary rounded-full animate-pulse w-2/3"></div></div>
                   </div>
                 ) : compData ? (
                   <div className="space-y-5">
                     {/* Export Readiness & Summary */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center space-y-2">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Export Readiness</span>
-                        <span className={`text-3xl font-black block ${readinessColor}`}>{readyPct}%</span>
-                        <span className={`text-[10px] font-bold ${readinessColor}`}>{readiness}</span>
-                        <span className="text-[9px] text-slate-400 block">Compliance score {score}/100</span>
+                      <div className="bg-card border border-border rounded-2xl p-5 text-center space-y-2">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Export Readiness</span>
+                        <span className={`text-3xl font-bold block ${readinessColor}`}>{readyPct}%</span>
+                        <span className={`text-xs font-semibold ${readinessColor}`}>{readiness}</span>
+                        <span className="text-[10px] text-muted-foreground block">Compliance score {score}/100</span>
                       </div>
-                      <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center space-y-2">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Complexity</span>
-                        <span className={`text-xl font-black block ${compData.overall_complexity === 'Low' ? 'text-emerald-600' : compData.overall_complexity === 'Medium' ? 'text-amber-600' : 'text-red-600'}`}>{compData.overall_complexity}</span>
-                        <span className="text-[10px] text-slate-400">{docsCount + certsCount + inspCount} total requirements</span>
-                        {compData.complexity_index !== undefined && <span className="text-[9px] text-slate-400 block">Difficulty index {compData.complexity_index}/100</span>}
+                      <div className="bg-card border border-border rounded-2xl p-5 text-center space-y-2">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Complexity</span>
+                        <span className={`text-xl font-bold block ${compData.overall_complexity === 'Low' ? 'text-emerald-600 dark:text-emerald-400' : compData.overall_complexity === 'Medium' ? 'text-amber-600 dark:text-amber-400' : 'text-destructive'}`}>{compData.overall_complexity}</span>
+                        <span className="text-xs text-muted-foreground">{docsCount + certsCount + inspCount} total requirements</span>
+                        {compData.complexity_index !== undefined && <span className="text-[10px] text-muted-foreground block">Difficulty index {compData.complexity_index}/100</span>}
                       </div>
-                      <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-2">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Summary</span>
+                      <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Summary</span>
                         <div className="grid grid-cols-3 gap-2 text-center">
-                          <div><span className="text-sm font-black text-sky-600 block">{docsCount}</span><span className="text-[8px] text-slate-400 uppercase">Docs</span></div>
-                          <div><span className="text-sm font-black text-indigo-600 block">{certsCount}</span><span className="text-[8px] text-slate-400 uppercase">Certs</span></div>
-                          <div><span className="text-sm font-black text-purple-600 block">{inspCount}</span><span className="text-[8px] text-slate-400 uppercase">Inspect</span></div>
+                          <div><span className="text-sm font-bold text-primary block">{docsCount}</span><span className="text-[9px] text-muted-foreground uppercase">Docs</span></div>
+                          <div><span className="text-sm font-bold text-primary block">{certsCount}</span><span className="text-[9px] text-muted-foreground uppercase">Certs</span></div>
+                          <div><span className="text-sm font-bold text-primary block">{inspCount}</span><span className="text-[9px] text-muted-foreground uppercase">Inspect</span></div>
                         </div>
                       </div>
                     </div>
 
                     {/* AI Summary */}
-                    <div className="bg-gradient-to-r from-emerald-50 to-sky-50 border border-emerald-100 rounded-2xl p-5">
+                    <div className="bg-accent/60 border border-border rounded-2xl p-5">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-white border border-emerald-100 flex items-center justify-center shrink-0"><Shield className="w-4 h-4 text-emerald-500"/></div>
+                        <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center shrink-0"><Shield className="w-4 h-4 text-primary"/></div>
                         <div>
-                          <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest block mb-1">Compliance Assessment</span>
-                          <p className="text-xs text-slate-700 leading-relaxed">{compData.recommendation || `${selectedAnalysisProduct} (HS ${hsCode}) to ${selectedCountry}. Compliance score: ${score}/100. Complexity: ${compData.overall_complexity}. ${allItems.filter(i => i.required).length} mandatory requirements identified.`}</p>
-                          <p className="text-[10px] text-slate-500 leading-relaxed mt-1.5">{docsCount} document(s), {certsCount} certification(s), {inspCount} inspection(s), {packCount} packaging rule(s) and {labelCount} labelling rule(s) apply for {selectedCountry}. Readiness: {readiness} ({readyPct}%).</p>
+                          <span className="text-xs font-bold text-primary uppercase tracking-wider block mb-1">Compliance Assessment</span>
+                          <p className="text-xs text-foreground leading-relaxed">{compData.recommendation || `${selectedAnalysisProduct} (HS ${hsCode}) to ${selectedCountry}. Compliance score: ${score}/100. Complexity: ${compData.overall_complexity}. ${allItems.filter(i => i.required).length} mandatory requirements identified.`}</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed mt-1.5">{docsCount} document(s), {certsCount} certification(s), {inspCount} inspection(s), {packCount} packaging rule(s) and {labelCount} labelling rule(s) apply for {selectedCountry}. Readiness: {readiness} ({readyPct}%).</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Required Documents & Licenses */}
                     {compData.required_licenses?.length > 0 && (
-                      <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-                        <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-sky-500"/>Required Documents</h3>
+                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-primary"/>Required Documents</h3>
                         <div className="space-y-2">{compData.required_licenses.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50/50">
-                            <span className={`text-xs ${item.required ? 'text-amber-500' : 'text-emerald-500'}`}>{item.required ? '!' : '+'}</span>
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
+                            <span className={`text-xs font-bold ${item.required ? 'text-amber-500' : 'text-emerald-500'}`}>{item.required ? '!' : '+'}</span>
                             <div className="flex-grow">
-                              <span className="text-xs font-bold text-slate-800 block">{item.name}</span>
-                              <span className="text-[10px] text-slate-400">{item.description}</span>
+                              <span className="text-xs font-semibold text-foreground block">{item.name}</span>
+                              <span className="text-[10px] text-muted-foreground">{item.description}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {item.issuing_authority && <span className="text-[9px] bg-slate-50 text-slate-500 px-2 py-0.5 rounded font-bold">{item.issuing_authority}</span>}
-                              <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${item.required ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-500'}`}>{item.required ? 'Mandatory' : 'Optional'}</span>
+                              {item.issuing_authority && <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded font-medium">{item.issuing_authority}</span>}
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${item.required ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>{item.required ? 'Mandatory' : 'Optional'}</span>
                             </div>
                           </div>
                         ))}</div>
@@ -2267,18 +2276,18 @@ export default function AnalysisView({
 
                     {/* Required Certifications */}
                     {compData.required_certifications?.length > 0 && (
-                      <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-                        <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-indigo-500"/>Required Certifications</h3>
+                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-primary"/>Required Certifications</h3>
                         <div className="space-y-2">{compData.required_certifications.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50/50">
-                            <span className="text-indigo-500 text-xs">*</span>
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
+                            <span className="text-primary text-xs font-bold">*</span>
                             <div className="flex-grow">
-                              <span className="text-xs font-bold text-slate-800 block">{item.name}</span>
-                              <span className="text-[10px] text-slate-400">{item.description}</span>
+                              <span className="text-xs font-semibold text-foreground block">{item.name}</span>
+                              <span className="text-[10px] text-muted-foreground">{item.description}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {item.estimated_days && <span className="text-[9px] bg-sky-50 text-sky-600 px-2 py-0.5 rounded font-bold">{item.estimated_days}</span>}
-                              {item.issuing_authority && <span className="text-[9px] bg-slate-50 text-slate-500 px-2 py-0.5 rounded font-bold">{item.issuing_authority}</span>}
+                              {item.estimated_days && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">{item.estimated_days}</span>}
+                              {item.issuing_authority && <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded font-medium">{item.issuing_authority}</span>}
                             </div>
                           </div>
                         ))}</div>
@@ -2287,16 +2296,16 @@ export default function AnalysisView({
 
                     {/* Required Inspections */}
                     {compData.required_inspections?.length > 0 && (
-                      <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-                        <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5"><Eye className="w-3.5 h-3.5 text-purple-500"/>Required Inspections</h3>
+                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Eye className="w-3.5 h-3.5 text-primary"/>Required Inspections</h3>
                         <div className="space-y-2">{compData.required_inspections.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50/50">
-                            <span className="text-purple-500 text-xs">*</span>
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
+                            <span className="text-primary text-xs font-bold">*</span>
                             <div className="flex-grow">
-                              <span className="text-xs font-bold text-slate-800 block">{item.name}</span>
-                              <span className="text-[10px] text-slate-400">{item.description}</span>
+                              <span className="text-xs font-semibold text-foreground block">{item.name}</span>
+                              <span className="text-[10px] text-muted-foreground">{item.description}</span>
                             </div>
-                            {item.estimated_days && <span className="text-[9px] bg-purple-50 text-purple-600 px-2 py-0.5 rounded font-bold">{item.estimated_days}</span>}
+                            {item.estimated_days && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">{item.estimated_days}</span>}
                           </div>
                         ))}</div>
                       </div>
@@ -2304,25 +2313,25 @@ export default function AnalysisView({
 
                     {/* Packaging & Labeling */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2.5">
-                        <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5"><Briefcase className="w-3 h-3 text-purple-400"/>Packaging Requirements ({packCount})</h4>
-                        {compData.packaging_requirements?.length > 0 ? <div className="space-y-1.5">{compData.packaging_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-50/50"><span className="text-purple-400 shrink-0 text-[10px]">*</span><span className="text-xs text-slate-700">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No specific packaging requirements.</p>}
+                      <div className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
+                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-primary"/>Packaging Requirements ({packCount})</h4>
+                        {compData.packaging_requirements?.length > 0 ? <div className="space-y-1.5">{compData.packaging_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-muted/30"><span className="text-primary shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-muted-foreground italic">No specific packaging requirements.</p>}
                       </div>
-                      <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2.5">
-                        <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5"><FileText className="w-3 h-3 text-amber-400"/>Labeling Requirements ({labelCount})</h4>
-                        {compData.labeling_requirements?.length > 0 ? <div className="space-y-1.5">{compData.labeling_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-50/50"><span className="text-amber-400 shrink-0 text-[10px]">*</span><span className="text-xs text-slate-700">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No specific labeling requirements.</p>}
+                      <div className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
+                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-primary"/>Labeling Requirements ({labelCount})</h4>
+                        {compData.labeling_requirements?.length > 0 ? <div className="space-y-1.5">{compData.labeling_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-muted/30"><span className="text-primary shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-muted-foreground italic">No specific labeling requirements.</p>}
                       </div>
                     </div>
 
                     {/* Customs Requirements & Import Restrictions */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-                        <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-sky-500"/>Customs Requirements ({customsRules.length})</h3>
-                        {customsRules.length > 0 ? <div className="space-y-1.5">{customsRules.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-50/50"><span className="text-sky-400 shrink-0 text-[10px]">*</span><span className="text-xs text-slate-700">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No customs requirements returned.</p>}
+                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-primary"/>Customs Requirements ({customsRules.length})</h3>
+                        {customsRules.length > 0 ? <div className="space-y-1.5">{customsRules.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-muted/30"><span className="text-primary shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-muted-foreground italic">No customs requirements returned.</p>}
                       </div>
-                      <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-                        <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 text-red-500"/>Import Restrictions ({importRestrictions.length})</h3>
-                        {importRestrictions.length > 0 ? <div className="space-y-1.5">{importRestrictions.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-red-50/40"><span className="text-red-400 shrink-0 text-[10px]">!</span><span className="text-xs text-slate-700">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No import restrictions apply to this product.</p>}
+                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 text-destructive"/>Import Restrictions ({importRestrictions.length})</h3>
+                        {importRestrictions.length > 0 ? <div className="space-y-1.5">{importRestrictions.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-destructive/10"><span className="text-destructive shrink-0 text-xs">!</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-muted-foreground italic">No import restrictions apply to this product.</p>}
                       </div>
                     </div>
 
@@ -2431,39 +2440,39 @@ export default function AnalysisView({
                   </div>
                   {/* Validation errors */}
                   {costValidationErrors.length > 0 && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1">
-                      <span className="text-[9px] font-black text-red-700 uppercase tracking-wider block">Fix before calculating:</span>
-                      {costValidationErrors.map((e, i) => <div key={i} className="flex items-center gap-1.5 text-[10px] text-red-600"><AlertCircle className="w-3 h-3 shrink-0"/>{e}</div>)}
+                    <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 space-y-1">
+                      <span className="text-xs font-bold text-destructive uppercase tracking-wider block">Fix before calculating:</span>
+                      {costValidationErrors.map((e, i) => <div key={i} className="flex items-center gap-1.5 text-xs text-destructive font-medium"><AlertCircle className="w-3.5 h-3.5 shrink-0"/>{e}</div>)}
                     </div>
                   )}
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase block">HS Code <span className="text-red-400">*</span></label>
-                      <input type="text" value={costHsCode} onChange={e => { setCostHsCode(e.target.value); setCalculationResult(null); }} placeholder="e.g. 10063090" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500"/>
+                      <label className="text-xs font-medium text-foreground uppercase block">HS Code <span className="text-destructive">*</span></label>
+                      <input type="text" value={costHsCode} onChange={e => { setCostHsCode(e.target.value); setCalculationResult(null); }} placeholder="e.g. 10063090" className="input-claude"/>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase block">Quantity (units) <span className="text-red-400">*</span></label>
-                      <input type="number" min="1" value={costQuantity} onChange={e => { setCostQuantity(e.target.value); setCalculationResult(null); }} placeholder="1000" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500"/>
+                      <label className="text-xs font-medium text-foreground uppercase block">Quantity (units) <span className="text-destructive">*</span></label>
+                      <input type="number" min="1" value={costQuantity} onChange={e => { setCostQuantity(e.target.value); setCalculationResult(null); }} placeholder="1000" className="input-claude"/>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase block">Unit Mfg Cost (INR) <span className="text-red-400">*</span></label>
-                      <input type="number" min="0" step="0.01" value={costUnitCost} onChange={e => { setCostUnitCost(e.target.value); setCalculationResult(null); }} placeholder="150" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500"/>
+                      <label className="text-xs font-medium text-foreground uppercase block">Unit Mfg Cost (INR) <span className="text-destructive">*</span></label>
+                      <input type="number" min="0" step="0.01" value={costUnitCost} onChange={e => { setCostUnitCost(e.target.value); setCalculationResult(null); }} placeholder="150" className="input-claude"/>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase block">Unit Weight (kg) <span className="text-red-400">*</span></label>
-                      <input type="number" min="0" step="0.001" value={costUnitWeight} onChange={e => { setCostUnitWeight(e.target.value); setCalculationResult(null); }} placeholder="1.0" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500"/>
+                      <label className="text-xs font-medium text-foreground uppercase block">Unit Weight (kg) <span className="text-destructive">*</span></label>
+                      <input type="number" min="0" step="0.001" value={costUnitWeight} onChange={e => { setCostUnitWeight(e.target.value); setCalculationResult(null); }} placeholder="1.0" className="input-claude"/>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase block">Freight Mode <span className="text-red-400">*</span></label>
-                      <select value={costShippingMode} onChange={e => { setCostShippingMode(e.target.value); setCalculationResult(null); }} className="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500 cursor-pointer">
+                      <label className="text-xs font-medium text-foreground uppercase block">Freight Mode <span className="text-destructive">*</span></label>
+                      <select value={costShippingMode} onChange={e => { setCostShippingMode(e.target.value); setCalculationResult(null); }} className="input-claude cursor-pointer">
                         <option>Sea</option><option>Air</option><option>Courier</option><option>Road</option><option>Rail</option>
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase block">Selling Price/unit</label>
+                      <label className="text-xs font-medium text-foreground uppercase block">Selling Price/unit</label>
                       <div className="flex gap-1">
-                        <input type="number" min="0" step="0.01" value={costSellingPrice} onChange={e => { setCostSellingPrice(e.target.value); setCalculationResult(null); }} placeholder="Auto" className="flex-1 min-w-0 px-2 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500"/>
-                        <select value={costSellingCurrency} onChange={e => setCostSellingCurrency(e.target.value)} className="px-1.5 py-2 border border-slate-200 bg-white rounded-xl text-[10px] font-bold focus:outline-none focus:border-sky-500 cursor-pointer">
+                        <input type="number" min="0" step="0.01" value={costSellingPrice} onChange={e => { setCostSellingPrice(e.target.value); setCalculationResult(null); }} placeholder="Auto" className="input-claude flex-1 min-w-0"/>
+                        <select value={costSellingCurrency} onChange={e => setCostSellingCurrency(e.target.value)} className="input-claude px-2 py-2 text-xs font-semibold cursor-pointer w-auto">
                           {CURRENCIES.map(c => <option key={c}>{c}</option>)}
                         </select>
                       </div>
@@ -2472,28 +2481,28 @@ export default function AnalysisView({
 
                   {/* Optional advanced fields */}
                   <div className="flex items-center justify-between">
-                    <button onClick={() => setShowAdvancedCost(v => !v)} className="text-[10px] font-bold text-sky-600 hover:text-sky-500 cursor-pointer flex items-center gap-1">
+                    <button onClick={() => setShowAdvancedCost(v => !v)} className="text-xs font-medium text-primary hover:underline cursor-pointer flex items-center gap-1">
                       {showAdvancedCost ? '- Hide' : '+ Show'} advanced fields (packaging, freight detail, duties, destination costs)
                     </button>
-                    <span className="text-[9px] text-slate-400">Incoterm: <strong>{costIncoterm}</strong></span>
+                    <span className="text-xs text-muted-foreground">Incoterm: <strong className="text-foreground">{costIncoterm}</strong></span>
                   </div>
                   {showAdvancedCost && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase block">Packaging/unit (INR)</label>
-                        <input type="number" min="0" step="0.01" value={costPackagingPerUnit} onChange={e => { setCostPackagingPerUnit(e.target.value); setCalculationResult(null); }} placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500"/>
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Packaging/unit (INR)</label>
+                        <input type="number" min="0" step="0.01" value={costPackagingPerUnit} onChange={e => { setCostPackagingPerUnit(e.target.value); setCalculationResult(null); }} placeholder="0" className="input-claude"/>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase block">Inland Transport (INR)</label>
-                        <input type="number" min="0" step="1" value={costInlandTransport} onChange={e => { setCostInlandTransport(e.target.value); setCalculationResult(null); }} placeholder="Auto from weight" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500"/>
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Inland Transport (INR)</label>
+                        <input type="number" min="0" step="1" value={costInlandTransport} onChange={e => { setCostInlandTransport(e.target.value); setCalculationResult(null); }} placeholder="Auto from weight" className="input-claude"/>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase block">Insurance Rate (%)</label>
-                        <input type="number" min="0" max="100" step="0.01" value={costInsuranceRate} onChange={e => { setCostInsuranceRate(e.target.value); setCalculationResult(null); }} placeholder={costShippingMode === 'Sea' ? '1.5 (default)' : costShippingMode === 'Air' ? '0.8 (default)' : '0.5 (default)'} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500"/>
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Insurance Rate (%)</label>
+                        <input type="number" min="0" max="100" step="0.01" value={costInsuranceRate} onChange={e => { setCostInsuranceRate(e.target.value); setCalculationResult(null); }} placeholder={costShippingMode === 'Sea' ? '1.5 (default)' : costShippingMode === 'Air' ? '0.8 (default)' : '0.5 (default)'} className="input-claude"/>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase block">Incoterm</label>
-                        <select value={costIncoterm} onChange={e => setCostIncoterm(e.target.value)} className="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500 cursor-pointer">
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Incoterm</label>
+                        <select value={costIncoterm} onChange={e => setCostIncoterm(e.target.value)} className="input-claude cursor-pointer">
                           <option value="EXW">EXW - Ex Works</option>
                           <option value="FOB">FOB - Free On Board</option>
                           <option value="CIF">CIF - Cost, Insurance, Freight</option>
@@ -2501,31 +2510,31 @@ export default function AnalysisView({
                         </select>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase block">Customs Duty Rate (%)</label>
-                        <input type="number" min="0" max="100" step="0.01" value={costManualDutyRate} onChange={e => { setCostManualDutyRate(e.target.value); setCalculationResult(null); }} placeholder="Enter verified rate" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500"/>
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Customs Duty Rate (%)</label>
+                        <input type="number" min="0" max="100" step="0.01" value={costManualDutyRate} onChange={e => { setCostManualDutyRate(e.target.value); setCalculationResult(null); }} placeholder="Enter verified rate" className="input-claude"/>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase block">Import VAT/GST (%)</label>
-                        <input type="number" min="0" max="100" step="0.01" value={costManualTaxRate} onChange={e => { setCostManualTaxRate(e.target.value); setCalculationResult(null); }} placeholder="Enter verified rate" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500"/>
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Import VAT/GST (%)</label>
+                        <input type="number" min="0" max="100" step="0.01" value={costManualTaxRate} onChange={e => { setCostManualTaxRate(e.target.value); setCalculationResult(null); }} placeholder="Enter verified rate" className="input-claude"/>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase block">Freight Amount (INR)</label>
-                        <input type="number" min="0" step="1" value={costFreightAmount} onChange={e => { setCostFreightAmount(e.target.value); setCalculationResult(null); }} placeholder="Enter actual freight" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500"/>
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Freight Amount (INR)</label>
+                        <input type="number" min="0" step="1" value={costFreightAmount} onChange={e => { setCostFreightAmount(e.target.value); setCalculationResult(null); }} placeholder="Enter actual freight" className="input-claude"/>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase block">Target Margin (%)</label>
-                        <input type="number" min="0" max="100" step="0.5" value={costTargetMargin} onChange={e => { setCostTargetMargin(e.target.value); setCalculationResult(null); }} placeholder="20" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-sky-500"/>
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Target Margin (%)</label>
+                        <input type="number" min="0" max="100" step="0.5" value={costTargetMargin} onChange={e => { setCostTargetMargin(e.target.value); setCalculationResult(null); }} placeholder="20" className="input-claude"/>
                       </div>
                     </div>
                   )}
 
                   <div className="flex gap-2">
-                    <button onClick={handleCalculateCost} disabled={isCalculatingCost} className="flex-1 py-2.5 text-xs font-bold text-white bg-sky-500 hover:bg-sky-400 rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5">
+                    <button onClick={handleCalculateCost} disabled={isCalculatingCost} className="btn-primary flex-1 py-2.5 text-xs font-semibold cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5">
                       {isCalculatingCost ? 'Analyzing...' : 'Analyze Costs'}
                       {isCalculatingCost && <Loader2 className="w-4 h-4 animate-spin ml-1"/>}
                     </button>
                     {calculationResult && (
-                      <button onClick={() => { setCalculationResult(null); setCostValidationErrors([]); }} className="px-4 py-2.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer flex items-center gap-1.5">
+                      <button onClick={() => { setCalculationResult(null); setCostValidationErrors([]); }} className="btn-outline px-4 py-2.5 text-xs font-semibold cursor-pointer flex items-center gap-1.5">
                         <RefreshCw className="w-3.5 h-3.5"/>Reset
                       </button>
                     )}
@@ -2533,10 +2542,10 @@ export default function AnalysisView({
                 </div>
 
                 {isCalculatingCost ? (
-                  <div className="bg-white border border-slate-200/80 p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
-                    <Loader2 className="w-8 h-8 text-sky-500 animate-spin mb-4" />
-                    <span className="text-xs font-black uppercase text-slate-800 tracking-wider">Analyzing Export Costs &amp; Profitability</span>
-                    <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-3"><div className="h-full bg-sky-400 rounded-full animate-pulse w-2/3"></div></div>
+                  <div className="bg-card border border-border p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
+                    <span className="text-xs font-bold uppercase text-foreground tracking-wider">Analyzing Export Costs &amp; Profitability</span>
+                    <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden mt-3"><div className="h-full bg-primary rounded-full animate-pulse w-2/3"></div></div>
                   </div>
                 ) : calculationResult ? (() => {
                   const r = calculationResult;
@@ -2610,25 +2619,25 @@ export default function AnalysisView({
                       {/* 3. Executive KPI Dashboard (6 Core Cards) */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                         {/* 1. SELLING PRICE */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-sky-300 transition-all">
-                          <div className="absolute top-0 left-0 right-0 h-1 bg-sky-500"></div>
-                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Selling Price</span>
-                          <span className="text-sm font-black text-slate-900 block leading-tight">
+                        <div className="bg-card border border-border rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-primary/50 transition-all">
+                          <div className="absolute top-0 left-0 right-0 h-1 bg-primary"></div>
+                          <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">Selling Price</span>
+                          <span className="text-sm font-bold text-foreground block leading-tight">
                             {r.revenue.sellingPricePerUnit != null ? `${r.revenue.sellingPricePerUnit} ${origCurr}` : '—'}
                           </span>
-                          <span className="text-[10px] font-bold text-sky-600 block mt-1">
+                          <span className="text-[10px] font-semibold text-primary block mt-1">
                             ≈ {fmtCC(r.revenue.sellingPricePerUnitCC, 2)}/unit
                           </span>
                         </div>
 
                         {/* 2. SELLER COST */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-indigo-300 transition-all">
-                          <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500"></div>
-                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Seller Cost ({r.transaction.incoterm})</span>
-                          <span className="text-sm font-black text-indigo-700 block leading-tight">
+                        <div className="bg-card border border-border rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-primary/50 transition-all">
+                          <div className="absolute top-0 left-0 right-0 h-1 bg-primary/70"></div>
+                          <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">Seller Cost ({r.transaction.incoterm})</span>
+                          <span className="text-sm font-bold text-foreground block leading-tight">
                             {fmtCC(r.sellerCost.amountCC)}
                           </span>
-                          <span className="text-[10px] font-bold text-slate-500 block mt-1">
+                          <span className="text-[10px] font-medium text-muted-foreground block mt-1">
                             ≈ {fmtOrig(r.sellerCost.amountOriginal, 0)} · {fmtCC(r.sellerCost.amountPerUnitCC, 2)}/u
                           </span>
                         </div>

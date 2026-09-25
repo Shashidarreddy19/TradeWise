@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, Loader2 } from 'lucide-react';
-import { authApi, setToken, setUser, clearAuth } from '../services';
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, Loader2, Sparkles, Shield, Globe, Truck, X, Check } from 'lucide-react';
+import { authApi, setToken, setUser } from '../services';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function Login({ onNavigate }) {
   const [email, setEmail] = useState('');
@@ -75,13 +76,11 @@ export default function Login({ onNavigate }) {
 
       triggerToast('success', 'Authenticated successfully! Redirecting...');
       setTimeout(() => {
-        // Use replaceState so back button doesn't return to login
         const dashPath = authData.role === 'LOGISTICS' ? '/logistics' : '/exporter';
         window.history.replaceState({}, '', dashPath);
         onNavigate(dashPath);
       }, 800);
     } catch (err) {
-      // Display the lockout message or generic error from backend
       const msg = err.message || 'Invalid email or password. Please try again.';
       triggerToast('error', msg);
       setShake(true);
@@ -111,160 +110,136 @@ export default function Login({ onNavigate }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-700 flex flex-col relative font-sans overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground flex flex-col relative font-sans overflow-hidden">
 
-      {/* Background Animated Gradient Overlay */}
+      {/* Subtle Background Glow */}
       <div className="absolute inset-0 pointer-events-none z-0">
-        <div className="absolute top-[20%] left-[20%] w-[500px] h-[500px] bg-sky-500/5 rounded-full blur-[100px] animate-pulse"></div>
-        <div className="absolute bottom-[20%] right-[20%] w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[100px] animate-float"></div>
-
-        {/* Subtle grid/dot pattern */}
-        <div className="absolute inset-0 opacity-[0.4]" style={{
-          backgroundImage: `radial-gradient(#e2e8f0 1.5px, transparent 1.5px)`,
-          backgroundSize: '24px 24px'
-        }}></div>
+        <div className="absolute top-[12%] left-[20%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]"></div>
       </div>
 
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-xl border backdrop-blur-md shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300 ${toast.type === 'success'
-          ? 'bg-emerald-50 border-emerald-200/50 text-emerald-800 shadow-emerald-500/10'
-          : 'bg-red-50 border-red-200 text-red-800 shadow-red-500/5'
-          }`}>
-          <div className={`w-2.5 h-2.5 rounded-full ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-          <span className="text-sm font-semibold">{toast.message}</span>
+        <div className={`fixed top-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl border backdrop-blur-md shadow-lg animate-scale-in text-xs font-semibold ${
+          toast.type === 'success'
+            ? 'bg-card border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+            : 'bg-card border-destructive/30 text-destructive'
+        }`}>
+          <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-destructive'}`}></div>
+          <span>{toast.message}</span>
         </div>
       )}
 
-      {/* Navbar overlay back to landing */}
-      <div className="absolute top-6 left-6 z-30">
+      {/* Top Navbar Actions */}
+      <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-30">
         <button
           onClick={() => onNavigate('/')}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors bg-white/80 border border-slate-200/80 backdrop-blur-md px-4 py-2 rounded-xl cursor-pointer shadow-sm"
+          className="btn-outline text-xs px-3.5 py-1.5 cursor-pointer flex items-center gap-1.5"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Home
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Home</span>
         </button>
+
+        <ThemeToggle variant="simple" />
       </div>
 
       {/* Main Split Content */}
-      <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 min-h-screen relative z-10">
+      <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 min-h-screen relative z-10 pt-16 lg:pt-0">
 
-        {/* Left Side: Modern Graphic & Testimonial (60%) */}
-        <div className="hidden lg:flex lg:col-span-7 bg-slate-50/50 border-r border-slate-200/80 flex-col items-center justify-center p-12 relative overflow-hidden">
+        {/* Left Side: Editorial Banner */}
+        <div className="hidden lg:flex lg:col-span-6 bg-muted/30 border-r border-border flex-col items-center justify-center p-12 relative overflow-hidden">
+          
+          {/* Subtle concentric circles */}
+          <div className="absolute w-[380px] h-[380px] border border-border/60 rounded-full pointer-events-none"></div>
+          <div className="absolute w-[500px] h-[500px] border border-dashed border-border/40 rounded-full pointer-events-none animate-pulse-slow"></div>
 
-          {/* Subtle geometric circles */}
-          <div className="absolute w-[400px] h-[400px] border border-slate-200/60 rounded-full z-0"></div>
-          <div className="absolute w-[550px] h-[550px] border border-dashed border-slate-200/50 rounded-full z-0 animate-spin-slow"></div>
-
-          {/* Central Flat Style Illustration */}
-          <div className="relative z-10 flex flex-col items-center max-w-lg text-center">
-
-            {/* SVG Illustration Container */}
-            <div className="w-full max-w-[340px] aspect-square flex items-center justify-center relative mb-8">
-              <svg viewBox="0 0 300 300" className="w-full h-full">
-                <circle cx="150" cy="150" r="100" fill="#f1f5f9" fillOpacity="0.8" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4,4" />
-                <circle cx="150" cy="150" r="80" fill="#e2e8f0" fillOpacity="0.5" />
-
-                <g className="animate-float" style={{ animationDelay: '1s' }}>
-                  <circle cx="80" cy="90" r="22" fill="#ffffff" stroke="#3b82f6" strokeWidth="1" strokeOpacity="0.4" />
-                  <path d="M68 90 A 22 22 0 0 0 92 90 M80 68 A 22 22 0 0 0 80 112" fill="none" stroke="#3b82f6" strokeWidth="1.2" strokeOpacity="0.6" />
-                </g>
-
-                <g className="animate-[float_5s_ease-in-out_infinite]" style={{ animationDelay: '2.5s' }}>
-                  <rect x="200" y="80" width="30" height="38" rx="3" fill="#ffffff" stroke="#10b981" strokeWidth="1.2" className="shadow-sm" />
-                  <line x1="206" y1="92" x2="216" y2="92" stroke="#10b981" strokeWidth="1.5" />
-                  <line x1="206" y1="100" x2="224" y2="100" stroke="#94a3b8" strokeWidth="1" />
-                  <line x1="206" y1="108" x2="218" y2="108" stroke="#94a3b8" strokeWidth="1" />
-                  <circle cx="222" cy="92" r="3" fill="#10b981" />
-                </g>
-
-                <g className="animate-float" style={{ animationDelay: '0.2s' }}>
-                  <path d="M 60 210 L 105 210 L 98 220 L 67 220 Z" fill="#3b82f6" />
-                  <rect x="70" y="200" width="8" height="10" fill="#10b981" />
-                  <rect x="80" y="202" width="8" height="8" fill="#3b82f6" />
-                  <rect x="90" y="205" width="8" height="5" fill="#64748b" />
-                  <line x1="50" y1="223" x2="115" y2="223" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="3,3" />
-                </g>
-
-                <g>
-                  <path d="M 110 240 L 190 240 L 175 190 L 125 190 Z" fill="#475569" stroke="#334155" strokeWidth="1" />
-                  <path d="M 146 190 L 154 190 L 152 210 L 148 210 Z" fill="#3b82f6" />
-                  <path d="M 130 190 L 142 200 L 148 190 M 170 190 L 158 200 L 152 190" fill="none" stroke="#f1f5f9" strokeWidth="1.5" />
-                  <circle cx="150" cy="165" r="18" fill="#cbd5e1" />
-                  <path d="M 132 165 Q 150 142 168 165 C 168 152 132 152 132 165" fill="#334155" />
-                  <rect x="135" y="195" width="38" height="26" rx="2.5" fill="#0f172a" stroke="#3b82f6" strokeWidth="1.5" className="animate-pulse" />
-                  <rect x="141" y="201" width="26" height="14" fill="#3b82f6" fillOpacity="0.1" />
-                  <circle cx="154" cy="208" r="2.5" fill="#10b981" />
-                  <path d="M 125 210 Q 130 205 136 210 M 175 210 Q 170 205 164 210" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" fill="none" />
-                </g>
-              </svg>
+          <div className="relative z-10 flex flex-col items-center max-w-md text-center space-y-4">
+            
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shadow-xs">
+              {role === 'logistics' ? <Truck className="w-7 h-7" /> : <Globe className="w-7 h-7" />}
             </div>
 
-            {/* Title / Quote Text */}
-            <h2 className="text-xl font-bold tracking-tight text-slate-800 mb-3">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px] font-semibold tracking-wider uppercase">
+              {role === 'logistics' ? 'Logistics Fleet Portal' : 'Exporter Intelligence Portal'}
+            </div>
+
+            <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
               {role === 'logistics'
-                ? 'End-to-End Multimodal Logistics & Freight Management'
-                : 'Compliance Intelligence Built for Global Growth'}
+                ? 'Multimodal Logistics & Freight Dispatch'
+                : 'Compliance Intelligence Built for Indian SMEs'}
             </h2>
-            <p className="text-sm text-slate-500 font-medium leading-relaxed max-w-sm">
+
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-sm">
               {role === 'logistics'
-                ? 'Bid on export orders, issue competitive proposals, streamline customs documentation, and deliver real-time shipment updates.'
-                : '"Trade allowed us to index new custom tariffs and clear our freight compliance audits in record time."'}
+                ? 'Bid on export shipments, issue proposals, coordinate customs documents, and manage door-to-door milestones in real-time.'
+                : 'Instantly access verified import tariffs, HS classifications, and deterministic landed cost calculations.'}
             </p>
-            <div className="mt-4 text-xs font-bold text-sky-600 tracking-wider uppercase">
-              {role === 'logistics' ? 'Logistics Fleet & Freight Network' : 'Exporter · Textile Council Backing'}
+
+            <div className="pt-2 flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-primary" />
+                ICEGATE Verified
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                AI-Powered HS Classifier
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Right Side: Login Panel (40%) */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 sm:p-12 relative">
+        {/* Right Side: Login Form */}
+        <div className="lg:col-span-6 flex flex-col items-center justify-center p-6 sm:p-12 relative">
 
           {/* Form Card wrapper */}
-          <div className={`w-full max-w-md bg-white/70 border border-slate-200/80 backdrop-blur-xl rounded-2xl p-8 shadow-2xl transition-transform ${shake ? 'animate-[shake_0.4s_ease-in-out]' : ''
-            }`}>
+          <div className={`w-full max-w-md bg-card border border-border rounded-2xl p-7 sm:p-9 shadow-sm transition-transform ${
+            shake ? 'animate-[shake_0.4s_ease-in-out]' : ''
+          }`}>
 
             {/* Header info */}
-            <div className="text-center sm:text-left mb-8">
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Welcome Back</h1>
-              <p className="text-sm text-slate-500 mt-2 font-medium">
+            <div className="mb-6 space-y-1.5 text-left">
+              <h1 className="font-display text-2xl font-bold text-foreground tracking-tight">Welcome Back</h1>
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 {role === 'logistics'
                   ? 'Sign in to access your freight dispatch and proposal dashboard'
-                  : 'Sign in to access your export intelligence dashboard'}
+                  : 'Sign in to access your export intelligence and tariff dashboard'}
               </p>
             </div>
 
+            {/* Role Selector Tabs */}
+            <div className="grid grid-cols-2 gap-1.5 bg-muted p-1 rounded-xl border border-border mb-6 select-none">
+              <button
+                type="button"
+                onClick={() => setRole('exporter')}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  role === 'exporter' ? 'bg-card text-primary shadow-xs border border-border' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>Exporter</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('logistics')}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  role === 'logistics' ? 'bg-card text-primary shadow-xs border border-border' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Truck className="w-3.5 h-3.5" />
+                <span>Logistics Partner</span>
+              </button>
+            </div>
+
             {/* Login form */}
-            <form onSubmit={handleLoginSubmit} className="space-y-6">
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
 
-              {/* Role Selector Tabs */}
-              <div className="grid grid-cols-2 gap-2 bg-slate-50/60 p-1 rounded-xl border border-slate-100/80 select-none">
-                <button
-                  type="button"
-                  onClick={() => setRole('exporter')}
-                  className={`py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-black transition-all cursor-pointer ${role === 'exporter' ? 'bg-white text-sky-600 shadow-sm' : 'text-slate-400 hover:text-slate-700'
-                    }`}
-                >
-                  Exporter
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole('logistics')}
-                  className={`py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-black transition-all cursor-pointer ${role === 'logistics' ? 'bg-white text-sky-600 shadow-sm' : 'text-slate-400 hover:text-slate-700'
-                    }`}
-                >
-                  Logistics Partner
-                </button>
-              </div>
-
-              {/* Email Input */}
-              <div className="space-y-2 relative">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              {/* Email Input Field */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground block">
                   Email Address
                 </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <div className="relative flex items-center">
+                  <Mail className="absolute left-3.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                   <input
                     type="email"
                     value={email}
@@ -273,35 +248,22 @@ export default function Login({ onNavigate }) {
                       if (errors.email) setErrors({ ...errors, email: null });
                     }}
                     placeholder="name@company.com"
-                    className={`w-full pl-10 pr-4 py-3 bg-white border rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all ${errors.email ? 'border-red-500/50 bg-red-50/5' : 'border-slate-200'
-                      }`}
+                    autoComplete="email"
+                    className={`input-claude h-10 pl-10 pr-3.5 text-sm rounded-lg ${errors.email ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : ''}`}
                   />
                 </div>
                 {errors.email && (
-                  <p className="text-xs text-red-500 font-semibold mt-1">{errors.email}</p>
+                  <p className="text-[11px] text-destructive font-medium mt-1 animate-fade-in">{errors.email}</p>
                 )}
               </div>
 
-              {/* Password Input */}
-              <div className="space-y-2 relative">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                    Password
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForgotEmail(email);
-                      setForgotSubmitted(false);
-                      setShowForgotModal(true);
-                    }}
-                    className="text-xs font-semibold text-sky-600 hover:text-sky-700 transition-colors"
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              {/* Password Input Field */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground block">
+                  Password
+                </label>
+                <div className="relative flex items-center">
+                  <Lock className="absolute left-3.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
@@ -310,44 +272,57 @@ export default function Login({ onNavigate }) {
                       if (errors.password) setErrors({ ...errors, password: null });
                     }}
                     placeholder="••••••••"
-                    className={`w-full pl-10 pr-12 py-3 bg-white border rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all ${errors.password ? 'border-red-500/50 bg-red-50/5' : 'border-slate-200'
-                      }`}
+                    autoComplete="current-password"
+                    className={`input-claude h-10 pl-10 pr-10 text-sm rounded-lg ${errors.password ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : ''}`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="absolute right-3 p-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded-md focus:outline-none"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-xs text-red-500 font-semibold mt-1">{errors.password}</p>
+                  <p className="text-[11px] text-destructive font-medium mt-1 animate-fade-in">{errors.password}</p>
                 )}
               </div>
 
-              {/* Remember Me row */}
-              <div className="flex items-center">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+              {/* Remember Me & Forgot Password Row */}
+              <div className="flex items-center justify-between pt-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-300 accent-sky-500 cursor-pointer"
+                    className="w-4 h-4 rounded border-border text-primary accent-primary cursor-pointer"
                   />
-                  <span className="text-xs font-medium text-slate-500">Remember me</span>
+                  <span>Remember me</span>
                 </label>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotEmail(email);
+                    setForgotSubmitted(false);
+                    setShowForgotModal(true);
+                  }}
+                  className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                >
+                  Forgot Password?
+                </button>
               </div>
 
               {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 font-bold text-white bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 hover:scale-101 active:scale-99 shadow-lg shadow-sky-500/10 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                className="btn-primary w-full h-10 text-sm font-semibold rounded-lg cursor-pointer mt-2 shadow-xs flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     <span>Signing in...</span>
                   </>
                 ) : (
@@ -358,14 +333,14 @@ export default function Login({ onNavigate }) {
             </form>
 
             {/* Register Footer */}
-            <div className="mt-8 text-center border-t border-slate-200 pt-6">
-              <p className="text-sm font-medium text-slate-500">
-                New to Trade?{' '}
+            <div className="mt-6 text-center border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground">
+                Don't have an account?{' '}
                 <button
                   onClick={() => onNavigate('/register')}
-                  className="font-bold text-sky-600 hover:text-sky-500 transition-colors inline-flex items-center gap-0.5"
+                  className="font-semibold text-primary hover:underline cursor-pointer"
                 >
-                  Create an account →
+                  Create an account
                 </button>
               </p>
             </div>
@@ -377,60 +352,71 @@ export default function Login({ onNavigate }) {
 
       {/* Forgot Password Modal */}
       {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-lg font-bold text-slate-900">Reset Your Password</h3>
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-              Enter your registered business email and we will send you verified recovery instructions.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="card-claude rounded-2xl p-6 sm:p-7 max-w-md w-full shadow-2xl animate-scale-in relative">
+            <button
+              type="button"
+              onClick={() => setShowForgotModal(false)}
+              className="absolute top-4 right-4 p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <h3 className="text-base font-bold text-foreground">Reset Password</h3>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              Enter your registered email address to receive password reset instructions.
             </p>
 
             {forgotSubmitted ? (
-              <div className="mt-5 p-4 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-800 text-xs">
-                <p className="font-bold">Instructions Dispatched!</p>
-                <p className="mt-1">
-                  We've sent a password reset token and verification link to <strong>{forgotEmail}</strong>. Please check your inbox.
+              <div className="mt-4 p-4 rounded-xl bg-accent text-foreground border border-primary/20 text-xs space-y-2">
+                <div className="flex items-center gap-2 text-primary font-semibold">
+                  <Check className="w-4 h-4" />
+                  <span>Instructions Dispatched!</span>
+                </div>
+                <p className="text-muted-foreground">
+                  We've sent a password reset token to <strong>{forgotEmail}</strong>. Please check your inbox.
                 </p>
                 <button
                   onClick={() => setShowForgotModal(false)}
-                  className="mt-4 w-full py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-500 transition-all text-xs"
+                  className="btn-primary mt-3 w-full h-9 text-xs"
                 >
                   Back to Sign In
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleForgotSubmit} className="mt-5 space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <form onSubmit={handleForgotSubmit} className="mt-4 space-y-3.5">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground block">
                     Registered Email
                   </label>
-                  <div className="relative mt-1">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <div className="relative flex items-center">
+                    <Mail className="absolute left-3.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                     <input
                       type="email"
                       value={forgotEmail}
                       onChange={(e) => setForgotEmail(e.target.value)}
                       placeholder="account@company.com"
                       required
-                      className="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500"
+                      className="input-claude h-9 pl-10 pr-3.5 text-xs rounded-lg"
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2">
+                <div className="flex justify-end gap-2 pt-3 border-t border-border">
                   <button
                     type="button"
                     onClick={() => setShowForgotModal(false)}
-                    className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                    className="btn-ghost text-xs py-1.5 px-3 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={forgotLoading}
-                    className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-500 rounded-lg transition-all disabled:opacity-50"
+                    className="btn-primary text-xs py-1.5 px-4 cursor-pointer flex items-center gap-1.5"
                   >
                     {forgotLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    Send Reset Link
+                    <span>Send Reset Link</span>
                   </button>
                 </div>
               </form>

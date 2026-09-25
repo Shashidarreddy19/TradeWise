@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { Eye, EyeOff, User, Building, Mail, Phone, Globe, Lock, Briefcase, Truck, ShieldCheck, ArrowLeft, ArrowRight, Loader2, Check, X } from 'lucide-react';
+import { Eye, EyeOff, User, Building, Mail, Phone, Globe, Lock, Briefcase, Truck, ShieldCheck, ArrowLeft, ArrowRight, Loader2, Check, X, Sparkles } from 'lucide-react';
 import { authApi, setToken, setUser } from '../services';
+import ThemeToggle from '../components/ThemeToggle';
 
 // ── Validation helpers (pure functions, no side effects) ─────────────────────
 
@@ -456,186 +457,154 @@ export default function Register({ onNavigate }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-700 flex flex-col relative font-sans overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground flex flex-col relative font-sans overflow-hidden">
 
-      {/* Background Animated Gradient Overlay */}
+      {/* Background Subtle Warm Glow */}
       <div className="absolute inset-0 pointer-events-none z-0">
-        <div className="absolute top-[10%] right-[10%] w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[10%] left-[10%] w-[600px] h-[600px] bg-emerald-500/5 rounded-full blur-[120px] animate-float"></div>
-        <div className="absolute inset-0 opacity-[0.4]" style={{
-          backgroundImage: `radial-gradient(#e2e8f0 1.5px, transparent 1.5px)`,
-          backgroundSize: '24px 24px'
-        }}></div>
+        <div className="absolute top-[10%] right-[10%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]"></div>
       </div>
 
       {/* Toast Alert */}
       {toast && (
-        <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-xl border backdrop-blur-md shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300 ${toast.type === 'success'
-            ? 'bg-emerald-50 border border-emerald-250 text-slate-800 shadow-emerald-500/5'
-            : 'bg-red-50 border border-red-200 text-red-800 shadow-red-500/5'
-          }`}>
-          <div className={`w-2.5 h-2.5 rounded-full ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-          <span className="text-sm font-semibold">{toast.message}</span>
+        <div className={`fixed top-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl border backdrop-blur-md shadow-lg animate-scale-in text-xs font-semibold ${
+          toast.type === 'success'
+            ? 'bg-card border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+            : 'bg-card border-destructive/30 text-destructive'
+        }`}>
+          <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-destructive'}`}></div>
+          <span>{toast.message}</span>
         </div>
       )}
 
-      {/* Back button */}
-      <div className="absolute top-6 left-6 z-30">
+      {/* Top Bar with Back button and ThemeToggle */}
+      <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-30">
         <button
           onClick={() => onNavigate('/')}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-655 hover:text-slate-900 transition-all bg-white border border-slate-200/80 backdrop-blur-md px-4 py-2 rounded-xl cursor-pointer shadow-sm"
+          className="btn-outline text-xs px-3.5 py-1.5 cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-3.5 h-3.5" />
           Back to Home
         </button>
+
+        <ThemeToggle variant="simple" />
       </div>
 
       {/* Main Split Content */}
-      <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 min-h-screen relative z-10">
+      <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 min-h-screen relative z-10 pt-16 lg:pt-0">
 
-        {/* Left Side: Modern Graphic & Testimonial (60%) */}
-        <div className="hidden lg:flex lg:col-span-7 bg-slate-50/50 border-r border-slate-200/80 flex-col items-center justify-center p-12 relative overflow-hidden">
+        {/* Left Side: Editorial Banner */}
+        <div className="hidden lg:flex lg:col-span-6 bg-muted/30 border-r border-border flex-col items-center justify-center p-12 relative overflow-hidden">
 
           {/* Subtle geometric circles */}
-          <div className="absolute w-[400px] h-[400px] border border-slate-200/60 rounded-full z-0"></div>
-          <div className="absolute w-[550px] h-[550px] border border-dashed border-slate-200/50 rounded-full z-0 animate-spin-slow"></div>
+          <div className="absolute w-[400px] h-[400px] border border-border/60 rounded-full z-0"></div>
+          <div className="absolute w-[550px] h-[550px] border border-dashed border-border/40 rounded-full z-0 animate-pulse-slow"></div>
 
-          {/* Central Flat Style Human Illustration */}
-          <div className="relative z-10 flex flex-col items-center max-w-lg text-center">
-
-            {/* SVG Illustration Container */}
-            <div className="w-full max-w-[340px] aspect-square flex items-center justify-center relative mb-8">
-              <svg viewBox="0 0 300 300" className="w-full h-full">
-                {/* Background decorative grid bubble */}
-                <circle cx="150" cy="150" r="100" fill="#f1f5f9" fillOpacity="0.8" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4,4" />
-                <circle cx="150" cy="150" r="80" fill="#e2e8f0" fillOpacity="0.5" />
-
-                {/* Floating abstract elements */}
-                {/* 1. Globe outline */}
-                <g className="animate-float" style={{ animationDelay: '1s' }}>
-                  <circle cx="80" cy="90" r="22" fill="#ffffff" stroke="#3b82f6" strokeWidth="1" strokeOpacity="0.4" />
-                  <path d="M68 90 A 22 22 0 0 0 92 90 M80 68 A 22 22 0 0 0 80 112" fill="none" stroke="#3b82f6" strokeWidth="1.2" strokeOpacity="0.6" />
-                </g>
-
-                {/* 2. Checked Document */}
-                <g className="animate-[float_5s_ease-in-out_infinite]" style={{ animationDelay: '2.5s' }}>
-                  <rect x="200" y="80" width="30" height="38" rx="3" fill="#ffffff" stroke="#10b981" strokeWidth="1.2" className="shadow-sm" />
-                  <line x1="206" y1="92" x2="216" y2="92" stroke="#10b981" strokeWidth="1.5" />
-                  <line x1="206" y1="100" x2="224" y2="100" stroke="#94a3b8" strokeWidth="1" />
-                  <line x1="206" y1="108" x2="218" y2="108" stroke="#94a3b8" strokeWidth="1" />
-                  <circle cx="222" cy="92" r="3" fill="#10b981" />
-                </g>
-
-                {/* 3. Container Ship silhouette */}
-                <g className="animate-float" style={{ animationDelay: '0.2s' }}>
-                  <path d="M 60 210 L 105 210 L 98 220 L 67 220 Z" fill="#3b82f6" />
-                  <rect x="70" y="200" width="8" height="10" fill="#10b981" />
-                  <rect x="80" y="202" width="8" height="8" fill="#3b82f6" />
-                  <rect x="90" y="205" width="8" height="5" fill="#64748b" />
-                  <line x1="50" y1="223" x2="115" y2="223" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="3,3" />
-                </g>
-
-                {/* Human/Businessperson vector */}
-                <g>
-                  {/* Suit torso */}
-                  <path d="M 110 240 L 190 240 L 175 190 L 125 190 Z" fill="#475569" stroke="#334155" strokeWidth="1" />
-                  {/* Tie */}
-                  <path d="M 146 190 L 154 190 L 152 210 L 148 210 Z" fill="#3b82f6" />
-                  {/* Collars */}
-                  <path d="M 130 190 L 142 200 L 148 190 M 170 190 L 158 200 L 152 190" fill="none" stroke="#f1f5f9" strokeWidth="1.5" />
-
-                  {/* Head skin */}
-                  <circle cx="150" cy="165" r="18" fill="#cbd5e1" />
-                  {/* Hair */}
-                  <path d="M 132 165 Q 150 142 168 165 C 168 152 132 152 132 165" fill="#334155" />
-
-                  {/* Tablet device */}
-                  <rect x="135" y="195" width="38" height="26" rx="2.5" fill="#0f172a" stroke="#3b82f6" strokeWidth="1.5" className="animate-pulse" />
-                  <rect x="141" y="201" width="26" height="14" fill="#3b82f6" fillOpacity="0.1" />
-                  {/* Green glowing indicator on device */}
-                  <circle cx="154" cy="208" r="2.5" fill="#10b981" />
-
-                  {/* Hands */}
-                  <path d="M 125 210 Q 130 205 136 210 M 175 210 Q 170 205 164 210" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" fill="none" />
-                </g>
-              </svg>
+          {/* Central Claude-style Aesthetic Illustration & Narrative */}
+          <div className="relative z-10 flex flex-col items-center max-w-md text-center space-y-4">
+            
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shadow-xs">
+              {role === 'logistics' ? <Truck className="w-7 h-7" /> : <Globe className="w-7 h-7" />}
             </div>
 
-            {/* Title / Quote Text */}
-            <h2 className="text-xl font-bold tracking-tight text-slate-800 mb-3">
-              {role === 'logistics' ? 'Global Freight & Logistics Coordination Network' : 'Compliance Intelligence Built for Global Growth'}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px] font-semibold tracking-wider uppercase">
+              {role === 'logistics' ? 'Logistics Partner Onboarding' : 'Global Exporter Onboarding'}
+            </div>
+
+            <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
+              {role === 'logistics'
+                ? 'Global Freight & Dispatch Network'
+                : 'Compliance Intelligence Built for Global Growth'}
             </h2>
-            <p className="text-sm text-slate-500 font-medium leading-relaxed max-w-sm">
+
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-sm">
               {role === 'logistics'
                 ? '"TradeWise connected our logistics fleet with verified international exporters, streamlining route dispatch and customs clearance documentation."'
-                : '"Trade allowed us to index new custom tariffs and clear our freight compliance audits in record time."'}
+                : '"TradeWise allowed us to index new custom tariffs and clear our freight compliance audits in record time."'}
             </p>
-            <div className="mt-4 text-xs font-bold text-indigo-600 tracking-wider uppercase">
-              {role === 'logistics' ? 'Logistics Partner · Multi-Modal Freight' : 'Exporter · Textile Council Backing'}
+
+            <div className="pt-2 flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                Verified Network
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-primary" />
+                Zero Setup Fees
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                AI-Powered
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Right Side: Step-by-Step Form Column (40%) */}
-        <div className="lg:col-span-5 flex flex-col justify-center py-8 px-6 sm:px-8 relative overflow-y-auto max-h-screen">
+        {/* Right Side: Step-by-Step Form Column */}
+        <div className="lg:col-span-6 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-y-auto max-h-screen">
 
           {/* Registration Card Wrapper */}
-          <div className={`w-full max-w-lg bg-white border border-slate-200/80 backdrop-blur-xl rounded-2xl shadow-xl p-6 sm:p-7 transition-transform ${shake ? 'animate-[shake_0.4s_ease-in-out]' : ''
-            }`}>
+          <div className={`w-full max-w-lg bg-card border border-border rounded-2xl shadow-sm p-7 sm:p-8 transition-transform ${
+            shake ? 'animate-[shake_0.4s_ease-in-out]' : ''
+          }`}>
 
             {/* Step Indicator Header */}
             <div className="mb-6">
               <div className="flex items-center justify-between max-w-xs mx-auto relative mb-3">
                 {/* Connection Line Background */}
-                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5 bg-slate-200 z-0"></div>
+                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5 bg-border z-0"></div>
 
                 {/* Connection Line Active */}
                 <div
-                  className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-sky-500 transition-all duration-300 z-0"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-primary transition-all duration-300 z-0"
                   style={{ width: step === 1 ? '0%' : step === 2 ? '50%' : '100%' }}
                 ></div>
 
                 {/* Step 1 Circle */}
                 <button
                   onClick={() => step > 1 && setStep(1)}
-                  className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] border transition-all cursor-pointer ${step === 1
-                      ? 'bg-sky-500 border-sky-400 text-white shadow-lg shadow-sky-500/20'
+                  className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border transition-all cursor-pointer ${
+                    step === 1
+                      ? 'bg-primary border-primary text-primary-foreground shadow-xs'
                       : step > 1
-                        ? 'bg-emerald-500 border-emerald-400 text-white'
-                        : 'bg-white border-slate-200 text-slate-400'
-                    }`}
+                        ? 'bg-emerald-600 border-emerald-600 text-white'
+                        : 'bg-card border-border text-muted-foreground'
+                  }`}
                 >
-                  {step > 1 ? <Check className="w-3.5 h-3.5" /> : '1'}
+                  {step > 1 ? <Check className="w-4 h-4" /> : '1'}
                 </button>
 
                 {/* Step 2 Circle */}
                 <button
                   onClick={() => step > 2 && setStep(2)}
-                  className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] border transition-all cursor-pointer ${step === 2
-                      ? 'bg-sky-500 border-sky-400 text-white shadow-lg shadow-sky-500/20'
+                  className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border transition-all cursor-pointer ${
+                    step === 2
+                      ? 'bg-primary border-primary text-primary-foreground shadow-xs'
                       : step > 2
-                        ? 'bg-emerald-500 border-emerald-400 text-white'
-                        : 'bg-white border-slate-200 text-slate-400'
-                    }`}
+                        ? 'bg-emerald-600 border-emerald-600 text-white'
+                        : 'bg-card border-border text-muted-foreground'
+                  }`}
                 >
-                  {step > 2 ? <Check className="w-3.5 h-3.5" /> : '2'}
+                  {step > 2 ? <Check className="w-4 h-4" /> : '2'}
                 </button>
 
                 {/* Step 3 Circle */}
                 <div
-                  className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] border transition-all ${step === 3
-                      ? 'bg-sky-500 border-sky-400 text-white shadow-lg shadow-sky-500/20'
-                      : 'bg-white border-slate-200 text-slate-400'
-                    }`}
+                  className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border transition-all ${
+                    step === 3
+                      ? 'bg-primary border-primary text-primary-foreground shadow-xs'
+                      : 'bg-card border-border text-muted-foreground'
+                  }`}
                 >
                   3
                 </div>
               </div>
 
-              <div className="flex justify-between max-w-xs mx-auto text-[9px] font-bold text-slate-450 uppercase tracking-widest text-center px-1">
-                <span className={step >= 1 ? 'text-sky-600 font-extrabold' : ''}>Basic</span>
-                <span className={step >= 2 ? 'text-sky-600 font-extrabold' : ''}>Details</span>
-                <span className={step >= 3 ? 'text-sky-600 font-extrabold' : ''}>Confirm</span>
+              <div className="flex justify-between max-w-xs mx-auto text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-center px-1">
+                <span className={step >= 1 ? 'text-primary font-bold' : ''}>Basic</span>
+                <span className={step >= 2 ? 'text-primary font-bold' : ''}>Details</span>
+                <span className={step >= 3 ? 'text-primary font-bold' : ''}>Confirm</span>
               </div>
             </div>
 
@@ -646,18 +615,18 @@ export default function Register({ onNavigate }) {
               <div className="space-y-5 animate-slide-in-right">
 
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Create Your Account</h2>
-                  <p className="text-xxs text-slate-500 font-medium">Step 1 of 3 · Profile and Role Settings</p>
+                  <h2 className="font-display text-xl font-bold text-foreground tracking-tight">Create Your Account</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Step 1 of 3 · Profile and Role Settings</p>
                 </div>
 
                 {/* Double-Column Fields Grid */}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3.5">
 
                   {/* Full Name */}
-                  <div className="col-span-1 space-y-1 relative">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Full Name</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <div className="col-span-1 space-y-1.5 relative">
+                    <label className="text-xs font-medium text-foreground block">Full Name</label>
+                    <div className="relative flex items-center">
+                      <User className="absolute left-3.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                       <input
                         type="text"
                         value={fullName}
@@ -666,20 +635,19 @@ export default function Register({ onNavigate }) {
                           if (errors.fullName) setErrors({ ...errors, fullName: null });
                         }}
                         placeholder="John Doe"
-                        className={`w-full pl-9 pr-3 py-2 bg-white border rounded-xl text-xs text-slate-805 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 ${errors.fullName ? 'border-red-500/50' : 'border-slate-200'
-                          }`}
+                        className={`input-claude pl-10 pr-3.5 ${errors.fullName ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : ''}`}
                       />
                     </div>
                     {errors.fullName && (
-                      <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.fullName}</p>
+                      <p className="text-[11px] text-destructive font-medium mt-1 animate-fade-in">{errors.fullName}</p>
                     )}
                   </div>
 
                   {/* Company Name */}
-                  <div className="col-span-1 space-y-1 relative">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Company Name</label>
-                    <div className="relative">
-                      <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <div className="col-span-1 space-y-1.5 relative">
+                    <label className="text-xs font-medium text-foreground block">Company Name</label>
+                    <div className="relative flex items-center">
+                      <Building className="absolute left-3.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                       <input
                         type="text"
                         value={companyName}
@@ -688,23 +656,22 @@ export default function Register({ onNavigate }) {
                           if (errors.companyName) setErrors({ ...errors, companyName: null });
                         }}
                         placeholder="Acme Ltd"
-                        className={`w-full pl-9 pr-3 py-2 bg-white border rounded-xl text-xs text-slate-805 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 ${errors.companyName ? 'border-red-500/50' : 'border-slate-200'
-                          }`}
+                        className={`input-claude pl-10 pr-3.5 ${errors.companyName ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : ''}`}
                       />
                     </div>
                     {errors.companyName && (
-                      <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.companyName}</p>
+                      <p className="text-[11px] text-destructive font-medium mt-1 animate-fade-in">{errors.companyName}</p>
                     )}
                   </div>
 
                   {/* Email Address */}
-                  <div className="col-span-1 space-y-1 relative">
+                  <div className="col-span-1 space-y-1.5 relative">
                     <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-bold text-slate-555 uppercase tracking-widest">Email</label>
-                      {checkingEmail && <span className="text-[9px] text-sky-500 font-medium">Checking...</span>}
+                      <label className="text-xs font-medium text-foreground block">Email</label>
+                      {checkingEmail && <span className="text-[10px] text-primary font-medium">Checking...</span>}
                     </div>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <div className="relative flex items-center">
+                      <Mail className="absolute left-3.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                       <input
                         type="email"
                         value={email}
@@ -714,23 +681,22 @@ export default function Register({ onNavigate }) {
                           if (errors.email) setErrors({ ...errors, email: null });
                         }}
                         placeholder="name@company.com"
-                        className={`w-full pl-9 pr-3 py-2 bg-white border rounded-xl text-xs text-slate-805 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 ${errors.email ? 'border-red-500/50' : 'border-slate-200'
-                          }`}
+                        className={`input-claude pl-10 pr-3.5 ${errors.email ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : ''}`}
                       />
                     </div>
                     {errors.email && (
-                      <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.email}</p>
+                      <p className="text-[11px] text-destructive font-medium mt-1 animate-fade-in">{errors.email}</p>
                     )}
                   </div>
 
                   {/* Phone Number */}
-                  <div className="col-span-1 space-y-1 relative">
+                  <div className="col-span-1 space-y-1.5 relative">
                     <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-bold text-slate-555 uppercase tracking-widest">Phone Number</label>
-                      {checkingPhone && <span className="text-[9px] text-sky-500 font-medium">Checking...</span>}
+                      <label className="text-xs font-medium text-foreground block">Phone Number</label>
+                      {checkingPhone && <span className="text-[10px] text-primary font-medium">Checking...</span>}
                     </div>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <div className="relative flex items-center">
+                      <Phone className="absolute left-3.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                       <input
                         type="tel"
                         value={phone}
@@ -740,24 +706,23 @@ export default function Register({ onNavigate }) {
                           if (errors.phone) setErrors({ ...errors, phone: null });
                         }}
                         placeholder="+91 9876543210"
-                        className={`w-full pl-9 pr-3 py-2 bg-white border rounded-xl text-xs text-slate-805 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 ${errors.phone ? 'border-red-500/50' : 'border-slate-200'
-                          }`}
+                        className={`input-claude pl-10 pr-3.5 ${errors.phone ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : ''}`}
                       />
                     </div>
                     {errors.phone && (
-                      <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.phone}</p>
+                      <p className="text-[11px] text-destructive font-medium mt-1 animate-fade-in">{errors.phone}</p>
                     )}
                   </div>
 
                   {/* Country */}
-                  <div className="col-span-2 space-y-1 relative">
-                    <label className="text-[10px] font-bold text-slate-555 uppercase tracking-widest">Base Country</label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <div className="col-span-2 space-y-1.5 relative">
+                    <label className="text-xs font-medium text-foreground block">Base Country</label>
+                    <div className="relative flex items-center">
+                      <Globe className="absolute left-3.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                       <select
                         value={country}
                         onChange={(e) => setCountry(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 cursor-pointer"
+                        className="input-claude pl-10 pr-8 cursor-pointer appearance-none"
                       >
                         <option value="">Select Country</option>
                         {COUNTRY_LIST.map(c => (
@@ -768,10 +733,10 @@ export default function Register({ onNavigate }) {
                   </div>
 
                   {/* Password */}
-                  <div className="col-span-1 space-y-1 relative">
-                    <label className="text-[10px] font-bold text-slate-555 uppercase tracking-widest">Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <div className="col-span-1 space-y-1.5 relative">
+                    <label className="text-xs font-medium text-foreground block">Password</label>
+                    <div className="relative flex items-center">
+                      <Lock className="absolute left-3.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         value={password}
@@ -780,27 +745,26 @@ export default function Register({ onNavigate }) {
                           if (errors.password) setErrors({ ...errors, password: null });
                         }}
                         placeholder="Min 8 chars"
-                        className={`w-full pl-9 pr-9 py-2 bg-white border rounded-xl text-xs text-slate-805 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 ${errors.password ? 'border-red-500/50' : 'border-slate-200'
-                          }`}
+                        className={`input-claude pl-10 pr-10 ${errors.password ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : ''}`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        className="absolute right-3 p-1 text-muted-foreground hover:text-foreground cursor-pointer rounded-md focus:outline-none transition-colors"
                       >
-                        {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                     {errors.password && (
-                      <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.password}</p>
+                      <p className="text-[11px] text-destructive font-medium mt-1 animate-fade-in">{errors.password}</p>
                     )}
                   </div>
 
                   {/* Confirm Password */}
-                  <div className="col-span-1 space-y-1 relative">
-                    <label className="text-[10px] font-bold text-slate-555 uppercase tracking-widest">Verify Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <div className="col-span-1 space-y-1.5 relative">
+                    <label className="text-xs font-medium text-foreground block">Verify Password</label>
+                    <div className="relative flex items-center">
+                      <Lock className="absolute left-3.5 w-4 h-4 text-muted-foreground pointer-events-none" />
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
                         value={confirmPassword}
@@ -809,34 +773,33 @@ export default function Register({ onNavigate }) {
                           if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: null });
                         }}
                         placeholder="Verify password"
-                        className={`w-full pl-9 pr-9 py-2 bg-white border rounded-xl text-xs text-slate-805 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 ${errors.confirmPassword ? 'border-red-500/50' : 'border-slate-200'
-                          }`}
+                        className={`input-claude pl-10 pr-10 ${errors.confirmPassword ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : ''}`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-655 cursor-pointer"
+                        className="absolute right-3 p-1 text-muted-foreground hover:text-foreground cursor-pointer rounded-md focus:outline-none transition-colors"
                       >
-                        {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                     {errors.confirmPassword && (
-                      <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.confirmPassword}</p>
+                      <p className="text-[11px] text-destructive font-medium mt-1 animate-fade-in">{errors.confirmPassword}</p>
                     )}
                   </div>
 
                   {/* Live password strength checklist spanning both columns symmetrically */}
                   {password.length > 0 && (
-                    <div className="col-span-2 bg-slate-50/80 border border-slate-200/90 rounded-xl p-2.5 space-y-1.5">
+                    <div className="col-span-2 bg-muted/50 border border-border rounded-xl p-3 space-y-1.5">
                       <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                         {PASSWORD_RULES.map(rule => {
                           const passed = rule.test(password);
                           return (
                             <div key={rule.id} className="flex items-center gap-1.5">
                               {passed
-                                ? <Check className="w-3 h-3 text-emerald-500 shrink-0" />
-                                : <X className="w-3 h-3 text-slate-300 shrink-0" />}
-                              <span className={`text-[9px] font-medium leading-tight ${passed ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                : <X className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />}
+                              <span className={`text-[10px] font-medium leading-tight ${passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
                                 {rule.label}
                               </span>
                             </div>
@@ -845,9 +808,9 @@ export default function Register({ onNavigate }) {
                         {confirmPassword.length > 0 && (
                           <div className="flex items-center gap-1.5">
                             {password === confirmPassword
-                              ? <Check className="w-3 h-3 text-emerald-500 shrink-0" />
-                              : <X className="w-3 h-3 text-red-400 shrink-0" />}
-                            <span className={`text-[9px] font-medium leading-tight ${password === confirmPassword ? 'text-emerald-600' : 'text-red-500'}`}>
+                              ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                              : <X className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                            <span className={`text-[10px] font-medium leading-tight ${password === confirmPassword ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
                               {password === confirmPassword ? 'Passwords match' : 'Passwords do not match'}
                             </span>
                           </div>
@@ -859,51 +822,55 @@ export default function Register({ onNavigate }) {
 
                 {/* Role Selection Horizontal Cards */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Select Account Role</label>
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <label className="text-xs font-medium text-foreground">Select Account Role</label>
+                  <div className="grid grid-cols-2 gap-3">
                     {/* Exporter Card */}
-                    <div
+                    <button
+                      type="button"
                       onClick={() => setRole('exporter')}
-                      className={`relative p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-between text-center ${role === 'exporter'
-                          ? 'border-sky-500 bg-sky-50/40 text-slate-900 scale-[1.02] shadow-sm'
-                          : 'border-slate-200 bg-white/60 text-slate-500 hover:border-slate-300'
-                        }`}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-1.5 ${
+                        role === 'exporter'
+                          ? 'border-primary bg-primary/10 text-primary shadow-xs'
+                          : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80'
+                      }`}
                     >
-                      <Briefcase className={`w-5 h-5 ${role === 'exporter' ? 'text-sky-500' : 'text-slate-400'}`} />
-                      <span className="text-xxs font-bold mt-1">Exporter</span>
-                    </div>
+                      <Briefcase className="w-5 h-5" />
+                      <span className="text-xs font-semibold">Exporter</span>
+                    </button>
 
                     {/* Logistics Card */}
-                    <div
+                    <button
+                      type="button"
                       onClick={() => setRole('logistics')}
-                      className={`relative p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-between text-center ${role === 'logistics'
-                          ? 'border-sky-500 bg-sky-50/40 text-slate-900 scale-[1.02] shadow-sm'
-                          : 'border-slate-200 bg-white/60 text-slate-500 hover:border-slate-300'
-                        }`}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-1.5 ${
+                        role === 'logistics'
+                          ? 'border-primary bg-primary/10 text-primary shadow-xs'
+                          : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80'
+                      }`}
                     >
-                      <Truck className={`w-5 h-5 ${role === 'logistics' ? 'text-sky-500' : 'text-slate-400'}`} />
-                      <span className="text-xxs font-bold mt-1">Logistics</span>
-                    </div>
+                      <Truck className="w-5 h-5" />
+                      <span className="text-xs font-semibold">Logistics</span>
+                    </button>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+                <div className="flex justify-between items-center pt-4 border-t border-border">
                   <button
                     type="button"
                     onClick={() => onNavigate('/login')}
-                    className="text-xs font-semibold text-slate-500 hover:text-sky-655 transition-colors cursor-pointer"
+                    className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   >
-                    Already have an account? Sign In
+                    Already have an account? <span className="text-primary font-semibold hover:underline">Sign In</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleNextStep}
                     disabled={!fullName || !companyName || !email || !phone || !password || !confirmPassword}
-                    className="inline-flex items-center gap-1.5 px-6 py-2.5 font-bold text-white bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 hover:scale-103 shadow-md rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    className="btn-primary px-6 py-2.5 text-xs font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Continue
-                    <ArrowRight className="w-4 h-4" />
+                    <span>Continue</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
@@ -914,19 +881,19 @@ export default function Register({ onNavigate }) {
             {/* STEP 2 CONTENT: ROLE SPECIFIC INFORMATION */}
             {/* ==================================================== */}
             {step === 2 && (
-              <div className="space-y-6 animate-slide-in-right">
+              <div className="space-y-5 animate-slide-in-right">
 
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Tell Us About Your Business</h2>
-                  <p className="text-xs text-slate-500 mt-1 font-medium">Step 2 of 3 · {role === 'exporter' ? 'Exporter Details' : 'Logistics Partner Details'}</p>
+                  <h2 className="font-display text-xl font-bold text-foreground tracking-tight">Tell Us About Your Business</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Step 2 of 3 · {role === 'exporter' ? 'Exporter Details' : 'Logistics Partner Details'}</p>
                 </div>
 
                 {/* RENDER EXPORTER DETAILS */}
                 {role === 'exporter' && (
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     {/* GST / Business Registration No */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                      <label className="text-xs font-medium text-foreground">
                         {country === 'India' ? 'GST Number (GSTIN)' : 'Business Registration Number'}
                       </label>
                       <input
@@ -938,40 +905,40 @@ export default function Register({ onNavigate }) {
                         }}
                         placeholder={country === 'India' ? '29AAAAA0000A1Z1' : 'Registration number'}
                         maxLength={country === 'India' ? 15 : 30}
-                        className={`w-full px-4 py-2 bg-white border rounded-xl text-xs placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 ${errors.exporterGst ? 'border-red-500/50' : 'border-slate-200'
-                          }`}
+                        className={`input-claude ${errors.exporterGst ? 'border-destructive' : ''}`}
                       />
-                      {errors.exporterGst && <p className="text-xs text-red-500 font-semibold">{errors.exporterGst}</p>}
+                      {errors.exporterGst && <p className="text-[11px] text-destructive font-medium">{errors.exporterGst}</p>}
                     </div>
 
                     {/* Business Type */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Business Type</label>
-                      <div className="grid grid-cols-3 gap-2.5">
+                      <label className="text-xs font-medium text-foreground">Business Type</label>
+                      <div className="grid grid-cols-3 gap-2">
                         {['Manufacturer', 'Trader', 'Both'].map((t) => (
                           <button
                             key={t}
                             type="button"
                             onClick={() => { setExporterType(t); if (errors.exporterType) setErrors({ ...errors, exporterType: null }); }}
-                            className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${exporterType === t
-                                ? 'bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/10 scale-102'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                              }`}
+                            className={`py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                              exporterType === t
+                                ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                                : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-accent'
+                            }`}
                           >
                             {t}
                           </button>
                         ))}
                       </div>
-                      {errors.exporterType && <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.exporterType}</p>}
+                      {errors.exporterType && <p className="text-[11px] text-destructive font-medium mt-1">{errors.exporterType}</p>}
                     </div>
 
                     {/* Product Category Multi-Select (max 3) */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                          Product Categories <span className="text-slate-400 normal-case">(select 1-3)</span>
+                        <label className="text-xs font-medium text-foreground">
+                          Product Categories <span className="text-muted-foreground font-normal">(select 1-3)</span>
                         </label>
-                        <span className="text-[10px] font-semibold text-sky-600">{exporterCategories.length}/3 selected</span>
+                        <span className="text-[11px] font-semibold text-primary">{exporterCategories.length}/3 selected</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {PRODUCT_CATEGORIES.map((cat) => {
@@ -983,22 +950,23 @@ export default function Register({ onNavigate }) {
                               type="button"
                               onClick={() => toggleSelection(exporterCategories, setExporterCategories, cat, 3)}
                               disabled={atMax}
-                              className={`px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${active
-                                  ? 'bg-gradient-to-r from-sky-500 to-indigo-600 border-sky-400 text-white shadow-md scale-102'
+                              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer flex items-center gap-1.5 ${
+                                active
+                                  ? 'bg-primary border-primary text-primary-foreground shadow-xs'
                                   : atMax
-                                    ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
-                                    : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50 hover:border-slate-300'
-                                }`}
+                                    ? 'bg-muted/40 border-border text-muted-foreground/40 cursor-not-allowed'
+                                    : 'bg-card border-border text-foreground hover:bg-accent'
+                              }`}
                             >
                               <span>{cat}</span>
-                              {active && <X className="w-3 h-3 text-white" />}
+                              {active && <X className="w-3 h-3 text-primary-foreground" />}
                             </button>
                           );
                         })}
                       </div>
-                      {errors.exporterCategories && <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.exporterCategories}</p>}
+                      {errors.exporterCategories && <p className="text-[11px] text-destructive font-medium mt-1">{errors.exporterCategories}</p>}
 
-                      {/* "Others" specification field — only shown when Others is selected */}
+                      {/* "Others" specification field */}
                       {exporterCategories.includes('Others') && (
                         <div className="mt-2">
                           <input
@@ -1010,16 +978,18 @@ export default function Register({ onNavigate }) {
                             }}
                             placeholder="Specify your product category (3-50 chars)"
                             maxLength={50}
-                            className={`w-full px-4 py-2 bg-white border rounded-xl text-xs placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 ${errors.otherCategoryText ? 'border-red-500/50' : 'border-slate-200'}`}
+                            className={`input-claude ${errors.otherCategoryText ? 'border-destructive' : ''}`}
                           />
-                          {errors.otherCategoryText && <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.otherCategoryText}</p>}
+                          {errors.otherCategoryText && <p className="text-[11px] text-destructive font-medium mt-1">{errors.otherCategoryText}</p>}
                         </div>
                       )}
                     </div>
 
                     {/* Primary Products Description */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-550 uppercase tracking-widest">Primary Products Description <span className="text-slate-400 normal-case">(10-500 chars)</span></label>
+                      <label className="text-xs font-medium text-foreground">
+                        Primary Products Description <span className="text-muted-foreground font-normal">(10-500 chars)</span>
+                      </label>
                       <input
                         type="text"
                         value={exporterProducts}
@@ -1029,49 +999,48 @@ export default function Register({ onNavigate }) {
                         }}
                         placeholder="e.g. Premium ceramic coffee mugs for cafes and restaurants"
                         maxLength={500}
-                        className={`w-full px-4 py-2.5 bg-white border rounded-xl text-xs placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 ${errors.exporterProducts ? 'border-red-500/50' : 'border-slate-200'}`}
+                        className={`input-claude ${errors.exporterProducts ? 'border-destructive' : ''}`}
                       />
                       <div className="flex justify-between items-center">
-                        {errors.exporterProducts && <p className="text-[10px] text-red-500 font-semibold">{errors.exporterProducts}</p>}
-                        <span className="text-[9px] text-slate-400 ml-auto">{exporterProducts.trim().length}/500</span>
+                        {errors.exporterProducts && <p className="text-[11px] text-destructive font-medium">{errors.exporterProducts}</p>}
+                        <span className="text-[10px] text-muted-foreground ml-auto">{exporterProducts.trim().length}/500</span>
                       </div>
                     </div>
 
                     {/* Export Experience */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Export Experience</label>
-                      <div className="grid grid-cols-3 gap-2.5">
+                      <label className="text-xs font-medium text-foreground">Export Experience</label>
+                      <div className="grid grid-cols-3 gap-2">
                         {['Beginner', 'Intermediate', 'Experienced'].map((exp) => (
                           <button
                             key={exp}
                             type="button"
                             onClick={() => { setExporterExp(exp); if (errors.exporterExp) setErrors({ ...errors, exporterExp: null }); }}
-                            className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${exporterExp === exp
-                                ? 'bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/10 scale-102'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                              }`}
+                            className={`py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                              exporterExp === exp
+                                ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                                : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-accent'
+                            }`}
                           >
                             {exp}
                           </button>
                         ))}
                       </div>
-                      {errors.exporterExp && <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.exporterExp}</p>}
+                      {errors.exporterExp && <p className="text-[11px] text-destructive font-medium mt-1">{errors.exporterExp}</p>}
                     </div>
                   </div>
                 )}
 
-
-
                 {/* RENDER LOGISTICS DETAILS */}
                 {role === 'logistics' && (
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     {/* Service Types (max 6) */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                          Service Types Offered <span className="text-slate-400 normal-case">(select 1-6)</span>
+                        <label className="text-xs font-medium text-foreground">
+                          Service Types Offered <span className="text-muted-foreground font-normal">(select 1-6)</span>
                         </label>
-                        <span className="text-[10px] font-semibold text-sky-600">{logisticsServices.length}/6 selected</span>
+                        <span className="text-[11px] font-semibold text-primary">{logisticsServices.length}/6 selected</span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         {['Air Freight', 'Sea Freight', 'Road Transport', 'Rail Transport', 'Customs Clearance', 'Door-to-Door Delivery', 'Warehousing', 'Cargo Insurance', 'Express Courier'].map((svc) => {
@@ -1083,29 +1052,30 @@ export default function Register({ onNavigate }) {
                               type="button"
                               disabled={atMax}
                               onClick={() => { toggleSelection(logisticsServices, setLogisticsServices, svc, 6); if (errors.logisticsServices) setErrors({ ...errors, logisticsServices: null }); }}
-                              className={`py-1.5 px-2 rounded-xl text-xxs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${active
-                                  ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white border-sky-400 shadow-md scale-102'
+                              className={`py-2 px-2 rounded-xl text-xs font-medium border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                                active
+                                  ? 'bg-primary text-primary-foreground border-primary shadow-xs'
                                   : atMax
-                                    ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
-                                }`}
+                                    ? 'bg-muted/40 border-border text-muted-foreground/40 cursor-not-allowed'
+                                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-accent'
+                              }`}
                             >
                               <span>{svc}</span>
-                              {active && <Check className="w-3 h-3 text-white shrink-0" />}
+                              {active && <Check className="w-3.5 h-3.5 text-primary-foreground shrink-0" />}
                             </button>
                           );
                         })}
                       </div>
-                      {errors.logisticsServices && <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.logisticsServices}</p>}
+                      {errors.logisticsServices && <p className="text-[11px] text-destructive font-medium mt-1">{errors.logisticsServices}</p>}
                     </div>
 
                     {/* Service Regions (max 5) */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                          Service Regions <span className="text-slate-400 normal-case">(select 1-5)</span>
+                        <label className="text-xs font-medium text-foreground">
+                          Service Regions <span className="text-muted-foreground font-normal">(select 1-5)</span>
                         </label>
-                        <span className="text-[10px] font-semibold text-sky-600">{logisticsRegions.length}/5 selected</span>
+                        <span className="text-[11px] font-semibold text-primary">{logisticsRegions.length}/5 selected</span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         {['India (Domestic)', 'Southeast Asia', 'East Asia', 'Middle East', 'Europe', 'North America', 'South America', 'Africa', 'Oceania'].map((reg) => {
@@ -1117,25 +1087,26 @@ export default function Register({ onNavigate }) {
                               type="button"
                               disabled={atMax}
                               onClick={() => { toggleSelection(logisticsRegions, setLogisticsRegions, reg, 5); if (errors.logisticsRegions) setErrors({ ...errors, logisticsRegions: null }); }}
-                              className={`py-1.5 px-2 rounded-xl text-xxs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${active
-                                  ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white border-sky-400 shadow-md scale-102'
+                              className={`py-2 px-2 rounded-xl text-xs font-medium border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                                active
+                                  ? 'bg-primary text-primary-foreground border-primary shadow-xs'
                                   : atMax
-                                    ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
-                                }`}
+                                    ? 'bg-muted/40 border-border text-muted-foreground/40 cursor-not-allowed'
+                                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-accent'
+                              }`}
                             >
                               <span>{reg}</span>
-                              {active && <Check className="w-3 h-3 text-white shrink-0" />}
+                              {active && <Check className="w-3.5 h-3.5 text-primary-foreground shrink-0" />}
                             </button>
                           );
                         })}
                       </div>
-                      {errors.logisticsRegions && <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.logisticsRegions}</p>}
+                      {errors.logisticsRegions && <p className="text-[11px] text-destructive font-medium mt-1">{errors.logisticsRegions}</p>}
                     </div>
 
                     {/* Business Registration Number */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Business Registration Number</label>
+                      <label className="text-xs font-medium text-foreground">Business Registration Number</label>
                       <input
                         type="text"
                         value={logisticsRegNo}
@@ -1145,18 +1116,18 @@ export default function Register({ onNavigate }) {
                         }}
                         placeholder="Enter GSTIN / Business Registration Number"
                         maxLength={25}
-                        className={`w-full px-4 py-2 bg-white border rounded-xl text-xs placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 ${errors.logisticsRegNo ? 'border-red-500/50' : 'border-slate-200'}`}
+                        className={`input-claude ${errors.logisticsRegNo ? 'border-destructive' : ''}`}
                       />
-                      {errors.logisticsRegNo && <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.logisticsRegNo}</p>}
+                      {errors.logisticsRegNo && <p className="text-[11px] text-destructive font-medium mt-1">{errors.logisticsRegNo}</p>}
                     </div>
 
                     {/* Years of Experience */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Years of Experience</label>
+                      <label className="text-xs font-medium text-foreground">Years of Experience</label>
                       <select
                         value={logisticsExperience}
                         onChange={(e) => { setLogisticsExperience(e.target.value); if (errors.logisticsExperience) setErrors({ ...errors, logisticsExperience: null }); }}
-                        className={`w-full px-4 py-2 bg-white border rounded-xl text-xs text-slate-700 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all duration-200 cursor-pointer ${errors.logisticsExperience ? 'border-red-500/50' : 'border-slate-200'}`}
+                        className={`input-claude cursor-pointer ${errors.logisticsExperience ? 'border-destructive' : ''}`}
                       >
                         <option value="">Select experience</option>
                         <option value="Less than 1 year">Less than 1 year</option>
@@ -1165,12 +1136,12 @@ export default function Register({ onNavigate }) {
                         <option value="5-10 years">5-10 years</option>
                         <option value="10+ years">10+ years</option>
                       </select>
-                      {errors.logisticsExperience && <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.logisticsExperience}</p>}
+                      {errors.logisticsExperience && <p className="text-[11px] text-destructive font-medium mt-1">{errors.logisticsExperience}</p>}
                     </div>
 
                     {/* Live Tracking Support */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Live Tracking Support</label>
+                      <label className="text-xs font-medium text-foreground">Live Tracking Support</label>
                       <div className="flex gap-4">
                         {['Yes', 'No'].map((opt) => (
                           <label key={opt} className="flex items-center gap-2 cursor-pointer select-none">
@@ -1180,18 +1151,18 @@ export default function Register({ onNavigate }) {
                               value={opt}
                               checked={logisticsTracking === opt}
                               onChange={(e) => { setLogisticsTracking(e.target.value); if (errors.logisticsTracking) setErrors({ ...errors, logisticsTracking: null }); }}
-                              className="w-3.5 h-3.5 accent-sky-500 cursor-pointer"
+                              className="w-4 h-4 accent-primary cursor-pointer"
                             />
-                            <span className="text-xs font-semibold text-slate-600">{opt}</span>
+                            <span className="text-xs font-medium text-foreground">{opt}</span>
                           </label>
                         ))}
                       </div>
-                      {errors.logisticsTracking && <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.logisticsTracking}</p>}
+                      {errors.logisticsTracking && <p className="text-[11px] text-destructive font-medium mt-1">{errors.logisticsTracking}</p>}
                     </div>
 
                     {/* Cargo Insurance Support */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cargo Insurance Support</label>
+                      <label className="text-xs font-medium text-foreground">Cargo Insurance Support</label>
                       <div className="flex gap-4">
                         {['Yes', 'No'].map((opt) => (
                           <label key={opt} className="flex items-center gap-2 cursor-pointer select-none">
@@ -1201,23 +1172,23 @@ export default function Register({ onNavigate }) {
                               value={opt}
                               checked={logisticsInsurance === opt}
                               onChange={(e) => { setLogisticsInsurance(e.target.value); if (errors.logisticsInsurance) setErrors({ ...errors, logisticsInsurance: null }); }}
-                              className="w-3.5 h-3.5 accent-sky-500 cursor-pointer"
+                              className="w-4 h-4 accent-primary cursor-pointer"
                             />
-                            <span className="text-xs font-semibold text-slate-600">{opt}</span>
+                            <span className="text-xs font-medium text-foreground">{opt}</span>
                           </label>
                         ))}
                       </div>
-                      {errors.logisticsInsurance && <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.logisticsInsurance}</p>}
+                      {errors.logisticsInsurance && <p className="text-[11px] text-destructive font-medium mt-1">{errors.logisticsInsurance}</p>}
                     </div>
                   </div>
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex justify-between items-center pt-6 border-t border-slate-200">
+                <div className="flex justify-between items-center pt-5 border-t border-border">
                   <button
                     type="button"
                     onClick={handlePrevStep}
-                    className="inline-flex items-center gap-1 px-4 py-2 text-xs font-bold border border-slate-200 bg-white/50 rounded-xl hover:text-slate-900 hover:border-slate-300 transition-all cursor-pointer"
+                    className="btn-outline text-xs px-4 py-2 cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     Back
@@ -1225,10 +1196,10 @@ export default function Register({ onNavigate }) {
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="inline-flex items-center gap-1.5 px-6 py-2.5 font-bold text-white bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 hover:scale-103 shadow-md rounded-xl transition-all cursor-pointer"
+                    className="btn-primary text-xs px-6 py-2.5 cursor-pointer"
                   >
-                    Continue
-                    <ArrowRight className="w-4 h-4" />
+                    <span>Continue</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
@@ -1239,124 +1210,124 @@ export default function Register({ onNavigate }) {
             {/* STEP 3 CONTENT: CONFIRMATION & REVIEW */}
             {/* ==================================================== */}
             {step === 3 && (
-              <div className="space-y-6 animate-slide-in-right">
+              <div className="space-y-5 animate-slide-in-right">
 
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Review & Confirm</h2>
-                  <p className="text-xs text-slate-500 mt-1 font-medium">Step 3 of 3 · Verify Profile Details</p>
+                  <h2 className="font-display text-xl font-bold text-foreground tracking-tight">Review & Confirm</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Step 3 of 3 · Verify Profile Details</p>
                 </div>
 
                 {/* Summary Card: Account Information */}
-                <div className="bg-slate-50 border border-slate-200/80 p-4 sm:p-5 rounded-2xl space-y-3">
-                  <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Account Information</h3>
+                <div className="bg-muted/40 border border-border p-4 sm:p-5 rounded-2xl space-y-3">
+                  <div className="flex justify-between items-center border-b border-border pb-2">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Account Information</h3>
                     <button
                       type="button"
                       onClick={() => setStep(1)}
-                      className="text-xs font-bold text-sky-600 hover:underline cursor-pointer"
+                      className="text-xs font-semibold text-primary hover:underline cursor-pointer"
                     >
                       Edit Profile
                     </button>
                   </div>
 
                   {/* Info Fields */}
-                  <div className="space-y-2 text-xs font-semibold">
+                  <div className="space-y-2 text-xs font-medium">
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Full Name</span>
-                      <span className="text-slate-800">{fullName}</span>
+                      <span className="text-muted-foreground">Full Name</span>
+                      <span className="text-foreground font-semibold">{fullName}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Company</span>
-                      <span className="text-slate-800">{companyName}</span>
+                      <span className="text-muted-foreground">Company</span>
+                      <span className="text-foreground font-semibold">{companyName}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Email</span>
-                      <span className="text-slate-800">{email}</span>
+                      <span className="text-muted-foreground">Email</span>
+                      <span className="text-foreground font-semibold">{email}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Phone</span>
-                      <span className="text-slate-800">{phone}</span>
+                      <span className="text-muted-foreground">Phone</span>
+                      <span className="text-foreground font-semibold">{phone}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Base Country</span>
-                      <span className="text-slate-800">{country}</span>
+                      <span className="text-muted-foreground">Base Country</span>
+                      <span className="text-foreground font-semibold">{country}</span>
                     </div>
-                    <div className="flex justify-between border-t border-slate-200 pt-2">
-                      <span className="text-slate-400 font-bold uppercase text-[10px]">Assigned Role</span>
-                      <span className="text-sky-600 font-extrabold capitalize text-[10px]">{role}</span>
+                    <div className="flex justify-between border-t border-border pt-2">
+                      <span className="text-muted-foreground font-semibold uppercase text-[10px]">Assigned Role</span>
+                      <span className="text-primary font-bold capitalize text-xs">{role}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Summary Card: Business & Logistics Profile */}
-                <div className="bg-slate-50 border border-slate-200/80 p-4 sm:p-5 rounded-2xl space-y-3">
-                  <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                <div className="bg-muted/40 border border-border p-4 sm:p-5 rounded-2xl space-y-3">
+                  <div className="flex justify-between items-center border-b border-border pb-2">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       {role === 'exporter' ? 'Exporter Profile' : 'Logistics Partner Profile'}
                     </h3>
                     <button
                       type="button"
                       onClick={() => setStep(2)}
-                      className="text-xs font-bold text-sky-600 hover:underline cursor-pointer"
+                      className="text-xs font-semibold text-primary hover:underline cursor-pointer"
                     >
                       Edit Details
                     </button>
                   </div>
 
-                  <div className="space-y-2 text-xs font-semibold">
+                  <div className="space-y-2 text-xs font-medium">
                     {role === 'exporter' ? (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Registration / GST</span>
-                          <span className="text-slate-800">{exporterGst || 'N/A'}</span>
+                          <span className="text-muted-foreground">Registration / GST</span>
+                          <span className="text-foreground font-semibold">{exporterGst || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Business Type</span>
-                          <span className="text-slate-800">{exporterType || 'N/A'}</span>
+                          <span className="text-muted-foreground">Business Type</span>
+                          <span className="text-foreground font-semibold">{exporterType || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Categories</span>
-                          <span className="text-slate-800 text-right max-w-[200px] truncate">
+                          <span className="text-muted-foreground">Categories</span>
+                          <span className="text-foreground font-semibold text-right max-w-[200px] truncate">
                             {exporterCategories.join(', ') || 'None selected'}
                             {exporterCategories.includes('Others') && otherCategoryText ? ` (${otherCategoryText})` : ''}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Experience</span>
-                          <span className="text-slate-800">{exporterExp || 'N/A'}</span>
+                          <span className="text-muted-foreground">Experience</span>
+                          <span className="text-foreground font-semibold">{exporterExp || 'N/A'}</span>
                         </div>
                         {exporterProducts && (
-                          <div className="flex flex-col gap-1 border-t border-slate-200/70 pt-2">
-                            <span className="text-slate-400 text-[10px]">Primary Products</span>
-                            <span className="text-slate-700 text-[11px] leading-relaxed line-clamp-2">{exporterProducts}</span>
+                          <div className="flex flex-col gap-1 border-t border-border pt-2">
+                            <span className="text-muted-foreground text-[10px]">Primary Products</span>
+                            <span className="text-foreground text-[11px] leading-relaxed line-clamp-2">{exporterProducts}</span>
                           </div>
                         )}
                       </>
                     ) : (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Registration No</span>
-                          <span className="text-slate-800">{logisticsRegNo || 'N/A'}</span>
+                          <span className="text-muted-foreground">Registration No</span>
+                          <span className="text-foreground font-semibold">{logisticsRegNo || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Experience</span>
-                          <span className="text-slate-800">{logisticsExperience || 'N/A'}</span>
+                          <span className="text-muted-foreground">Experience</span>
+                          <span className="text-foreground font-semibold">{logisticsExperience || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Services</span>
-                          <span className="text-slate-800 text-right max-w-[200px] truncate">{logisticsServices.join(', ') || 'None'}</span>
+                          <span className="text-muted-foreground">Services</span>
+                          <span className="text-foreground font-semibold text-right max-w-[200px] truncate">{logisticsServices.join(', ') || 'None'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Regions</span>
-                          <span className="text-slate-800 text-right max-w-[200px] truncate">{logisticsRegions.join(', ') || 'None'}</span>
+                          <span className="text-muted-foreground">Regions</span>
+                          <span className="text-foreground font-semibold text-right max-w-[200px] truncate">{logisticsRegions.join(', ') || 'None'}</span>
                         </div>
-                        <div className="flex justify-between border-t border-slate-200/70 pt-2">
-                          <span className="text-slate-400">Live Tracking</span>
-                          <span className={`text-xs font-bold ${logisticsTracking === 'Yes' ? 'text-emerald-600' : 'text-slate-600'}`}>{logisticsTracking}</span>
+                        <div className="flex justify-between border-t border-border pt-2">
+                          <span className="text-muted-foreground">Live Tracking</span>
+                          <span className={`text-xs font-bold ${logisticsTracking === 'Yes' ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>{logisticsTracking}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Cargo Insurance</span>
-                          <span className={`text-xs font-bold ${logisticsInsurance === 'Yes' ? 'text-emerald-600' : 'text-slate-600'}`}>{logisticsInsurance}</span>
+                          <span className="text-muted-foreground">Cargo Insurance</span>
+                          <span className={`text-xs font-bold ${logisticsInsurance === 'Yes' ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>{logisticsInsurance}</span>
                         </div>
                       </>
                     )}
@@ -1364,40 +1335,38 @@ export default function Register({ onNavigate }) {
                 </div>
 
                 {/* Submit Form */}
-                <form onSubmit={handleRegisterSubmit} className="space-y-5">
+                <form onSubmit={handleRegisterSubmit} className="space-y-4">
 
                   {/* Checkbox agreement */}
                   <div className="flex flex-col gap-1">
-                    <div className="flex items-start">
-                      <label className="flex items-start gap-2.5 text-xs font-semibold text-slate-500 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={agreed}
-                          onChange={(e) => {
-                            setAgreed(e.target.checked);
-                            if (errors.agreed) setErrors({ ...errors, agreed: null });
-                          }}
-                          className="mt-0.5 w-4 h-4 rounded border-slate-200 bg-white accent-sky-500 focus:ring-0 cursor-pointer"
-                        />
-                        <span>
-                          I agree to the{' '}
-                          <span className="text-sky-655 hover:text-sky-500 underline">Terms of Service</span>
-                          {' '}and{' '}
-                          <span className="text-sky-655 hover:text-sky-500 underline">Privacy Policy</span>.
-                        </span>
-                      </label>
-                    </div>
+                    <label className="flex items-start gap-2.5 text-xs text-muted-foreground cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={agreed}
+                        onChange={(e) => {
+                          setAgreed(e.target.checked);
+                          if (errors.agreed) setErrors({ ...errors, agreed: null });
+                        }}
+                        className="mt-0.5 w-4 h-4 rounded border-border bg-card accent-primary cursor-pointer"
+                      />
+                      <span>
+                        I agree to the{' '}
+                        <span className="text-primary font-medium hover:underline">Terms of Service</span>
+                        {' '}and{' '}
+                        <span className="text-primary font-medium hover:underline">Privacy Policy</span>.
+                      </span>
+                    </label>
                     {errors.agreed && (
-                      <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.agreed}</p>
+                      <p className="text-[11px] text-destructive font-medium mt-1">{errors.agreed}</p>
                     )}
                   </div>
 
                   {/* Navigation and Register Actions */}
-                  <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+                  <div className="flex justify-between items-center pt-4 border-t border-border">
                     <button
                       type="button"
                       onClick={handlePrevStep}
-                      className="inline-flex items-center gap-1 px-4 py-2 text-xs font-bold border border-slate-200 bg-white/50 rounded-xl hover:text-slate-900 hover:border-slate-350 transition-all cursor-pointer"
+                      className="btn-outline text-xs px-4 py-2 cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                       Back
@@ -1406,7 +1375,7 @@ export default function Register({ onNavigate }) {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="inline-flex items-center justify-center gap-2 px-6 py-2.5 font-bold text-white bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 hover:scale-103 active:scale-98 shadow-lg shadow-sky-500/10 rounded-xl transition-all disabled:opacity-50 cursor-pointer animate-[pulseGlow_3s_infinite]"
+                      className="btn-primary px-6 py-2.5 text-xs font-semibold cursor-pointer disabled:opacity-50"
                     >
                       {loading ? (
                         <>
@@ -1438,11 +1407,6 @@ export default function Register({ onNavigate }) {
           0%, 100% { transform: translateX(0); }
           20%, 60% { transform: translateX(-6px); }
           40%, 80% { transform: translateX(6px); }
-        }
-        @keyframes pulseGlow {
-          0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.2); }
-          50% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
         }
         @keyframes slideInRight {
           from { opacity: 0; transform: translate3d(24px, 0, 0); }

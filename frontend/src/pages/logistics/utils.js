@@ -40,10 +40,11 @@ export const formatShipmentStatus = (raw) => {
 };
 
 export const statusToBadgeClass = (label) => {
-  if (label === 'Delivered')        return 'bg-emerald-50 text-emerald-600';
-  if (label === 'Shipment Accepted') return 'bg-sky-50 text-sky-600 border border-sky-100';
-  return 'bg-amber-50 text-amber-600 border border-amber-100';
+  if (label === 'Delivered') return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+  if (label === 'Shipment Accepted') return 'bg-primary/10 text-primary border border-primary/20';
+  return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20';
 };
+
 
 // ── User initials ────────────────────────────────────────────────────────────
 export const userInitials = (name = '') => {

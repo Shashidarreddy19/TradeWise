@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, ArrowRight, Bell, ChevronDown, LogOut, User, Settings, LayoutDashboard } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 
 export default function Navbar({ onNavigate, currentPath, authenticated, user, onLogout, getDashboardPath }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -69,20 +70,24 @@ export default function Navbar({ onNavigate, currentPath, authenticated, user, o
     : 'U';
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
-      ? 'py-4 glass-panel border-b border-white/10 shadow-lg'
-      : 'py-6 bg-transparent border-b border-transparent'
-      }`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      scrolled
+        ? 'py-3.5 bg-card/90 backdrop-blur-md border-b border-border shadow-xs'
+        : 'py-5 bg-transparent border-b border-transparent'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
 
           {/* Logo */}
           <div
             onClick={handleLogoClick}
-            className="flex items-center gap-2 cursor-pointer select-none"
+            className="flex items-center gap-2.5 cursor-pointer select-none group"
           >
-            <span className="font-display text-xl font-bold tracking-tight bg-gradient-to-r from-slate-900 via-slate-850 to-slate-600 bg-clip-text text-transparent">
-              Trade
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shadow-xs transition-transform group-hover:scale-105">
+              T
+            </div>
+            <span className="font-display text-xl font-bold tracking-tight text-foreground">
+              Trade<span className="text-primary">Wise</span>
             </span>
           </div>
 
@@ -90,30 +95,32 @@ export default function Navbar({ onNavigate, currentPath, authenticated, user, o
           {!authenticated ? (
             <>
               {/* Guest: section links */}
-              <div className="hidden lg:flex items-center gap-8">
+              <div className="hidden lg:flex items-center gap-7">
                 {guestNavItems.map((item) => (
                   <a
                     key={item.name}
                     href={item.href}
                     onClick={(e) => handleNavClick(e, item.href)}
-                    className="text-sm font-semibold text-slate-600 hover:text-sky-600 transition-colors"
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {item.name}
                   </a>
                 ))}
               </div>
 
-              {/* Guest: Sign In + Get Started */}
-              <div className="hidden lg:flex items-center gap-4">
+              {/* Guest: Theme Toggle + Sign In + Get Started */}
+              <div className="hidden lg:flex items-center gap-3">
+                <ThemeToggle variant="simple" />
+
                 <button
                   onClick={() => onNavigate('/login')}
-                  className="text-sm font-bold text-slate-600 hover:text-sky-600 transition-colors cursor-pointer"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-2 rounded-lg transition-colors cursor-pointer"
                 >
                   Sign In
                 </button>
                 <button
                   onClick={() => onNavigate('/register')}
-                  className="inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 hover:scale-105 active:scale-95 transition-all shadow-md shadow-sky-500/10 cursor-pointer"
+                  className="btn-primary inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   Get Started
                   <ArrowRight className="w-4 h-4" />
@@ -124,73 +131,76 @@ export default function Navbar({ onNavigate, currentPath, authenticated, user, o
             <>
               {/* Authenticated: dashboard-oriented nav */}
               <div className="hidden lg:flex items-center gap-8">
-                <button onClick={() => onNavigate(getDashboardPath())} className="text-sm font-semibold text-slate-600 hover:text-sky-600 transition-colors cursor-pointer">Dashboard</button>
+                <button onClick={() => onNavigate(getDashboardPath())} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Dashboard</button>
               </div>
 
-              {/* Authenticated: notifications + profile */}
-              <div className="hidden lg:flex items-center gap-4">
+              {/* Authenticated: theme toggle + notifications + profile */}
+              <div className="hidden lg:flex items-center gap-3">
+                <ThemeToggle variant="simple" />
+
                 {/* Notifications bell */}
                 <button
                   onClick={() => onNavigate(getDashboardPath())}
-                  className="relative p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100/50 transition-colors cursor-pointer"
+                  className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer border border-border/60"
+                  title="Notifications"
                 >
-                  <Bell className="w-5 h-5" />
+                  <Bell className="w-4 h-4" />
                 </button>
 
                 {/* Profile dropdown */}
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setProfileOpen(!profileOpen)}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-slate-100/50 transition-colors cursor-pointer"
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border bg-card hover:bg-muted transition-colors cursor-pointer"
                   >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                    <div className="w-7 h-7 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold">
                       {initials}
                     </div>
-                    <span className="text-sm font-semibold text-slate-700 max-w-[120px] truncate hidden xl:block">
+                    <span className="text-xs font-semibold text-foreground max-w-[120px] truncate hidden xl:block">
                       {user?.name || 'User'}
                     </span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
                   </button>
 
                   {/* Dropdown menu */}
                   {profileOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-slate-200/80 rounded-xl shadow-2xl shadow-slate-200/50 py-2 animate-in fade-in slide-in-from-top-2 duration-200 z-50">
-                      <div className="px-4 py-3 border-b border-slate-100">
-                        <p className="text-sm font-bold text-slate-800 truncate">{user?.name}</p>
-                        <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
-                        <span className="inline-block mt-1 text-[9px] font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-popover border border-border rounded-lg shadow-lg py-2 animate-scale-in z-50">
+                      <div className="px-4 py-2.5 border-b border-border">
+                        <p className="text-sm font-semibold text-foreground truncate">{user?.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                        <span className="inline-block mt-1 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
                           {user?.role}
                         </span>
                       </div>
                       <div className="py-1">
                         <button
                           onClick={() => { setProfileOpen(false); onNavigate(getDashboardPath()); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
+                          className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
                         >
-                          <LayoutDashboard className="w-4 h-4" />
+                          <LayoutDashboard className="w-3.5 h-3.5 text-muted-foreground" />
                           Dashboard
                         </button>
                         <button
                           onClick={() => { setProfileOpen(false); onNavigate(getDashboardPath()); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
+                          className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
                         >
-                          <User className="w-4 h-4" />
+                          <User className="w-3.5 h-3.5 text-muted-foreground" />
                           My Profile
                         </button>
                         <button
                           onClick={() => { setProfileOpen(false); onNavigate(getDashboardPath()); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
+                          className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
                         >
-                          <Settings className="w-4 h-4" />
+                          <Settings className="w-3.5 h-3.5 text-muted-foreground" />
                           Settings
                         </button>
                       </div>
-                      <div className="border-t border-slate-100 pt-1">
+                      <div className="border-t border-border pt-1">
                         <button
                           onClick={() => { setProfileOpen(false); onLogout(); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                          className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                         >
-                          <LogOut className="w-4 h-4" />
+                          <LogOut className="w-3.5 h-3.5" />
                           Logout
                         </button>
                       </div>
@@ -201,13 +211,15 @@ export default function Navbar({ onNavigate, currentPath, authenticated, user, o
             </>
           )}
 
-          {/* Mobile Menu Button */}
-          <div className="lg:hidden">
+          {/* Mobile Menu Button + Mobile Theme Toggle */}
+          <div className="lg:hidden flex items-center gap-2">
+            <ThemeToggle variant="simple" />
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100/50 transition-colors"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border"
+              aria-label="Toggle menu"
             >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
@@ -215,8 +227,8 @@ export default function Navbar({ onNavigate, currentPath, authenticated, user, o
 
       {/* ═══════════ MOBILE DRAWER ═══════════ */}
       {isOpen && (
-        <div className="lg:hidden absolute top-full left-0 right-0 glass-panel border-b border-white/10 shadow-2xl py-6 px-4 animate-in fade-in slide-in-from-top-5 duration-200">
-          <div className="flex flex-col gap-4">
+        <div className="lg:hidden absolute top-full left-0 right-0 bg-card border-b border-border shadow-xl py-5 px-4 animate-scale-in">
+          <div className="flex flex-col gap-3">
             {!authenticated ? (
               <>
                 {guestNavItems.map((item) => (
@@ -224,41 +236,41 @@ export default function Navbar({ onNavigate, currentPath, authenticated, user, o
                     key={item.name}
                     href={item.href}
                     onClick={(e) => { setIsOpen(false); handleNavClick(e, item.href); }}
-                    className="text-sm font-semibold text-slate-600 hover:text-sky-600 transition-colors"
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground py-1.5 transition-colors"
                   >
                     {item.name}
                   </a>
                 ))}
-                <div className="border-t border-slate-100/80 pt-4 flex flex-col gap-3">
+                <div className="border-t border-border pt-4 flex flex-col gap-2.5">
                   <button
                     onClick={() => { setIsOpen(false); onNavigate('/login'); }}
-                    className="text-sm font-bold text-slate-600 hover:text-sky-600 transition-colors w-full py-2.5 border border-slate-200 rounded-xl cursor-pointer"
+                    className="btn-secondary w-full text-center cursor-pointer"
                   >
                     Sign In
                   </button>
                   <button
                     onClick={() => { setIsOpen(false); onNavigate('/register'); }}
-                    className="inline-flex items-center justify-center gap-2 w-full py-3 font-semibold rounded-xl text-white bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 transition-all text-center cursor-pointer"
+                    className="btn-primary w-full text-center cursor-pointer"
                   >
                     Get Started
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-4 h-4 ml-1" />
                   </button>
                 </div>
               </>
             ) : (
               <>
-                <button onClick={() => { setIsOpen(false); onNavigate(getDashboardPath()); }} className="text-sm font-semibold text-slate-600 hover:text-sky-600 transition-colors text-left">Dashboard</button>
-                <div className="border-t border-slate-100/80 pt-4 flex flex-col gap-3">
-                  <div className="flex items-center gap-3 px-2 py-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">{initials}</div>
+                <button onClick={() => { setIsOpen(false); onNavigate(getDashboardPath()); }} className="text-sm font-medium text-foreground hover:text-primary py-1.5 transition-colors text-left">Dashboard</button>
+                <div className="border-t border-border pt-3 flex flex-col gap-2.5">
+                  <div className="flex items-center gap-2.5 px-2 py-1.5">
+                    <div className="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold">{initials}</div>
                     <div>
-                      <p className="text-sm font-bold text-slate-800">{user?.name}</p>
-                      <p className="text-[10px] text-slate-500">{user?.role}</p>
+                      <p className="text-xs font-semibold text-foreground">{user?.name}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase">{user?.role}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => { setIsOpen(false); onLogout(); }}
-                    className="text-sm font-bold text-red-600 hover:text-red-500 transition-colors w-full py-2.5 border border-red-200 rounded-xl cursor-pointer"
+                    className="w-full py-2 text-xs font-semibold text-destructive border border-destructive/20 rounded-lg hover:bg-destructive/10 transition-colors cursor-pointer text-center"
                   >
                     Logout
                   </button>

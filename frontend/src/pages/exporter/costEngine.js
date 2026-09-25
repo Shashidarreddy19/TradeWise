@@ -891,13 +891,13 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
 
   // ── 19. Cost Breakdown Groups ────────────────────────────────────────────────
   const groupColors = {
-    'Manufacturing': 'bg-sky-500',
-    'Origin Logistics': 'bg-indigo-500',
+    'Manufacturing': 'bg-primary',
+    'Origin Logistics': 'bg-amber-600',
     'International Freight': 'bg-amber-500',
     'Insurance': 'bg-emerald-500',
     'Customs Duty': 'bg-rose-500',
-    'Import Taxes': 'bg-purple-500',
-    'Destination Charges': 'bg-teal-500',
+    'Import Taxes': 'bg-orange-500',
+    'Destination Charges': 'bg-emerald-600',
   };
 
   const grouped = {};

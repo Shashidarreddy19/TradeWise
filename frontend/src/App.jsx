@@ -131,9 +131,9 @@ function App() {
   if (currentPath === '/ml-ranking') {
     if (!authenticated) { navigate('/login'); return null; }
     return (
-      <div className="min-h-screen bg-slate-50 py-10 px-4">
+      <div className="min-h-screen bg-background text-foreground py-10 px-4">
         <div className="max-w-4xl mx-auto">
-          <button onClick={() => navigate('/exporter')} className="text-xs text-indigo-600 hover:underline mb-4 inline-block">&larr; Back to Dashboard</button>
+          <button onClick={() => navigate('/exporter')} className="text-xs text-primary hover:underline mb-4 inline-block">&larr; Back to Dashboard</button>
           <MlExportRanking />
         </div>
       </div>
@@ -143,9 +143,9 @@ function App() {
   if (currentPath === '/ml-test') {
     if (!authenticated) { navigate('/login'); return null; }
     return (
-      <div className="min-h-screen bg-slate-50 py-10 px-4">
+      <div className="min-h-screen bg-background text-foreground py-10 px-4">
         <div className="max-w-5xl mx-auto">
-          <button onClick={() => navigate('/exporter')} className="text-xs text-indigo-600 hover:underline mb-4 inline-block">&larr; Back to Dashboard</button>
+          <button onClick={() => navigate('/exporter')} className="text-xs text-primary hover:underline mb-4 inline-block">&larr; Back to Dashboard</button>
           <MlModelTest />
         </div>
       </div>
@@ -154,9 +154,9 @@ function App() {
 
   // Default: Landing page "/"
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-700 flex flex-col antialiased font-sans relative overflow-x-hidden">
-      {/* Decorative Global Background Glows */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] bg-gradient-to-b from-indigo-500/5 via-sky-500/2 to-transparent rounded-full glow-blur pointer-events-none z-0"></div>
+    <div className="min-h-screen bg-background text-foreground flex flex-col antialiased font-sans relative overflow-x-hidden">
+      {/* Decorative Subtle Warm Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[500px] bg-gradient-to-b from-primary/5 via-primary/2 to-transparent rounded-full pointer-events-none z-0"></div>
 
       {/* Navigation Header — auth-aware */}
       <Navbar

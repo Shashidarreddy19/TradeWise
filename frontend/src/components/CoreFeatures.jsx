@@ -1,63 +1,56 @@
 import React from 'react';
-import { ShieldCheck, DollarSign, Truck, Sparkles } from 'lucide-react';
+import { ShieldCheck, DollarSign, Truck } from 'lucide-react';
 
 export default function CoreFeatures() {
   const benefits = [
     {
-      title: "Compliance Audit",
-      description: "Instantly audit required import-export checklists, certificates, and customs regulations for 150+ target countries.",
+      title: "Compliance Intelligence",
+      description: "Instantly audit required import-export checklists, phytosanitary/FDA certificates, and customs documentation across target destination markets.",
       icon: ShieldCheck,
-      color: "from-sky-50 to-sky-100/50 text-sky-600 border-sky-200"
     },
     {
       title: "Landed Cost Engine",
-      description: "Estimate target margins, ocean freight rates, destination tariffs, and local port clearance fees in a single workflow.",
+      description: "Model CIF/FOB export pricing, ocean/air freight estimates, destination import tariffs, and local VAT/GST in a single workflow.",
       icon: DollarSign,
-      color: "from-indigo-50 to-indigo-100/50 text-indigo-600 border-indigo-200"
     },
     {
       title: "Logistics Coordination",
-      description: "Broadcast ready orders directly to verified freight operators and cargo forwarders to secure shipment assignments.",
+      description: "Manage catalog products, create confirmed export orders, and connect directly with verified freight operators.",
       icon: Truck,
-      color: "from-emerald-50 to-emerald-100/50 text-emerald-600 border-emerald-200"
     }
   ];
 
   return (
-    <section id="features" className="py-24 bg-slate-50 relative overflow-hidden border-t border-slate-200/80">
-      {/* Decorative ambient background glows */}
-      <div className="absolute top-10 left-10 w-80 h-80 bg-sky-500/5 rounded-full glow-blur animate-float"></div>
-      <div className="absolute bottom-10 right-10 w-96 h-96 bg-indigo-500/5 rounded-full glow-blur"></div>
-
+    <section id="features" className="py-20 bg-background relative overflow-hidden border-t border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-            Designed to Simplify Indian Export
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
+            Designed for Modern Exporters
           </h2>
-          <p className="text-slate-600 mt-4 leading-relaxed">
-            Eliminate traditional trade bottlenecks with tools built explicitly to manage your compliance checks, estimate real margins, and coordinate freight.
+          <p className="text-muted-foreground mt-3 text-sm sm:text-base leading-relaxed">
+            Eliminate traditional trade bottlenecks with purpose-built tools that verify compliance, estimate landed costs, and coordinate global shipments.
           </p>
         </div>
 
         {/* Benefits Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {benefits.map((benefit, index) => {
             const Icon = benefit.icon;
             return (
               <div 
                 key={index}
-                className="bg-white border border-slate-200 rounded-3xl p-8 hover:shadow-md transition-all duration-300 flex flex-col items-center text-center group"
+                className="card-claude rounded-xl p-6 flex flex-col items-center text-center group cursor-default"
               >
                 {/* Icon Wrapper */}
-                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${benefit.color} border flex items-center justify-center mb-6 group-hover:scale-105 transition-transform duration-300`}>
-                  <Icon className="w-8 h-8" />
+                <div className="w-12 h-12 rounded-xl bg-accent text-primary border border-primary/20 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform shadow-xs">
+                  <Icon className="w-6 h-6" />
                 </div>
 
                 {/* Title & Description */}
-                <h3 className="text-lg font-bold text-slate-900 mb-3">{benefit.title}</h3>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                <h3 className="text-base font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">{benefit.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {benefit.description}
                 </p>
               </div>
