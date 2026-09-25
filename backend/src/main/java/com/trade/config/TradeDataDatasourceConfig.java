@@ -40,9 +40,11 @@ public class TradeDataDatasourceConfig {
     }
 
     @Bean
-    public DataSource tradeDataDataSource() {
+    @ConfigurationProperties("tradedata.datasource.hikari")
+    public com.zaxxer.hikari.HikariDataSource tradeDataDataSource() {
         return tradeDataDataSourceProperties()
                 .initializeDataSourceBuilder()
+                .type(com.zaxxer.hikari.HikariDataSource.class)
                 .build();
     }
 

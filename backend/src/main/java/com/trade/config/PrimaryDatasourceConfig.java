@@ -40,9 +40,11 @@ public class PrimaryDatasourceConfig {
 
     @Primary
     @Bean
-    public DataSource primaryDataSource() {
+    @ConfigurationProperties("spring.datasource.hikari")
+    public com.zaxxer.hikari.HikariDataSource primaryDataSource() {
         return primaryDataSourceProperties()
                 .initializeDataSourceBuilder()
+                .type(com.zaxxer.hikari.HikariDataSource.class)
                 .build();
     }
 

@@ -82,35 +82,23 @@ public class MarketOpportunityService {
         entry.put("country", country);
         entry.put("hsCode", hsCode);
 
-        // 1. Compliance complexity (from real regulatory data, with knowledge fallback)
-        RegulatoryRetrievalService.RegulatoryResult regResult =
-                retrievalService.getRegulations(country, hsCode);
-        RegulatoryRetrievalService.ComplianceScore compliance =
-                retrievalService.calculateCompliance(regResult);
+        // 1. Compliance complexity & regulations (instant in-memory knowledge engine)
+        Map<String, Object> kb = knowledgeService.getKnowledgeBasedRegulations(country, hsCode, null, null);
+        int complianceScore = knowledgeService.calculateScore(kb);
+        String complexity = knowledgeService.getComplexity(kb);
+        @SuppressWarnings("unchecked")
+        List<?> kbDocs = (List<?>) kb.getOrDefault("requiredDocumentsDetailed", kb.getOrDefault("required_documents", List.of()));
+        @SuppressWarnings("unchecked")
+        List<?> kbCerts = (List<?>) kb.getOrDefault("certificationsDetailed", kb.getOrDefault("certifications", List.of()));
+        @SuppressWarnings("unchecked")
+        List<?> kbRestr = (List<?>) kb.getOrDefault("restrictions", kb.getOrDefault("restricted_products", List.of()));
 
-        // If DB has no specific data or only generic chapter-level match, use knowledge-based scoring
-        boolean isGenericMatch = "HS2_CHAPTER".equals(regResult.matchType)
-                || "NOT_FOUND".equals(regResult.matchType)
-                || "COVERAGE_AUDIT".equals(regResult.matchType);
-        boolean hasMinimalData = compliance.documentsCount < 5 && compliance.certificationsCount < 3;
-
-        if (isGenericMatch || hasMinimalData) {
-            Map<String, Object> kb = knowledgeService.getKnowledgeBasedRegulations(
-                    country, hsCode, regResult.productDescription, regResult.category);
-            compliance.numericScore = knowledgeService.calculateScore(kb);
-            compliance.complexity = knowledgeService.getComplexity(kb);
-            compliance.documentsCount = ((java.util.List<?>) kb.getOrDefault("required_documents", java.util.List.of())).size();
-            compliance.certificationsCount = ((java.util.List<?>) kb.getOrDefault("certifications", java.util.List.of())).size();
-            compliance.restrictionsCount = ((java.util.List<?>) kb.getOrDefault("restricted_products", java.util.List.of())).size();
-            compliance.regulationFound = true;
-        }
-
-        entry.put("complianceScore", compliance.numericScore);
-        entry.put("complexity", compliance.complexity);
-        entry.put("documentsRequired", compliance.documentsCount);
-        entry.put("certificationsRequired", compliance.certificationsCount);
-        entry.put("restrictionsCount", compliance.restrictionsCount);
-        entry.put("regulationFound", compliance.regulationFound);
+        entry.put("complianceScore", complianceScore);
+        entry.put("complexity", complexity);
+        entry.put("documentsRequired", kbDocs.size());
+        entry.put("certificationsRequired", kbCerts.size());
+        entry.put("restrictionsCount", kbRestr.size());
+        entry.put("regulationFound", true);
 
         // 2. Tariff burden (from real known rates)
         var costEst = costService.estimateCost(country, hsCode,
@@ -125,7 +113,7 @@ public class MarketOpportunityService {
         // Formula: Higher compliance score = easier market
         //          Lower tariff = better market access
         //          Formula is transparent and deterministic
-        int compScore = compliance.numericScore; // 0-100, higher = easier
+        int compScore = complianceScore; // 0-100, higher = easier
         int tariffPenalty = dutyRate != null ? (int)(dutyRate * 2) : 20; // penalty for high tariffs
         int taxPenalty = taxRate != null ? (int)(taxRate * 0.5) : 5;
 
