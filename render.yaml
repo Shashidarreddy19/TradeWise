@@ -38,4 +38,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://tradewise-backend.onrender.com/api
+        value: https://tradewise-backend-5ir5.onrender.com/api
