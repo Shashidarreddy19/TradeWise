@@ -249,15 +249,16 @@ public class HsClassificationService {
             }
         }
 
-        // Strategy 3: FULLTEXT natural language search
+        // Strategy 3: Multi-word & description keyword search
         if (candidates.size() < 30) {
             String searchTerms = buildSearchQuery(features);
             if (!searchTerms.isBlank()) {
                 try {
-                    List<HsMasterEntity> fulltext = hsMasterRepo.fullTextSearch("India", searchTerms);
-                    candidates.addAll(fulltext.stream().limit(15).toList());
+                    List<HsMasterEntity> descMatches = hsMasterRepo
+                            .searchByCountryAndDescriptionLike("India", searchTerms);
+                    candidates.addAll(descMatches.stream().limit(15).toList());
                 } catch (Exception e) {
-                    log.warn("FULLTEXT failed: {}", e.getMessage());
+                    log.warn("Description LIKE search failed: {}", e.getMessage());
                 }
             }
         }

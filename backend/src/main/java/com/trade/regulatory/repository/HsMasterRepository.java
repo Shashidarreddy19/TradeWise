@@ -57,13 +57,11 @@ public interface HsMasterRepository extends JpaRepository<HsMasterEntity, Long> 
 
     // ═══════════════ HS Classification queries ═══════════════
 
-    /** FULLTEXT search on official_description for Indian HS codes */
-    @Query(value = "SELECT * FROM hs_master WHERE country = :country AND is_current = 1 " +
-            "AND MATCH(official_description) AGAINST(:searchTerms IN NATURAL LANGUAGE MODE) " +
-            "LIMIT 30",
-            nativeQuery = true)
-    List<HsMasterEntity> fullTextSearch(@Param("country") String country,
-                                         @Param("searchTerms") String searchTerms);
+    /** Description search on official_description for HS codes */
+    @Query("SELECT h FROM HsMasterEntity h WHERE h.country = :country AND h.isCurrent = true " +
+           "AND LOWER(h.officialDescription) LIKE LOWER(CONCAT('%', :searchTerms, '%'))")
+    List<HsMasterEntity> searchByCountryAndDescriptionLike(@Param("country") String country,
+                                                          @Param("searchTerms") String searchTerms);
 
     /** LIKE search on description for a specific country */
     List<HsMasterEntity> findByCountryAndOfficialDescriptionContainingIgnoreCaseAndIsCurrentTrue(
