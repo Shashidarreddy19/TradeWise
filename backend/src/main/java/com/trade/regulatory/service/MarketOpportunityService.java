@@ -145,9 +145,12 @@ public class MarketOpportunityService {
         entry.put("scoreSource", scoreSource);
 
         // 5. Dynamic Reliability Tier & Score Calculation
+        //    Reliability reflects HOW CONFIDENT we are in the score, not the score itself.
+        //    Factors: score source, data completeness, regulatory data depth, tariff data presence.
         String reliabilityTier;
         int reliabilityPct;
         if ("ML_MODEL_V4".equals(scoreSource)) {
+            // ML model predictions are inherently more reliable (trained on real BACI data)
             if (opportunityScore >= 80) {
                 reliabilityTier = "High";
                 reliabilityPct = Math.min(99, 88 + (int)((opportunityScore - 80) * 0.55));
@@ -159,12 +162,29 @@ public class MarketOpportunityService {
                 reliabilityPct = Math.max(20, (int)(opportunityScore * 0.8));
             }
         } else {
-            if (opportunityScore >= 75 && dutyRate != null) {
+            // HEURISTIC_FALLBACK: compute reliability from multiple data quality signals
+            // (a) How many data points back the score?
+            int dataSignals = 0;
+            if (dutyRate != null) dataSignals++;          // tariff data present
+            if (taxRate != null) dataSignals++;           // tax data present
+            if (compScore >= 60) dataSignals++;           // strong compliance data
+            if (kbDocs.size() >= 3) dataSignals++;        // substantial document requirements found
+            if (kbCerts.size() >= 1) dataSignals++;       // certification data found
+
+            // (b) Compute a reliability percentage from the heuristic confidence
+            //     Base: opportunity score contributes partially (scaled down — it's a heuristic)
+            //     Bonus: each real data signal adds confidence
+            int baseReliability = (int)(opportunityScore * 0.45); // max ~45 from score alone
+            int dataBonus = dataSignals * 8;                       // max 40 from data signals
+            reliabilityPct = Math.max(15, Math.min(95, baseReliability + dataBonus));
+
+            // (c) Map percentage to tier
+            if (reliabilityPct >= 75) {
+                reliabilityTier = "High";
+            } else if (reliabilityPct >= 45) {
                 reliabilityTier = "Moderate";
-                reliabilityPct = 70;
             } else {
                 reliabilityTier = "Low";
-                reliabilityPct = Math.max(25, (int)(opportunityScore * 0.5));
             }
         }
         entry.put("reliabilityTier", reliabilityTier);

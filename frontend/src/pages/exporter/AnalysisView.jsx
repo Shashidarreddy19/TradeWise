@@ -423,11 +423,24 @@ export default function AnalysisView({
       // Map the backend response to the format the UI expects with dynamic reliability tiers
       const rankings = (res.rankings || []).map((r, idx) => {
         const oppScore = Number(r.opportunityScore != null ? r.opportunityScore : 0);
+        // Prefer backend-computed reliability; only fall back to local calc when missing
         let reliability = r.reliabilityTier;
+        let reliabilityScore = r.reliabilityScore;
         if (!reliability) {
-          if (oppScore >= 80) reliability = 'High';
-          else if (oppScore >= 55) reliability = 'Moderate';
-          else reliability = 'Low';
+          const isML = r.scoreSource === 'ML_MODEL_V4';
+          if (isML) {
+            if (oppScore >= 80) reliability = 'High';
+            else if (oppScore >= 55) reliability = 'Moderate';
+            else reliability = 'Low';
+          } else {
+            // Heuristic scores are inherently less reliable
+            if (oppScore >= 90) reliability = 'High';
+            else if (oppScore >= 65) reliability = 'Moderate';
+            else reliability = 'Low';
+          }
+        }
+        if (reliabilityScore == null) {
+          reliabilityScore = reliability === 'High' ? 88 : reliability === 'Moderate' ? 65 : 35;
         }
         return {
           country_code: codeMap[r.country] || r.country?.slice(0, 2).toUpperCase(),
@@ -435,7 +448,7 @@ export default function AnalysisView({
           xgb_predicted_score: oppScore,
           score_source: r.scoreSource || 'UNKNOWN',
           reliability_tier: reliability,
-          reliability_score: r.reliabilityScore || (reliability === 'High' ? 95 : reliability === 'Moderate' ? 75 : 40),
+          reliability_score: reliabilityScore,
           rank: r.rank || idx + 1,
           reason: (r.reasons || []).join('; '),
           complexity: r.complexity,
@@ -469,35 +482,33 @@ export default function AnalysisView({
       });
       const merged = {
         ...res,
-        opportunityScore: res?.opportunityScore ?? rankingRow?.xgb_predicted_score ?? 90,
-        scoreSource: res?.scoreSource ?? rankingRow?.score_source ?? 'ML_MODEL_V4',
-        reliability_tier: res?.reliability_tier ?? rankingRow?.reliability_tier ?? 'High',
+        opportunityScore: res?.opportunityScore ?? rankingRow?.xgb_predicted_score ?? 0,
+        scoreSource: res?.scoreSource ?? rankingRow?.score_source ?? 'UNKNOWN',
+        reliability_tier: res?.reliability_tier ?? res?.reliabilityTier ?? rankingRow?.reliability_tier ?? 'Low',
         dutyRate: res?.tariff?.dutyRate ?? res?.dutyRate ?? rankingRow?.duty_rate ?? 0,
-        taxRate: res?.tariff?.taxRate ?? res?.taxRate ?? rankingRow?.tax_rate ?? 15,
+        taxRate: res?.tariff?.taxRate ?? res?.taxRate ?? rankingRow?.tax_rate ?? 0,
         tax_label: res?.tax_label ?? rankingRow?.tax_label ?? 'VAT',
-        complexity: res?.complexity ?? res?.compliance?.complexityLevel ?? rankingRow?.complexity ?? 'Low',
-        documentsRequired: res?.compliance?.documentsCount ?? res?.documentsRequired ?? rankingRow?.documents_required ?? (res?.documents?.length || 9),
-        certificationsRequired: res?.compliance?.certificationsCount ?? res?.certificationsRequired ?? rankingRow?.certifications_required ?? (res?.certifications?.length || 3),
+        complexity: res?.complexity ?? res?.compliance?.complexityLevel ?? rankingRow?.complexity ?? 'Unknown',
+        documentsRequired: res?.compliance?.documentsCount ?? res?.documentsRequired ?? rankingRow?.documents_required ?? (res?.documents?.length || 0),
+        certificationsRequired: res?.compliance?.certificationsCount ?? res?.certificationsRequired ?? rankingRow?.certifications_required ?? (res?.certifications?.length || 0),
         restrictionsCount: res?.compliance?.restrictionsCount ?? res?.restrictionsCount ?? (res?.restrictions?.length || 0),
       };
       setCountryRecoData(merged);
     } catch {
       if (rankingRow) {
         setCountryRecoData({
-          opportunityScore: rankingRow.xgb_predicted_score || 90,
-          scoreSource: rankingRow.score_source || 'ML_MODEL_V4',
-          reliability_tier: rankingRow.reliability_tier || 'High',
+          opportunityScore: rankingRow.xgb_predicted_score || 0,
+          scoreSource: rankingRow.score_source || 'UNKNOWN',
+          reliability_tier: rankingRow.reliability_tier || 'Low',
           dutyRate: rankingRow.duty_rate ?? 0,
-          taxRate: rankingRow.tax_rate ?? 15,
-          complexity: rankingRow.complexity || 'Low',
-          documentsRequired: rankingRow.documents_required || 9,
-          certificationsRequired: 3,
+          taxRate: rankingRow.tax_rate ?? 0,
+          complexity: rankingRow.complexity || 'Unknown',
+          documentsRequired: rankingRow.documents_required || 0,
+          certificationsRequired: rankingRow.certifications_required || 0,
           restrictionsCount: 0,
-          compliance: { score: rankingRow.xgb_predicted_score || 90, complexityLevel: rankingRow.complexity || 'Low', documentsCount: 9, certificationsCount: 3, restrictionsCount: 0 },
+          compliance: { score: rankingRow.xgb_predicted_score || 0, complexityLevel: rankingRow.complexity || 'Unknown', documentsCount: rankingRow.documents_required || 0, certificationsCount: rankingRow.certifications_required || 0, restrictionsCount: 0 },
           sources: [
-            { source: `${countryName} Customs Authority`, url: 'https://zatca.gov.sa' },
-            { source: 'Saudi Food and Drug Authority (SFDA)', url: 'https://sfda.gov.sa' },
-            { source: 'DGFT India & APEDA', url: 'https://apeda.gov.in' }
+            { source: 'DGFT India', url: 'https://dgft.gov.in' }
           ]
         });
       } else {
@@ -1212,7 +1223,7 @@ export default function AnalysisView({
                     <span>Export suggestions matching <strong>{selectedAnalysisProduct}</strong> parameters:</span>
                   </div>
                   <span className="bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">
-                    {countryRankings.filter(c => c.reliability_tier === 'High').length || 3} Target Markets
+                    {countryRankings.filter(c => c.reliability_tier === 'High' || c.reliability_tier === 'Moderate').length} Target Markets
                   </span>
                 </div>
 
@@ -1339,23 +1350,23 @@ export default function AnalysisView({
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Score</span>
-                    <span className="text-2xl font-bold text-primary block">{(countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 90)}/100</span>
+                    <span className="text-2xl font-bold text-primary block">{(countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 0)}/100</span>
                     <span className="text-[10px] text-muted-foreground font-medium block">Source: {countryRecoData?.scoreSource === 'ML_MODEL_V4' ? 'ML Model v4' : countryRecoData?.scoreSource === 'KNOWLEDGE_ENGINE' ? 'Knowledge Engine' : countryRecoData?.scoreSource || 'Verified Tariff'}</span>
                   </div>
                   <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Market Demand</span>
-                    <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 block">{((countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 90) >= 80 ? 'HIGH' : (countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 90) >= 50 ? 'MEDIUM' : 'LOW')}</span>
-                    <span className="text-[10px] text-muted-foreground font-medium block">Complexity: {countryRecoData?.complexity || countryRecoData?.compliance?.complexityLevel || 'Low'}</span>
+                    <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 block">{((countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 0) >= 80 ? 'HIGH' : (countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 0) >= 50 ? 'MEDIUM' : 'LOW')}</span>
+                    <span className="text-[10px] text-muted-foreground font-medium block">Complexity: {countryRecoData?.complexity || countryRecoData?.compliance?.complexityLevel || 'N/A'}</span>
                   </div>
                   <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Duty Rate</span>
                     <span className="text-2xl font-bold text-foreground block">{(countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate) != null ? `${countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate}%` : '0%'}</span>
-                    <span className="text-[10px] text-muted-foreground font-medium block">{(countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate) != null ? `+ ${countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate}% VAT` : '+ 15% VAT'}</span>
+                    <span className="text-[10px] text-muted-foreground font-medium block">{(countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate) != null ? `+ ${countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate}% ${countryRecoData?.tax_label || 'VAT'}` : '+ Tax N/A'}</span>
                   </div>
                   <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Compliance Index</span>
-                    <span className="text-2xl font-bold text-amber-600 dark:text-amber-400 block">{(countryRecoData?.compliance?.score ?? countryRecoData?.complianceScore ?? 90)}/100</span>
-                    <span className="text-[10px] text-muted-foreground font-medium block">{(countryRecoData?.documentsRequired || countryRecoData?.compliance?.documentsCount || countryRecoData?.documents?.length || 9)} docs, {(countryRecoData?.certificationsRequired || countryRecoData?.compliance?.certificationsCount || countryRecoData?.certifications?.length || 3)} certs</span>
+                    <span className="text-2xl font-bold text-amber-600 dark:text-amber-400 block">{(countryRecoData?.compliance?.score ?? countryRecoData?.complianceScore ?? 0)}/100</span>
+                    <span className="text-[10px] text-muted-foreground font-medium block">{(countryRecoData?.documentsRequired || countryRecoData?.compliance?.documentsCount || countryRecoData?.documents?.length || 0)} docs, {(countryRecoData?.certificationsRequired || countryRecoData?.compliance?.certificationsCount || countryRecoData?.certifications?.length || 0)} certs</span>
                   </div>
                 </div>
 
@@ -1363,15 +1374,15 @@ export default function AnalysisView({
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                   <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase block">Export Difficulty</span>
-                    <span className="text-xs font-bold text-foreground mt-0.5 block">{countryRecoData?.compliance?.complexityLevel || countryRecoData?.complexity || 'Low'}</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5 block">{countryRecoData?.compliance?.complexityLevel || countryRecoData?.complexity || 'N/A'}</span>
                   </div>
                   <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase block">Documents</span>
-                    <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.documentsCount ?? countryRecoData?.documentsRequired ?? countryRecoData?.documents?.length ?? 9)}</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.documentsCount ?? countryRecoData?.documentsRequired ?? countryRecoData?.documents?.length ?? 0)}</span>
                   </div>
                   <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase block">Certificates</span>
-                    <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.certificationsCount ?? countryRecoData?.certificationsRequired ?? countryRecoData?.certifications?.length ?? 3)}</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.certificationsCount ?? countryRecoData?.certificationsRequired ?? countryRecoData?.certifications?.length ?? 0)}</span>
                   </div>
                   <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase block">Restrictions</span>
@@ -1379,7 +1390,7 @@ export default function AnalysisView({
                   </div>
                   <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase block">Country Risk</span>
-                    <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.score || countryRecoData?.opportunityScore || 90) >= 80 ? 'Low' : (countryRecoData?.compliance?.score || countryRecoData?.opportunityScore || 90) >= 50 ? 'Medium' : 'High'}</span>
+                    <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.score || countryRecoData?.opportunityScore) ? ((countryRecoData?.compliance?.score || countryRecoData?.opportunityScore) >= 80 ? 'Low' : (countryRecoData?.compliance?.score || countryRecoData?.opportunityScore) >= 50 ? 'Medium' : 'High') : 'N/A'}</span>
                   </div>
                 </div>
 
@@ -1389,7 +1400,7 @@ export default function AnalysisView({
                     <div className="flex items-start gap-3">
                       <span className="text-lg text-primary font-bold">✦</span>
                       <div>
-                        <span className="text-xs font-bold text-primary uppercase tracking-wider block mb-1">Recommendation Summary{countryRecoData?.verdict ? `: ${countryRecoData.verdict}` : ': RECOMMENDED'}</span>
+                        <span className="text-xs font-bold text-primary uppercase tracking-wider block mb-1">Recommendation Summary{countryRecoData?.verdict ? `: ${countryRecoData.verdict}` : ''}</span>
                         <p className="text-xs text-foreground leading-relaxed">{countryRecoData?.summary || `${selectedCountry} assessment for ${selectedAnalysisProduct}.`}</p>
                         {countryRecoData?.reasons?.length > 0 && (
                           <div className="mt-2.5 space-y-1">
@@ -1402,9 +1413,7 @@ export default function AnalysisView({
                         <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground flex-wrap">
                           <span className="font-semibold text-foreground">Sources:</span>
                           {((countryRecoData?.sources && countryRecoData.sources.length > 0) ? countryRecoData.sources : [
-                            { source: `${selectedCountry} Customs Authority (ZATCA)`, url: 'https://zatca.gov.sa' },
-                            { source: 'Saudi Food and Drug Authority (SFDA)', url: 'https://sfda.gov.sa' },
-                            { source: 'DGFT India / APEDA', url: 'https://apeda.gov.in' }
+                            { source: 'DGFT India', url: 'https://dgft.gov.in' }
                           ]).map((s, i) => (
                             typeof s === 'string' ? (
                               <span key={i} className="text-muted-foreground font-medium">{s}</span>
@@ -1544,7 +1553,7 @@ export default function AnalysisView({
               const countryCode = countries.find(c => c.name === selectedCountry)?.code || selectedCountry?.slice(0, 2).toUpperCase() || '--';
 
               const assessment = regulationsData?.complianceAssessment || {};
-              const complianceScore = assessment.score || 88;
+              const complianceScore = assessment.score || 0;
               const riskLevel = assessment.risk_level || 'Low';
               const difficulty = assessment.difficulty || 'Low to Medium';
               const prepTime = assessment.estimated_prep_time || '5 - 7 Business Days';
@@ -1925,7 +1934,7 @@ export default function AnalysisView({
                             </div>
                             <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center">
                               <span className="text-[9px] font-bold text-slate-400 uppercase block">Import VAT</span>
-                              <span className="text-base font-black text-indigo-600">{dutiesTaxes.vat || '15%'}</span>
+                              <span className="text-base font-black text-indigo-600">{dutiesTaxes.vat || 'N/A'}</span>
                             </div>
                           </div>
                           <div className="text-[10px] text-slate-500 font-medium bg-slate-50/80 p-2 rounded-lg border border-slate-100">
