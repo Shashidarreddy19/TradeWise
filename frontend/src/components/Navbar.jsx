@@ -87,7 +87,7 @@ export default function Navbar({ onNavigate, currentPath, authenticated, user, o
               T
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-foreground">
-              Trade<span className="text-primary">Wise</span>
+              Trade<span className="text-primary">Bridge</span>
             </span>
           </div>
 

@@ -647,7 +647,7 @@ export default function Exporter({ onNavigate, onLogout }) {
           <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs shadow-xs">
             T
           </div>
-          <span className="text-base font-bold text-foreground tracking-tight">Trade<span className="text-primary">Wise</span></span>
+          <span className="text-base font-bold text-foreground tracking-tight">Trade<span className="text-primary">Bridge</span></span>
           <span className="badge-primary text-[9px] uppercase tracking-wider ml-1">Exporter</span>
         </div>
 

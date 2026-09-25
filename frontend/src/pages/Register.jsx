@@ -518,8 +518,8 @@ export default function Register({ onNavigate }) {
 
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-sm">
               {role === 'logistics'
-                ? '"TradeWise connected our logistics fleet with verified international exporters, streamlining route dispatch and customs clearance documentation."'
-                : '"TradeWise allowed us to index new custom tariffs and clear our freight compliance audits in record time."'}
+                ? '"TradeBridge connected our logistics fleet with verified international exporters, streamlining route dispatch and customs clearance documentation."'
+                : '"TradeBridge allowed us to index new custom tariffs and clear our freight compliance audits in record time."'}
             </p>
 
             <div className="pt-2 flex items-center gap-3 text-xs text-muted-foreground">

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-#  TradeWise — One-command start script
+#  TradeBridge — One-command start script
 #  Usage:
 #    chmod +x start.sh
 #    ./start.sh           # start all services
@@ -14,7 +14,7 @@ set -e
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 
-log()  { echo -e "${GREEN}[TradeWise]${NC} $1"; }
+log()  { echo -e "${GREEN}[TradeBridge]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARNING]${NC}  $1"; }
 err()  { echo -e "${RED}[ERROR]${NC}    $1"; exit 1; }
 
@@ -55,7 +55,7 @@ case "${1:-start}" in
       sleep 4
     done
     echo ""
-    log "✓ TradeWise is running!"
+    log "✓ TradeBridge is running!"
     echo -e "${BLUE}  Frontend:${NC} http://localhost"
     echo -e "${BLUE}  Backend: ${NC} http://localhost:8081/api/health"
     docker compose ps

@@ -199,7 +199,7 @@ export default function Logistics({ onNavigate, onLogout }) {
           <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-base">
             T
           </div>
-          <span className="text-base font-semibold text-foreground tracking-tight">TradeWise</span>
+          <span className="text-base font-bold text-foreground tracking-tight">Trade<span className="text-primary">Bridge</span></span>
           <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-medium tracking-wide">
             Logistics
           </span>

@@ -45,7 +45,7 @@ export default function HowItWorks() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center max-w-2xl mx-auto mb-16">
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
-            How TradeWise Empowers Exporters
+            How TradeBridge Empowers Exporters
           </h2>
           <p className="text-muted-foreground mt-3 text-sm sm:text-base leading-relaxed">
             A structured workflow designed to simplify international trade decisions from catalog creation to final port delivery.

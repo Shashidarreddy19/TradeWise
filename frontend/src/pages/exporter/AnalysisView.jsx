@@ -3065,8 +3065,8 @@ export default function AnalysisView({
                             </div>
                           ))}
                         </div>
-                        <p className="text-[9px] text-slate-400 text-center pt-2">
-                          TradeWise verified calculation model • Currency rates refreshed daily • GCC unified customs classifications aligned with Saudi ZATCA standards.
+                        <p className="text-[9px] text-muted-foreground text-center pt-2">
+                          TradeBridge verified calculation model • Currency rates refreshed daily • GCC unified customs classifications aligned with Saudi ZATCA standards.
                         </p>
                       </div>
                     </div>

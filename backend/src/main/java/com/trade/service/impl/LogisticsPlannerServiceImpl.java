@@ -452,7 +452,7 @@ public class LogisticsPlannerServiceImpl implements LogisticsPlannerService {
                 "currency", "INR",
                 "riskCoverage", "All Risks of physical loss or damage (Institute Cargo Clauses A including Strike, Riots & War)",
                 "deductible", "0.50% of claim value or ₹10,000",
-                "claimsProcedure", "Survey within 48h of discharge -> Lodge claim on TradeWise Portal -> Settlement within 14 working days"
+                "claimsProcedure", "Survey within 48h of discharge -> Lodge claim on TradeBridge Portal -> Settlement within 14 working days"
         );
     }
 

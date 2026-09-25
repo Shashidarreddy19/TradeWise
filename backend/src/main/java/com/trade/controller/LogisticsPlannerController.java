@@ -26,7 +26,7 @@ public class LogisticsPlannerController {
     public ResponseEntity<ApiResponse<ShipmentPlanResponse>> createShipment(
             @Valid @RequestBody ShipmentPlanRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
-        String email = userDetails != null ? userDetails.getUsername() : "anonymous@tradewise.com";
+        String email = userDetails != null ? userDetails.getUsername() : "anonymous@tradebridge.com";
         ShipmentPlanResponse response = logisticsPlannerService.createShipmentPlan(request, email);
         return ResponseEntity.ok(ApiResponse.success("Shipment plan generated successfully", response));
     }
@@ -57,7 +57,7 @@ public class LogisticsPlannerController {
     public ResponseEntity<ApiResponse<ShipmentPlanResponse>> getShipmentById(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        String email = userDetails != null ? userDetails.getUsername() : "anonymous@tradewise.com";
+        String email = userDetails != null ? userDetails.getUsername() : "anonymous@tradebridge.com";
         ShipmentPlanResponse response = logisticsPlannerService.getShipmentPlanById(id, email);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -95,7 +95,7 @@ public class LogisticsPlannerController {
     @GetMapping("/history")
     public ResponseEntity<ApiResponse<List<ShipmentPlanResponse>>> getHistory(
             @AuthenticationPrincipal UserDetails userDetails) {
-        String email = userDetails != null ? userDetails.getUsername() : "anonymous@tradewise.com";
+        String email = userDetails != null ? userDetails.getUsername() : "anonymous@tradebridge.com";
         return ResponseEntity.ok(ApiResponse.success(logisticsPlannerService.getShipmentHistory(email)));
     }
 

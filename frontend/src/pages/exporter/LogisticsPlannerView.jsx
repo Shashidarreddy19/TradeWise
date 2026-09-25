@@ -112,7 +112,7 @@ export default function LogisticsPlannerView({ addToast, products = [], countrie
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 relative z-10">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold tracking-wide">
-              <Sparkles className="w-3.5 h-3.5" /> CBEC-AI TradeWise Logistics Suite
+              <Sparkles className="w-3.5 h-3.5" /> CBEC-AI TradeBridge Logistics Suite
             </div>
             <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
               Enterprise Shipment Planner & Route Optimizer

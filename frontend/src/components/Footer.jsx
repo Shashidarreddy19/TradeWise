@@ -27,7 +27,7 @@ export default function Footer({ onNavigate }) {
                 T
               </div>
               <span className="font-display text-lg font-bold tracking-tight text-foreground">
-                Trade<span className="text-primary">Wise</span>
+                Trade<span className="text-primary">Bridge</span>
               </span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
@@ -109,7 +109,7 @@ export default function Footer({ onNavigate }) {
 
         {/* Bottom Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} TradeWise. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} TradeBridge. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <span className="text-[11px]">ITC-HS 2022 Verified</span>
             <span className="text-[11px]">TiDB Cloud Multi-Region</span>

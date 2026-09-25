@@ -1,4 +1,4 @@
-# TradeWise - AI-Driven Cross-Border Export Intelligence Platform
+# TradeBridge - AI-Driven Cross-Border Export Intelligence Platform
 
 An integrated platform for Indian SMEs that combines HS code classification, regulatory compliance intelligence, and ML-based export destination ranking into a single decision-support system.
 
@@ -63,7 +63,7 @@ Pipeline Service (Spring Boot)
 ## Project Structure
 
 ```
-TradeWise/
+TradeBridge/
 ├── backend/                    # Spring Boot application
 │   ├── src/main/java/com/trade/
 │   │   ├── config/            # Security, datasource configs
