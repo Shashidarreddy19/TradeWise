@@ -141,6 +141,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         List<String> origins = new ArrayList<>(List.of(
+            "*",
             "http://localhost:[*]",
             "http://localhost:*",
             "http://127.0.0.1:[*]",
@@ -159,7 +160,7 @@ public class SecurityConfig {
             }
         }
         config.setAllowedOriginPatterns(origins);
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization", "Link", "X-Total-Count"));
         config.setAllowCredentials(true);
@@ -169,5 +170,10 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/api/**", config);
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    @Bean
+    public org.springframework.web.filter.CorsFilter corsFilter() {
+        return new org.springframework.web.filter.CorsFilter(corsConfigurationSource());
     }
 }
