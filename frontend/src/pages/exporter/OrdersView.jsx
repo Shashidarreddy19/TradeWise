@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Eye, X, Check, Truck, Package, Clock, ShieldCheck,
   AlertCircle, Send, CheckCircle2, MapPin, Calendar, DollarSign, Loader2
@@ -23,6 +23,43 @@ export default function OrdersView({
   const [orderProposals, setOrderProposals] = useState([]);
   const [loadingProposals, setLoadingProposals] = useState(false);
   const [actioningProposalId, setActioningProposalId] = useState(null);
+
+  // Live count of pending carrier quotes per order, so the exporter can see that
+  // bids have arrived without having to open each order's modal.
+  const [quoteCounts, setQuoteCounts] = useState({});
+
+  // Orders still awaiting a carrier — these are the only ones that can receive quotes.
+  const awaitingOrderIds = useMemo(
+    () => orders.filter(o => o.rawStatus === 'PENDING_LOGISTICS').map(o => o.id),
+    [orders]
+  );
+
+  useEffect(() => {
+    if (awaitingOrderIds.length === 0) {
+      setQuoteCounts({});
+      return;
+    }
+    let cancelled = false;
+
+    (async () => {
+      const entries = await Promise.all(
+        awaitingOrderIds.map(async (id) => {
+          try {
+            const res = await proposalApi.getProposalsForOrder(id);
+            // Only quotes still open for a decision are actionable.
+            const open = (res.data || []).filter(p => p.status === 'PENDING').length;
+            return [id, open];
+          } catch {
+            return [id, 0];
+          }
+        })
+      );
+      if (!cancelled) setQuoteCounts(Object.fromEntries(entries));
+    })();
+
+    return () => { cancelled = true; };
+    // Re-run when the set of awaiting orders changes (join to keep the dep primitive).
+  }, [awaitingOrderIds.join(',')]);
 
   // Open proposals modal for an order
   const handleOpenProposals = async (order) => {
@@ -61,10 +98,16 @@ export default function OrdersView({
     try {
       await proposalApi.rejectProposal(proposalId);
       addToast('Proposal rejected.', 'info');
-      // Refresh modal list
+      // Refresh modal list + the row badge (the order stays PENDING_LOGISTICS,
+      // so the counts effect won't re-fire on its own).
       if (viewingProposalsOrder) {
         const res = await proposalApi.getProposalsForOrder(viewingProposalsOrder.id);
-        setOrderProposals(res.data || []);
+        const list = res.data || [];
+        setOrderProposals(list);
+        setQuoteCounts(prev => ({
+          ...prev,
+          [viewingProposalsOrder.id]: list.filter(p => p.status === 'PENDING').length,
+        }));
       }
     } catch (err) {
       addToast(err.message || 'Failed to reject proposal', 'error');
@@ -199,16 +242,25 @@ export default function OrdersView({
                           <Eye className="w-3 h-3 inline mr-1" /> Specs
                         </button>
 
-                        {/* Proposal Review Button for unassigned orders */}
-                        {o.rawStatus === 'PENDING_LOGISTICS' && (
-                          <button
-                            onClick={() => handleOpenProposals(o)}
-                            className="btn-primary py-1 px-3 text-xs"
-                          >
-                            <Send className="w-3 h-3 mr-1" />
-                            Review Proposals
-                          </button>
-                        )}
+                        {/* Proposal Review Button for unassigned orders.
+                            Shows the live count so it's obvious when carriers have bid. */}
+                        {o.rawStatus === 'PENDING_LOGISTICS' && (() => {
+                          const n = quoteCounts[o.id] ?? 0;
+                          return (
+                            <button
+                              onClick={() => handleOpenProposals(o)}
+                              title={n > 0
+                                ? `${n} carrier quote(s) awaiting your decision`
+                                : 'No carrier quotes yet — partners are still reviewing'}
+                              className={n > 0
+                                ? 'btn-primary py-1 px-3 text-xs'
+                                : 'btn-outline py-1 px-3 text-xs'}
+                            >
+                              <Send className="w-3 h-3 mr-1" />
+                              {n > 0 ? `Review ${n} Quote${n > 1 ? 's' : ''}` : 'Awaiting Quotes'}
+                            </button>
+                          );
+                        })()}
 
                         {/* Track button for assigned shipments */}
                         {shipment && (

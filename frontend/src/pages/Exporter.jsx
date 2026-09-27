@@ -353,7 +353,6 @@ export default function Exporter({ onNavigate, onLogout }) {
   };
 
   const [selectedShipment, setSelectedShipment] = useState(null);
-  const [assigningPartner, setAssigningPartner] = useState('');
 
   // 4. Market Analysis (managed by AnalysisView component)
   const [selectedAnalysisProduct, setSelectedAnalysisProduct] = useState('');
@@ -555,43 +554,12 @@ export default function Exporter({ onNavigate, onLogout }) {
     }
   };
 
-  const handleAcceptOrder = (orderId) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Accepted' } : o));
-    setSelectedOrder(null);
-    addToast(`Order #${orderId} accepted!`, 'success');
-  };
-
-  const handleRejectOrder = (orderId) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Rejected' } : o));
-    setSelectedOrder(null);
-    addToast(`Order #${orderId} rejected.`, 'error');
-  };
-
-  const handleAssignLogistics = (orderId, partnerName) => {
-    if (!partnerName) {
-      addToast('Please select a logistics partner.', 'error');
-      return;
-    }
-    
-    // Update local orders state
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Pending', logisticsPartner: partnerName } : o));
-    
-    // Also push updates to localStorage notifications for logistics dashboard
-    const savedNotifs = localStorage.getItem('tradewise_notifications');
-    const notifList = savedNotifs ? JSON.parse(savedNotifs) : [];
-    const newNotif = {
-      id: Date.now(),
-      text: `New Shipment Assignment for Order #${orderId} from Trade Exporter Ltd.`,
-      time: "Just now",
-      type: "order",
-      read: false
-    };
-    localStorage.setItem('tradewise_notifications', JSON.stringify([newNotif, ...notifList]));
-
-    addToast(`Logistics partner '${partnerName}' assigned to Order #${orderId}.`, 'success');
-    setSelectedOrder(null);
-    setAssigningPartner('');
-  };
+  // Removed: handleAcceptOrder / handleRejectOrder / handleAssignLogistics.
+  // These were dead mock handlers — they mutated local state only (no API call) and
+  // wrote a fabricated "New Shipment Assignment" notification into localStorage.
+  // OrdersView never accepted them as props. The real flow is: the exporter publishes
+  // the request, carriers submit quotes, and the exporter accepts one via
+  // proposalApi.acceptProposal, which books the shipment server-side.
 
   const handleLogout = () => {
     clearAuth();
@@ -916,11 +884,6 @@ export default function Exporter({ onNavigate, onLogout }) {
             setSelectedOrder={setSelectedOrder}
             selectedShipment={selectedShipment}
             setSelectedShipment={setSelectedShipment}
-            assigningPartner={assigningPartner}
-            setAssigningPartner={setAssigningPartner}
-            handleAcceptOrder={handleAcceptOrder}
-            handleRejectOrder={handleRejectOrder}
-            handleAssignLogistics={handleAssignLogistics}
             addToast={addToast}
             fetchOrders={fetchOrders}
             fetchShipments={fetchShipments}
@@ -931,7 +894,8 @@ export default function Exporter({ onNavigate, onLogout }) {
           <ProfileView user={getUser()} addToast={addToast} />
         )}
 
-      </div>      {/* ADD PRODUCT DRAWER PANEL */}
+      </div>
+      {/* ADD PRODUCT DRAWER PANEL */}
       {showAddDrawer && (
         <div className="fixed inset-0 z-50 flex justify-end">
           {/* Drawer Backdrop blur */}
@@ -1194,4 +1158,4 @@ export default function Exporter({ onNavigate, onLogout }) {
       )}
     </div>
   );
-}
+}

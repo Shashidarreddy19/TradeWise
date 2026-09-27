@@ -21,7 +21,6 @@ export default function AssignedOrdersView({
   orders = [],
   myProposals = [],
   onProposalSubmitted,
-  onAccept,
   onReject,
   addToast,
   fetchAll
@@ -371,6 +370,18 @@ export default function AssignedOrdersView({
                           <Send className="w-3 h-3 mr-1" />
                           {proposal ? 'View / Edit Quote' : 'Submit Proposal'}
                         </button>
+
+                        {/* Decline — hides this order from your list. Only offered while
+                            you have no quote in play, so you can't drop a live bid. */}
+                        {!proposal && onReject && (
+                          <button
+                            onClick={() => onReject(o.id)}
+                            title="Not interested — remove this order from your list"
+                            className="btn-outline py-1 px-2.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+                          >
+                            Decline
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

@@ -139,19 +139,21 @@ export default function Logistics({ onNavigate, onLogout }) {
   };
 
   // ── Order handlers ────────────────────────────────────────────────────────
-  const handleAccept = async (order) => {
-    await ordersApi.accept(order.id);
-    pushNotification(`Accepted shipment for Order #${order.id} — ${order.product} → ${order.country}`);
-    addToast(`Order #${order.id} accepted. Shipment created!`, 'success');
-    await fetchAll();
-    setActiveView('shipments');
-  };
+  // Note: there is deliberately no "directly accept order" action here.
+  // The exporter awards the job by accepting a submitted quote, so a partner
+  // grabbing the order directly would bypass that choice and orphan every other
+  // pending proposal. Partners compete by submitting a proposal instead.
 
+  /** Decline an order so it stops appearing in this partner's available list. */
   const handleReject = async (orderId) => {
-    await ordersApi.reject(orderId);
-    pushNotification(`Declined shipment assignment for Order #${orderId}`);
-    addToast('Order rejected.', 'success');
-    await fetchOrders();
+    try {
+      await ordersApi.reject(orderId);
+      pushNotification(`Declined shipment assignment for Order #${orderId}`);
+      addToast(`Order #${orderId} declined. It will no longer appear in your list.`, 'success');
+      await fetchOrders();
+    } catch (err) {
+      addToast(err.message || 'Failed to decline order', 'error');
+    }
   };
 
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -307,7 +309,6 @@ export default function Logistics({ onNavigate, onLogout }) {
                 orders={orders}
                 myProposals={myProposals}
                 onProposalSubmitted={fetchAll}
-                onAccept={handleAccept}
                 onReject={handleReject}
                 addToast={addToast}
                 fetchAll={fetchAll}

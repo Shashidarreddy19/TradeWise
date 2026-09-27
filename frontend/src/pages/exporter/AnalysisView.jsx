@@ -14,6 +14,36 @@ import {
 } from './costEngine';
 
 /**
+ * Indian origin gateways valid for each freight mode.
+ * Offering an air cargo terminal for a sea shipment (or a seaport for air) produces
+ * an unbookable request, so the loading-point list is filtered by the chosen mode.
+ */
+const ORIGIN_GATEWAYS_BY_MODE = {
+  'Sea Freight': [
+    { value: 'Nhava Sheva (JNPT), Mumbai, Maharashtra', label: 'Nhava Sheva (JNPT), Mumbai — largest container port (West)' },
+    { value: 'Mundra Port, Kutch, Gujarat', label: 'Mundra Port, Gujarat — bulk & container (West)' },
+    { value: 'Chennai Port / Ennore, Tamil Nadu', label: 'Chennai / Ennore, Tamil Nadu — main East coast hub' },
+    { value: 'Kolkata Port (SMP), West Bengal', label: 'Kolkata (SMP), West Bengal — Bay of Bengal' },
+    { value: 'Cochin Port (Vallarpadam), Kerala', label: 'Cochin (Vallarpadam), Kerala — South transshipment' },
+    { value: 'Visakhapatnam Port, Andhra Pradesh', label: 'Visakhapatnam, Andhra Pradesh — deep-water (East)' },
+  ],
+  'Air Freight': [
+    { value: 'IGI Airport Air Cargo, New Delhi', label: 'IGI Air Cargo, New Delhi — largest air freight hub (North)' },
+    { value: 'CSMI Airport Air Cargo, Mumbai', label: 'CSMI Air Cargo, Mumbai — West air gateway' },
+    { value: 'Kempegowda Airport Air Cargo, Bengaluru', label: 'Kempegowda Air Cargo, Bengaluru — perishables & pharma' },
+    { value: 'Chennai Airport Air Cargo, Tamil Nadu', label: 'Chennai Air Cargo, Tamil Nadu — South air gateway' },
+    { value: 'Rajiv Gandhi Airport Air Cargo, Hyderabad', label: 'Rajiv Gandhi Air Cargo, Hyderabad — pharma corridor' },
+  ],
+  'Road Cargo': [
+    { value: 'Attari–Wagah Land Port, Punjab', label: 'Attari–Wagah, Punjab — Pakistan corridor' },
+    { value: 'Petrapole Land Port, West Bengal', label: 'Petrapole, West Bengal — Bangladesh corridor' },
+    { value: 'Raxaul Land Port, Bihar', label: 'Raxaul, Bihar — Nepal corridor' },
+    { value: 'Moreh Land Port, Manipur', label: 'Moreh, Manipur — Myanmar corridor' },
+    { value: 'Inland Container Depot (ICD) Tughlakabad, Delhi', label: 'ICD Tughlakabad, Delhi — inland clearance depot' },
+  ],
+};
+
+/**
  * AnalysisView — Full market analysis dashboard with sub-views:
  * - Product selection & country selection
  * - AI country recommendations (XGBRanker)
@@ -638,7 +668,11 @@ export default function AnalysisView({
       if (typeof fetchDashboard === 'function') await fetchDashboard();
 
       setShowOrderModal(false);
-      addToast(`🎉 Export Order ${createdId ? '#' + createdId : ''} created successfully for ${selectedCountry}! Trade route locked.`, 'success');
+      addToast(
+        `Request ${createdId ? '#' + createdId : ''} published to verified carriers for ${selectedCountry}. ` +
+        `Quotes appear under Orders → Review Proposals; accepting one books the shipment.`,
+        'success'
+      );
       setActiveView('orders');
     } catch (err) {
       addToast(err.message || 'Failed to create export order', 'error');
@@ -2510,11 +2544,23 @@ export default function AnalysisView({
             {analysisSubView === 'cost' && (
               <div className="space-y-5 animate-in fade-in duration-300">
                 {/* Input Config */}
-                <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                    <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1.5"><Calculator className="w-3.5 h-3.5 text-primary"/>Export Cost Parameters</h3>
-                    <span className="text-[9px] font-bold text-slate-400">{selectedAnalysisProduct} to {selectedCountry}</span>
+                <div className="bg-card border border-border rounded-2xl p-5 shadow-sm space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-3">
+                    <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <Calculator className="w-4 h-4 text-primary"/>Export Cost &amp; Profit Estimation
+                    </h3>
+                    <span className="text-[11px] font-semibold text-muted-foreground">
+                      {selectedAnalysisProduct} → {selectedCountry}
+                    </span>
                   </div>
+
+                  {/* What this page does, in one line — the page was previously a bare wall of inputs. */}
+                  <p className="text-[11px] text-muted-foreground leading-relaxed bg-muted/40 border border-border rounded-xl p-3">
+                    Enter your cargo and commercial terms, then <strong className="text-foreground">Analyze Costs</strong>.
+                    You get the full build-up from factory cost to landed cost, break-even, and the selling price needed
+                    to hit your target margin. Leave <strong className="text-foreground">Selling Price</strong> blank if you
+                    do not have a buyer price yet — the engine will tell you what to charge.
+                  </p>
                   {/* Validation errors */}
                   {costValidationErrors.length > 0 && (
                     <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 space-y-1">
@@ -2522,88 +2568,133 @@ export default function AnalysisView({
                       {costValidationErrors.map((e, i) => <div key={i} className="flex items-center gap-1.5 text-xs text-destructive font-medium"><AlertCircle className="w-3.5 h-3.5 shrink-0"/>{e}</div>)}
                     </div>
                   )}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-foreground uppercase block">HS Code <span className="text-destructive">*</span></label>
-                      <input type="text" value={costHsCode} onChange={e => { setCostHsCode(e.target.value); setCalculationResult(null); }} placeholder="e.g. 10063090" className="input-claude"/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-foreground uppercase block">Quantity (units) <span className="text-destructive">*</span></label>
-                      <input type="number" min="1" value={costQuantity} onChange={e => { setCostQuantity(e.target.value); setCalculationResult(null); }} placeholder="1000" className="input-claude"/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-foreground uppercase block">Unit Mfg Cost (INR) <span className="text-destructive">*</span></label>
-                      <input type="number" min="0" step="0.01" value={costUnitCost} onChange={e => { setCostUnitCost(e.target.value); setCalculationResult(null); }} placeholder="150" className="input-claude"/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-foreground uppercase block">Unit Weight (kg) <span className="text-destructive">*</span></label>
-                      <input type="number" min="0" step="0.001" value={costUnitWeight} onChange={e => { setCostUnitWeight(e.target.value); setCalculationResult(null); }} placeholder="1.0" className="input-claude"/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-foreground uppercase block">Freight Mode <span className="text-destructive">*</span></label>
-                      <select value={costShippingMode} onChange={e => { setCostShippingMode(e.target.value); setCalculationResult(null); }} className="input-claude cursor-pointer">
-                        <option>Sea</option><option>Air</option><option>Courier</option><option>Road</option><option>Rail</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-foreground uppercase block">Selling Price/unit</label>
-                      <div className="flex gap-1">
-                        <input type="number" min="0" step="0.01" value={costSellingPrice} onChange={e => { setCostSellingPrice(e.target.value); setCalculationResult(null); }} placeholder="Auto" className="input-claude flex-1 min-w-0"/>
-                        <select value={costSellingCurrency} onChange={e => setCostSellingCurrency(e.target.value)} className="input-claude px-2 py-2 text-xs font-semibold cursor-pointer w-auto">
-                          {CURRENCIES.map(c => <option key={c}>{c}</option>)}
-                        </select>
+                  {/* Step 1 — cargo facts */}
+                  <div className="space-y-2.5">
+                    <span className="text-[11px] font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">1</span>
+                      Cargo &amp; product
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-foreground block">HS Code <span className="text-destructive">*</span></label>
+                        <input type="text" value={costHsCode} onChange={e => { setCostHsCode(e.target.value); setCalculationResult(null); }} placeholder="e.g. 10063090" className="input-claude"/>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-foreground block">Quantity (units) <span className="text-destructive">*</span></label>
+                        <input type="number" min="1" value={costQuantity} onChange={e => { setCostQuantity(e.target.value); setCalculationResult(null); }} placeholder="1000" className="input-claude"/>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-foreground block">Unit Mfg Cost (INR) <span className="text-destructive">*</span></label>
+                        <input type="number" min="0" step="0.01" value={costUnitCost} onChange={e => { setCostUnitCost(e.target.value); setCalculationResult(null); }} placeholder="150" className="input-claude"/>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-foreground block">Unit Weight (kg) <span className="text-destructive">*</span></label>
+                        <input type="number" min="0" step="0.001" value={costUnitWeight} onChange={e => { setCostUnitWeight(e.target.value); setCalculationResult(null); }} placeholder="1.0" className="input-claude"/>
                       </div>
                     </div>
                   </div>
 
-                  {/* Optional advanced fields */}
-                  <div className="flex items-center justify-between">
-                    <button onClick={() => setShowAdvancedCost(v => !v)} className="text-xs font-medium text-primary hover:underline cursor-pointer flex items-center gap-1">
-                      {showAdvancedCost ? '- Hide' : '+ Show'} advanced fields (packaging, freight detail, duties, destination costs)
-                    </button>
-                    <span className="text-xs text-slate-400">Incoterm: <strong className="text-foreground">{costIncoterm}</strong></span>
-                  </div>
-                  {showAdvancedCost && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                  {/* Step 2 — commercial terms. Target margin belongs here, not buried
+                      under "advanced": it drives the recommended selling price. */}
+                  <div className="space-y-2.5">
+                    <span className="text-[11px] font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">2</span>
+                      Commercial terms
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Packaging/unit (INR)</label>
-                        <input type="number" min="0" step="0.01" value={costPackagingPerUnit} onChange={e => { setCostPackagingPerUnit(e.target.value); setCalculationResult(null); }} placeholder="0" className="input-claude"/>
+                        <label className="text-[11px] font-semibold text-foreground block">Freight Mode <span className="text-destructive">*</span></label>
+                        <select value={costShippingMode} onChange={e => { setCostShippingMode(e.target.value); setCalculationResult(null); }} className="input-claude cursor-pointer">
+                          <option>Sea</option><option>Air</option><option>Courier</option><option>Road</option><option>Rail</option>
+                        </select>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Inland Transport (INR)</label>
-                        <input type="number" min="0" step="1" value={costInlandTransport} onChange={e => { setCostInlandTransport(e.target.value); setCalculationResult(null); }} placeholder="Auto from weight" className="input-claude"/>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Insurance Rate (%)</label>
-                        <input type="number" min="0" max="100" step="0.01" value={costInsuranceRate} onChange={e => { setCostInsuranceRate(e.target.value); setCalculationResult(null); }} placeholder={costShippingMode === 'Sea' ? '1.5 (default)' : costShippingMode === 'Air' ? '0.8 (default)' : '0.5 (default)'} className="input-claude"/>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Incoterm</label>
-                        <select value={costIncoterm} onChange={e => setCostIncoterm(e.target.value)} className="input-claude cursor-pointer">
+                        <label className="text-[11px] font-semibold text-foreground block">Incoterm</label>
+                        <select value={costIncoterm} onChange={e => { setCostIncoterm(e.target.value); setCalculationResult(null); }} className="input-claude cursor-pointer">
                           <option value="EXW">EXW - Ex Works</option>
                           <option value="FOB">FOB - Free On Board</option>
                           <option value="CIF">CIF - Cost, Insurance, Freight</option>
                           <option value="DDP">DDP - Delivered Duty Paid</option>
                         </select>
+                        <p className="text-[10px] text-muted-foreground">Sets which costs you bear.</p>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Customs Duty Rate (%)</label>
-                        <input type="number" min="0" max="100" step="0.01" value={costManualDutyRate} onChange={e => { setCostManualDutyRate(e.target.value); setCalculationResult(null); }} placeholder="Enter verified rate" className="input-claude"/>
+                        <label className="text-[11px] font-semibold text-foreground block">Target Margin (%)</label>
+                        <input type="number" min="0" max="99" step="0.5" value={costTargetMargin} onChange={e => { setCostTargetMargin(e.target.value); setCalculationResult(null); }} placeholder="20" className="input-claude"/>
+                        <p className="text-[10px] text-muted-foreground">Used to compute your target price.</p>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Import VAT/GST (%)</label>
-                        <input type="number" min="0" max="100" step="0.01" value={costManualTaxRate} onChange={e => { setCostManualTaxRate(e.target.value); setCalculationResult(null); }} placeholder="Enter verified rate" className="input-claude"/>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Freight Amount (INR)</label>
-                        <input type="number" min="0" step="1" value={costFreightAmount} onChange={e => { setCostFreightAmount(e.target.value); setCalculationResult(null); }} placeholder="Enter actual freight" className="input-claude"/>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Target Margin (%)</label>
-                        <input type="number" min="0" max="100" step="0.5" value={costTargetMargin} onChange={e => { setCostTargetMargin(e.target.value); setCalculationResult(null); }} placeholder="20" className="input-claude"/>
+                        <label className="text-[11px] font-semibold text-foreground block">Selling Price / unit</label>
+                        <div className="flex gap-1">
+                          <input type="number" min="0" step="0.01" value={costSellingPrice} onChange={e => { setCostSellingPrice(e.target.value); setCalculationResult(null); }} placeholder="Optional" className="input-claude flex-1 min-w-0"/>
+                          <select value={costSellingCurrency} onChange={e => { setCostSellingCurrency(e.target.value); setCalculationResult(null); }} className="input-claude px-2 py-2 text-xs font-semibold cursor-pointer w-auto">
+                            {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        {/* Offer the engine's computed target price as a one-click fill,
+                            instead of a misleading "Auto" placeholder that filled nothing. */}
+                        {calculationResult?.targetSellingPrice?.targetPricePerUnitOriginal > 0 && !costSellingPrice ? (
+                          <button
+                            type="button"
+                            onClick={() => setCostSellingPrice(
+                              calculationResult.targetSellingPrice.targetPricePerUnitOriginal.toFixed(2)
+                            )}
+                            className="text-[10px] font-semibold text-primary hover:underline cursor-pointer text-left"
+                          >
+                            Use target {calculationResult.targetSellingPrice.targetPricePerUnitOriginal.toFixed(2)} {costSellingCurrency}/unit
+                          </button>
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground">Blank = we compute the price you need.</p>
+                        )}
                       </div>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Step 3 — actual quoted amounts. Optional: blank fields fall back to
+                      transparent mode-based estimates inside the cost engine. */}
+                  <div className="space-y-2.5 border-t border-border pt-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-[10px] font-bold">3</span>
+                        Real quoted amounts <span className="font-medium text-muted-foreground normal-case tracking-normal">(optional — improves accuracy)</span>
+                      </span>
+                      <button
+                        onClick={() => setShowAdvancedCost(v => !v)}
+                        className="text-[11px] font-semibold text-primary hover:underline cursor-pointer text-left sm:text-right"
+                      >
+                        {showAdvancedCost ? 'Hide' : 'Show'} packaging, freight, duty &amp; tax overrides
+                      </button>
+                    </div>
+                    {showAdvancedCost && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-foreground block">Packaging / unit (INR)</label>
+                          <input type="number" min="0" step="0.01" value={costPackagingPerUnit} onChange={e => { setCostPackagingPerUnit(e.target.value); setCalculationResult(null); }} placeholder="0" className="input-claude"/>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-foreground block">Inland Transport (INR)</label>
+                          <input type="number" min="0" step="1" value={costInlandTransport} onChange={e => { setCostInlandTransport(e.target.value); setCalculationResult(null); }} placeholder="Auto from weight" className="input-claude"/>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-foreground block">Freight Amount (INR)</label>
+                          <input type="number" min="0" step="1" value={costFreightAmount} onChange={e => { setCostFreightAmount(e.target.value); setCalculationResult(null); }} placeholder="Carrier quote amount" className="input-claude"/>
+                          <p className="text-[10px] text-muted-foreground">Use the accepted carrier quote.</p>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-foreground block">Insurance Rate (%)</label>
+                          <input type="number" min="0" max="100" step="0.01" value={costInsuranceRate} onChange={e => { setCostInsuranceRate(e.target.value); setCalculationResult(null); }} placeholder={costShippingMode === 'Sea' ? '1.5 (default)' : costShippingMode === 'Air' ? '0.8 (default)' : '0.5 (default)'} className="input-claude"/>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-foreground block">Customs Duty Rate (%)</label>
+                          <input type="number" min="0" max="100" step="0.01" value={costManualDutyRate} onChange={e => { setCostManualDutyRate(e.target.value); setCalculationResult(null); }} placeholder="Verified MFN rate" className="input-claude"/>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-foreground block">Import VAT / GST (%)</label>
+                          <input type="number" min="0" max="100" step="0.01" value={costManualTaxRate} onChange={e => { setCostManualTaxRate(e.target.value); setCalculationResult(null); }} placeholder="Destination VAT rate" className="input-claude"/>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="flex gap-2">
                     <button onClick={handleCalculateCost} disabled={isCalculatingCost} className="flex-1 py-2.5 text-xs font-bold text-primary-foreground bg-primary hover:bg-primary-hover rounded-xl shadow cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all">
@@ -2990,7 +3081,7 @@ export default function AnalysisView({
                           {r.traceability.map((t, idx) => (
                             <div key={idx} className="bg-white border border-border/70 rounded-xl p-3 space-y-1">
                               <span className="text-[9px] font-black text-slate-700 uppercase tracking-wide block">{t.title}</span>
-                              <div className="text-[10px] font-mono text-primary bg-primary/5/50 p-2 rounded-lg border border-primary/15/60 break-all leading-relaxed">
+                              <div className="text-[10px] font-mono text-primary bg-primary/5 p-2 rounded-lg border border-primary/15 break-all leading-relaxed">
                                 {t.formula}
                               </div>
                             </div>
@@ -3097,7 +3188,7 @@ export default function AnalysisView({
                             </thead>
                             <tbody className="divide-y divide-slate-100/80">
                               {r.qtyEconomics.map((q) => (
-                                <tr key={q.quantity} className={`hover:bg-slate-50/50 ${q.isCurrent ? 'bg-primary/5/50 font-bold' : ''}`}>
+                                <tr key={q.quantity} className={`hover:bg-slate-50/50 ${q.isCurrent ? 'bg-primary/5 font-bold' : ''}`}>
                                   <td className="py-2.5 font-bold text-slate-800">
                                     {q.quantity.toLocaleString()} units
                                     {q.isCurrent && <span className="ml-1.5 text-[8px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-bold">Current</span>}
@@ -3161,7 +3252,7 @@ export default function AnalysisView({
       {/* ── Commit & Export Confirmation Modal ───────────────────────────────── */}
       {showOrderModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-xl w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-card text-card-foreground rounded-3xl shadow-2xl border border-border max-w-2xl w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-primary via-primary-hover to-primary-hover px-6 py-5 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -3184,26 +3275,58 @@ export default function AnalysisView({
 
             {/* Modal Body */}
             <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+              {/* How this works — the exporter does NOT pick a carrier here.
+                  The request is published to verified partners who bid; the exporter
+                  then accepts the best quote, which books the shipment. */}
+              <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 space-y-3">
+                <span className="text-[11px] font-bold text-primary uppercase tracking-wider block">
+                  How your shipment gets a carrier
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { n: '1', t: 'You submit this request', d: 'Cargo details are locked and published to verified logistics partners.', now: true },
+                    { n: '2', t: 'Carriers send quotes', d: 'Partners bid with freight cost, transit time and included services.', now: false },
+                    { n: '3', t: 'You accept the best quote', d: 'Open Orders → Review Proposals. Accepting books the shipment + tracking.', now: false },
+                  ].map(s => (
+                    <div
+                      key={s.n}
+                      className={`rounded-xl p-3 border ${s.now ? 'bg-card border-primary/40 shadow-sm' : 'bg-card/60 border-border'}`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                          s.now ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                        }`}>{s.n}</span>
+                        <span className={`text-[11px] font-bold leading-tight ${s.now ? 'text-primary' : 'text-foreground'}`}>{s.t}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">{s.d}</p>
+                      {s.now && (
+                        <span className="inline-block mt-1.5 text-[9px] font-bold text-primary uppercase tracking-wider">You are here</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Route Summary Pill */}
-              <div className="bg-slate-50 border border-border/80 rounded-2xl p-4 flex items-center justify-between">
+              <div className="bg-muted/40 border border-border rounded-2xl p-4 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <span className="text-xl">🇮🇳</span>
                   <div>
-                    <span className="text-xxs font-bold text-slate-400 uppercase tracking-widest block">Origin Country</span>
-                    <span className="text-xs font-black text-slate-800">India</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">Origin Country</span>
+                    <span className="text-xs font-bold text-foreground">India</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-indigo-500 px-3">
+                <div className="flex items-center gap-2 text-primary px-2 shrink-0">
                   <span className="text-xs font-bold">➔</span>
-                  <span className="text-xxs font-black tracking-wider uppercase bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md border border-indigo-100">
+                  <span className="text-[10px] font-bold tracking-wider uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-md border border-primary/20 whitespace-nowrap">
                     {orderShippingMode}
                   </span>
                   <span className="text-xs font-bold">➔</span>
                 </div>
                 <div className="flex items-center gap-3 text-right">
                   <div>
-                    <span className="text-xxs font-bold text-slate-400 uppercase tracking-widest block">Destination</span>
-                    <span className="text-xs font-black text-slate-800">{selectedCountry}</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">Destination</span>
+                    <span className="text-xs font-bold text-foreground">{selectedCountry}</span>
                   </div>
                   <span className="text-xl">🌐</span>
                 </div>
@@ -3214,16 +3337,16 @@ export default function AnalysisView({
                 const prod = getTargetProduct();
                 const price = prod?.price || 150;
                 return (
-                  <div className="bg-primary/5/50 border border-primary/15 rounded-2xl p-4 space-y-2">
-                    <div className="flex items-start justify-between">
+                  <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
                       <div>
                         <span className="text-[10px] font-bold text-primary uppercase tracking-wider block">Selected Commodity</span>
-                        <h4 className="text-xs font-black text-slate-900">{prod?.name || selectedAnalysisProduct}</h4>
-                        <span className="text-xxs text-slate-500 font-mono mt-0.5 block">HS Code: {prod?.hscode || hsCode || '10063090'} • Category: {prod?.category || 'Export Good'}</span>
+                        <h4 className="text-sm font-bold text-foreground">{prod?.name || selectedAnalysisProduct}</h4>
+                        <span className="text-[10px] text-muted-foreground font-mono mt-0.5 block">HS Code: {prod?.hscode || hsCode || '—'} • Category: {prod?.category || 'Export Good'}</span>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xxs font-bold text-slate-400 uppercase tracking-wider block">Catalog Rate</span>
-                        <span className="text-xs font-black text-slate-800">₹{price} / {prod?.unit || 'kg'}</span>
+                      <div className="text-right shrink-0">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Catalog Rate</span>
+                        <span className="text-sm font-bold text-foreground font-mono">₹{price} / {prod?.unit || 'kg'}</span>
                       </div>
                     </div>
                   </div>
@@ -3231,117 +3354,176 @@ export default function AnalysisView({
               })()}
 
               {/* Editable Fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Quantity */}
-                <div className="space-y-1.5">
-                  <label className="text-xxs font-bold text-slate-600 uppercase tracking-wider block">Order Quantity (kg)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="50"
-                    value={orderQuantity}
-                    onChange={(e) => setOrderQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-primary transition-all"
-                  />
-                </div>
+              {(() => {
+                const prod = getTargetProduct();
+                const unit = prod?.unit || 'kg';
+                const unitWeight = Number(prod?.weight) || 0;
+                const qty = Number(orderQuantity) || 0;
+                const totalWeightKg = unitWeight > 0 ? unitWeight * qty : null;
+                const gateways = ORIGIN_GATEWAYS_BY_MODE[orderShippingMode] || ORIGIN_GATEWAYS_BY_MODE['Sea Freight'];
 
-                {/* Shipping Mode */}
-                <div className="space-y-1.5">
-                  <label className="text-xxs font-bold text-slate-600 uppercase tracking-wider block">Logistics Shipping Mode</label>
-                  <select
-                    value={orderShippingMode}
-                    onChange={(e) => setOrderShippingMode(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-primary transition-all cursor-pointer"
-                  >
-                    <option value="Sea Freight">Sea Freight (Containerized / FCL)</option>
-                    <option value="Air Freight">Air Freight (Express Cargo)</option>
-                    <option value="Road Cargo">Road Freight (Border Crossings)</option>
-                  </select>
-                </div>
-              </div>
+                return (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Quantity */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                          Order Quantity ({unit})
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          step="50"
+                          value={orderQuantity}
+                          onChange={(e) => setOrderQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full px-3.5 py-2.5 bg-card border border-border rounded-xl text-xs font-bold text-foreground focus:outline-none focus:border-primary transition-all"
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          {totalWeightKg
+                            ? <>Gross cargo weight ≈ <strong className="text-foreground">{totalWeightKg.toLocaleString('en-IN')} kg</strong> ({unitWeight} kg per {unit})</>
+                            : <>Carriers quote on weight and volume — set unit weight on the product for an automatic estimate.</>}
+                        </p>
+                      </div>
 
-              {/* Pickup Location */}
-              <div className="space-y-1.5">
-                <label className="text-xxs font-bold text-slate-600 uppercase tracking-wider block">Origin Loading Port / Hub</label>
-                <select
-                  value={orderPickupLocation}
-                  onChange={(e) => setOrderPickupLocation(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-primary transition-all cursor-pointer"
-                >
-                  <option value="Nhava Sheva (JNPT), Mumbai, Maharashtra">Nhava Sheva (JNPT), Mumbai, Maharashtra (Major West Coast Port)</option>
-                  <option value="Mundra Port, Kutch, Gujarat">Mundra Port, Kutch, Gujarat (Major Bulk & Container Port)</option>
-                  <option value="Chennai Port / Ennore, Tamil Nadu">Chennai Port / Ennore, Tamil Nadu (East Coast Hub)</option>
-                  <option value="Kolkata Port (SMP), West Bengal">Kolkata Port (SMP), West Bengal (East Coast & Bay of Bengal)</option>
-                  <option value="Cochin Port (Vallarpadam), Kerala">Cochin Port (Vallarpadam), Kerala (South Coast Transshipment)</option>
-                  <option value="IGI Airport Air Cargo, New Delhi">IGI Airport Air Cargo, New Delhi (Air Freight Hub)</option>
-                </select>
-              </div>
+                      {/* Freight Mode */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                          Preferred Freight Mode
+                        </label>
+                        <select
+                          value={orderShippingMode}
+                          onChange={(e) => {
+                            const mode = e.target.value;
+                            setOrderShippingMode(mode);
+                            // Keep the loading point valid for the new mode.
+                            const list = ORIGIN_GATEWAYS_BY_MODE[mode] || [];
+                            if (!list.some(g => g.value === orderPickupLocation)) {
+                              setOrderPickupLocation(list[0]?.value || '');
+                            }
+                          }}
+                          className="w-full px-3.5 py-2.5 bg-card border border-border rounded-xl text-xs font-bold text-foreground focus:outline-none focus:border-primary transition-all cursor-pointer"
+                        >
+                          <option value="Sea Freight">Sea Freight (Containerized / FCL)</option>
+                          <option value="Air Freight">Air Freight (Express Cargo)</option>
+                          <option value="Road Cargo">Road Freight (Land Border)</option>
+                        </select>
+                        <p className="text-[10px] text-muted-foreground">
+                          This is your <strong className="text-foreground">preference</strong>, not the carrier. Partners quote against it.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Origin Gateway — filtered to the chosen mode */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                        Origin Loading {orderShippingMode === 'Air Freight' ? 'Air Cargo Terminal' : orderShippingMode === 'Road Cargo' ? 'Land Port / ICD' : 'Seaport'}
+                      </label>
+                      <select
+                        value={orderPickupLocation}
+                        onChange={(e) => setOrderPickupLocation(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-card border border-border rounded-xl text-xs font-bold text-foreground focus:outline-none focus:border-primary transition-all cursor-pointer"
+                      >
+                        {gateways.map(g => (
+                          <option key={g.value} value={g.value}>{g.label}</option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-muted-foreground">
+                        Showing gateways valid for {orderShippingMode.toLowerCase()}.
+                      </p>
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Special Instructions & Regulatory Notes */}
               <div className="space-y-1.5">
-                <label className="text-xxs font-bold text-slate-600 uppercase tracking-wider block">Compliance & Special Instructions</label>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Compliance & Special Instructions</label>
                 <textarea
                   rows="2"
                   value={orderSpecialInstructions}
                   onChange={(e) => setOrderSpecialInstructions(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-white border border-border rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:border-primary transition-all leading-relaxed"
+                  className="w-full px-3.5 py-2 bg-card border border-border rounded-xl text-xs font-medium text-foreground focus:outline-none focus:border-primary transition-all leading-relaxed"
                   placeholder="e.g., Phytosanitary certification required, Halal batch number, food-grade container"
                 />
+                <p className="text-[10px] text-muted-foreground">Carriers see these notes when preparing their quote.</p>
               </div>
 
-              {/* Live Financial Summary */}
+              {/* Goods value summary — freight is NOT included here; it arrives with the carrier quotes. */}
               {(() => {
                 const prod = getTargetProduct();
-                const unitPrice = prod?.price || 150;
-                const totalOrderVal = unitPrice * (Number(orderQuantity) || 1000);
-                const dutyRate = countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate ?? 0;
+                const unitPrice = Number(prod?.price) || 0;
+                const unit = prod?.unit || 'kg';
+                const qty = Number(orderQuantity) || 0;
+                const goodsValue = unitPrice * qty;
+                const dutyRate = countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate ?? null;
+                const dutyAmount = dutyRate != null ? (goodsValue * Number(dutyRate)) / 100 : null;
+
                 return (
-                  <div className="bg-slate-50 border border-border/80 rounded-2xl p-4 space-y-2">
+                  <div className="bg-muted/40 border border-border rounded-2xl p-4 space-y-2">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                      Goods value (freight excluded)
+                    </span>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-medium">Estimated Order Value (FOB):</span>
-                      <span className="font-bold text-slate-800">₹{totalOrderVal.toLocaleString('en-IN')}</span>
+                      <span className="text-muted-foreground font-medium">
+                        Catalog rate × quantity {unitPrice > 0 ? `(₹${unitPrice.toLocaleString('en-IN')}/${unit} × ${qty.toLocaleString('en-IN')})` : ''}
+                      </span>
+                      <span className="font-bold text-foreground font-mono">₹{goodsValue.toLocaleString('en-IN')}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-medium">Destination Entry Customs Duty:</span>
-                      <span className="font-bold text-emerald-600">{dutyRate}% MFN Tariff</span>
+                      <span className="text-muted-foreground font-medium">Destination import duty{dutyRate != null ? ` @ ${dutyRate}%` : ''}:</span>
+                      <span className="font-bold text-foreground font-mono">
+                        {dutyAmount != null
+                          ? `₹${Math.round(dutyAmount).toLocaleString('en-IN')} (buyer pays on entry)`
+                          : 'Run Cost Estimation for a verified rate'}
+                      </span>
                     </div>
-                    <div className="border-t border-border pt-2 flex items-center justify-between">
-                      <span className="text-xs font-black text-slate-900">Total Contract Value:</span>
-                      <span className="text-sm font-black text-indigo-600">₹{totalOrderVal.toLocaleString('en-IN')} INR</span>
+                    <div className="border-t border-border pt-2 flex items-start justify-between gap-3">
+                      <span className="text-xs font-bold text-foreground">Order value recorded (FOB basis):</span>
+                      <span className="text-sm font-bold text-primary font-mono whitespace-nowrap">₹{goodsValue.toLocaleString('en-IN')}</span>
                     </div>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      Ocean/air freight, insurance and handling are not in this figure — they come from the carrier
+                      quotes you will review in the next step.
+                    </p>
                   </div>
                 );
               })()}
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowOrderModal(false)}
-                disabled={isSubmittingOrder}
-                className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl transition-all cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmExportOrder}
-                disabled={isSubmittingOrder}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
-              >
-                {isSubmittingOrder ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Processing Order...</span>
-                  </>
-                ) : (
-                  <>
-                    <Truck className="w-4 h-4" />
-                    <span>Confirm & Commit Order</span>
-                  </>
-                )}
-              </button>
+            <div className="bg-muted/50 px-6 py-4 border-t border-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <p className="text-[10px] text-muted-foreground leading-relaxed sm:max-w-[240px]">
+                Next: verified carriers submit quotes. You pick the winner under
+                <strong className="text-foreground"> Orders → Review Proposals</strong>.
+              </p>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowOrderModal(false)}
+                  disabled={isSubmittingOrder}
+                  className="px-4 py-2.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmExportOrder}
+                  disabled={isSubmittingOrder}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-primary-foreground bg-primary hover:bg-primary-hover rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                >
+                  {isSubmittingOrder ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Publishing Request...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Truck className="w-4 h-4" />
+                      <span>Publish Request to Carriers</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
