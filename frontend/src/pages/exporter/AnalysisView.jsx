@@ -1162,7 +1162,7 @@ export default function AnalysisView({
                     const backs = {'recommendations':'select','explain':'recommendations','country-overview':'recommendations','compliance':'country-overview','cost':'country-overview','what-if':'country-overview','regulations':'country-overview','guidance':'country-overview'};
                     setAnalysisSubView(backs[analysisSubView] || 'select');
                   }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl transition-all cursor-pointer shadow-sm hover:shadow"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-border rounded-xl transition-all cursor-pointer shadow-sm hover:shadow"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Back</span>
@@ -1174,9 +1174,9 @@ export default function AnalysisView({
             {analysisSubView === 'select' && (
               <div className="max-w-xl mx-auto py-8">
                 {isAnalyzing ? (
-                  <div className="bg-card border border-slate-200 rounded-2xl p-12 text-center shadow-sm flex flex-col items-center justify-center min-h-[350px] animate-in fade-in duration-300">
-                    <div className="w-16 h-16 rounded-full bg-sky-500/10 flex items-center justify-center mb-6">
-                      <Loader2 className="w-8 h-8 text-sky-600 animate-spin" />
+                  <div className="bg-card border border-border rounded-2xl p-12 text-center shadow-sm flex flex-col items-center justify-center min-h-[350px] animate-in fade-in duration-300">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
                     </div>
                     <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Running Market Analysis</h3>
                     <p className="text-xs text-slate-400 mt-2 max-w-xs leading-relaxed">
@@ -1184,20 +1184,20 @@ export default function AnalysisView({
                     </p>
                   </div>
                 ) : (
-                  <div className="bg-card border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in duration-300">
-                    <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
-                      <div className="p-3 rounded-xl bg-sky-500/10 text-sky-600">
+                  <div className="card-claude p-6 sm:p-8 space-y-6 animate-in fade-in duration-300">
+                    <div className="flex items-center gap-3 border-b border-border pb-4">
+                      <div className="p-3 rounded-xl bg-primary/10 text-primary border border-primary/20">
                         <Globe className="w-6 h-6" />
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Select Product to Analyze</h3>
-                        <p className="text-xs text-slate-400 font-normal">Access compliance complexity ratings and landed cost estimates</p>
+                        <p className="text-xs text-muted-foreground font-normal mt-0.5">Access compliance complexity ratings and landed cost estimates</p>
                       </div>
                     </div>
 
                     <div className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-foreground block">Choose Catalog Product</label>
+                        <label className="text-xs font-semibold text-foreground block">Choose Catalog Product</label>
                         <select 
                           value={selectedAnalysisProduct}
                           onChange={(e) => {
@@ -1217,28 +1217,32 @@ export default function AnalysisView({
                             </>
                           )}
                         </select>
+                        <p className="text-[11px] text-muted-foreground">Origin locked to <span className="font-semibold text-foreground">India</span> - export-only platform.</p>
                       </div>
 
-                      <button
-                        onClick={handleStartAnalysis}
-                        className="w-full py-3 text-xs font-bold text-white bg-sky-500 hover:bg-sky-400 rounded-xl shadow transition-all cursor-pointer"
-                      >
-                        <span>Start Market Analysis</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
+                      <div className="space-y-2.5 pt-1">
+                        <button
+                          onClick={handleStartAnalysis}
+                          disabled={!selectedAnalysisProduct}
+                          className="btn-primary w-full py-3 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span>Start Market Analysis</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
 
-                      <button
-                        onClick={handleFetchCountryRankings}
-                        disabled={rankingsLoading}
-                        className="btn-outline w-full py-3 text-xs font-semibold cursor-pointer disabled:opacity-50"
-                      >
-                        {rankingsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                        <span>{rankingsLoading ? 'Ranking countries...' : 'Country Ranking'}</span>
-                      </button>
+                        <button
+                          onClick={handleFetchCountryRankings}
+                          disabled={rankingsLoading}
+                          className="btn-outline w-full py-3 text-sm cursor-pointer disabled:opacity-50"
+                        >
+                          {rankingsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                          <span>{rankingsLoading ? 'Ranking countries...' : 'Country Ranking'}</span>
+                        </button>
+                      </div>
 
                       {countryRankings.length > 0 && (
-                        <div className="border border-slate-200 rounded-xl overflow-hidden mt-2">
-                          <div className="bg-slate-100 px-4 py-2 text-[10px] font-bold text-foreground uppercase tracking-wider">Country Rankings</div>
+                        <div className="border border-border rounded-xl overflow-hidden mt-2">
+                          <div className="bg-muted px-4 py-2 text-[10px] font-bold text-foreground uppercase tracking-wider">Country Rankings</div>
                           <div className="divide-y divide-border">
                             {countryRankings.slice(0, 5).map((r, i) => (
                               <div key={r.country_code} className="flex items-center justify-between px-4 py-2.5">
@@ -1259,8 +1263,8 @@ export default function AnalysisView({
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-sky-600">{r.xgb_predicted_score?.toFixed(1)}</span>
-                                  <button onClick={() => handleExplainCountry(r.country_code, r.country_name || r.country_code)} className="text-xs px-2 py-1 text-sky-600 hover:bg-sky-50 font-medium rounded-lg cursor-pointer transition-all">Explain</button>
+                                  <span className="text-xs font-bold text-primary">{r.xgb_predicted_score?.toFixed(1)}</span>
+                                  <button onClick={() => handleExplainCountry(r.country_code, r.country_name || r.country_code)} className="text-xs px-2 py-1 text-primary hover:bg-primary/10 font-medium rounded-lg cursor-pointer transition-all">Explain</button>
                                 </div>
                               </div>
                             ))}
@@ -1276,24 +1280,24 @@ export default function AnalysisView({
             {/* SUB-VIEW: RECOMMENDATIONS TABLE */}
             {analysisSubView === 'recommendations' && (
               <div className="space-y-5 animate-in fade-in duration-300">
-                <div className="bg-accent/60 border border-slate-200 rounded-2xl p-4 flex items-center justify-between text-xs font-medium text-foreground">
+                <div className="bg-accent/60 border border-border rounded-2xl p-4 flex items-center justify-between text-xs font-medium text-foreground">
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                     <span>Export suggestions matching <strong>{selectedAnalysisProduct}</strong> parameters:</span>
                   </div>
-                  <span className="bg-sky-500/10 text-sky-600 border border-sky-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">
+                  <span className="bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">
                     {countryRankings.filter(c => c.reliability_tier === 'High' || c.reliability_tier === 'Moderate').length} Target Markets
                   </span>
                 </div>
 
-                <div className="bg-card border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                   {rankingsLoading ? (
-                    <div className="p-12 flex flex-col items-center gap-3"><Loader2 className="w-6 h-6 text-sky-600 animate-spin"/><span className="text-xs font-semibold text-slate-400">Ranking countries...</span></div>
+                    <div className="p-12 flex flex-col items-center gap-3"><Loader2 className="w-6 h-6 text-primary animate-spin"/><span className="text-xs font-semibold text-slate-400">Ranking countries...</span></div>
                   ) : countryRankings.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="border-b border-slate-200 bg-slate-100/40 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          <tr className="border-b border-border bg-slate-100/40 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                             <th className="py-3 px-4">#</th>
                             <th className="py-3 px-4">Country</th>
                             <th className="py-3 px-4">Score</th>
@@ -1313,7 +1317,7 @@ export default function AnalysisView({
                                   </div>
                                 </td>
                                 <td className="py-3 px-4">
-                                  <span className="text-sky-600 font-bold text-sm">{r.xgb_predicted_score?.toFixed(1)}</span>
+                                  <span className="text-primary font-bold text-sm">{r.xgb_predicted_score?.toFixed(1)}</span>
                                 </td>
                                 <td className="py-3 px-4">
                                   <span className={`inline-flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-1 rounded-full ${
@@ -1335,13 +1339,13 @@ export default function AnalysisView({
                                   <div className="flex items-center justify-end gap-2">
                                     <button
                                       onClick={() => handleExplainCountry(r.country_code, r.country_name || r.country_code)}
-                                      className="text-xs px-2.5 py-1 text-sky-600 hover:bg-sky-50 font-medium rounded-lg cursor-pointer transition-all"
+                                      className="text-xs px-2.5 py-1 text-primary hover:bg-primary/10 font-medium rounded-lg cursor-pointer transition-all"
                                     >
                                       Explain
                                     </button>
                                     <button
                                       onClick={() => handleSelectCountryForDetail(r.country_name || r.country_code)}
-                                      className="text-xs px-3 py-1.5 text-white bg-sky-500 hover:bg-sky-400 rounded-lg font-bold cursor-pointer transition-all"
+                                      className="text-xs px-3 py-1.5 text-primary-foreground bg-primary hover:bg-primary-hover rounded-lg font-bold cursor-pointer transition-all"
                                     >
                                       Details
                                     </button>
@@ -1358,14 +1362,14 @@ export default function AnalysisView({
                                     ['Tariff', r.tariff_score], ['Landed Cost', r.landed_cost_score],
                                     ['FTA', r.agreement_score], ['Competition', r.competition_score],
                                     ['Risk', r.risk_score]].map(([lbl, v]) => v != null && (
-                                    <span key={lbl} className="text-[10px] font-medium px-2 py-0.5 rounded bg-card border border-slate-200 text-foreground">
+                                    <span key={lbl} className="text-[10px] font-medium px-2 py-0.5 rounded bg-card border border-border text-foreground">
                                       {lbl} {Math.round(v)}
                                     </span>
                                   ))}
                                   {r.duty_rate != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">Duty {r.duty_rate}%</span>}
                                   {r.tax_rate != null && r.tax_rate > 0 && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">{r.tax_label} {r.tax_rate}%</span>}
-                                  {r.lead_time_days != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-sky-600">{r.lead_time_days}d lead</span>}
-                                  {r.landed_cost_per_unit != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-sky-600">INR {r.landed_cost_per_unit}/unit</span>}
+                                  {r.lead_time_days != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">{r.lead_time_days}d lead</span>}
+                                  {r.landed_cost_per_unit != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">INR {r.landed_cost_per_unit}/unit</span>}
                                 </div>
                                 {r.reason && <p className="text-xs text-slate-400 leading-relaxed mt-1.5">{r.reason}</p>}
                               </td>
@@ -1389,7 +1393,7 @@ export default function AnalysisView({
             {analysisSubView === 'country-overview' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 {/* Header overview banner */}
-                <div className="bg-card border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-bold text-foreground">
                       {countries.find(c => c.name === selectedCountry)?.code || selectedCountry.slice(0,2).toUpperCase()}
@@ -1407,22 +1411,22 @@ export default function AnalysisView({
 
                 {/* AI Recommendation Summary - Enhanced Metrics */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm text-center space-y-1">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
                     <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Score</span>
-                    <span className="text-2xl font-bold text-sky-600 block">{(countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 0)}/100</span>
+                    <span className="text-2xl font-bold text-primary block">{(countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 0)}/100</span>
                     <span className="text-[10px] text-slate-400 font-medium block">Source: {countryRecoData?.scoreSource === 'ML_MODEL_V4' ? 'ML Model v4' : countryRecoData?.scoreSource === 'KNOWLEDGE_ENGINE' ? 'Knowledge Engine' : countryRecoData?.scoreSource || 'Verified Tariff'}</span>
                   </div>
-                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm text-center space-y-1">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
                     <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Market Demand</span>
                     <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 block">{((countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 0) >= 80 ? 'HIGH' : (countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 0) >= 50 ? 'MEDIUM' : 'LOW')}</span>
                     <span className="text-[10px] text-slate-400 font-medium block">Complexity: {countryRecoData?.complexity || countryRecoData?.compliance?.complexityLevel || 'N/A'}</span>
                   </div>
-                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm text-center space-y-1">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
                     <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Duty Rate</span>
                     <span className="text-2xl font-bold text-foreground block">{(countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate) != null ? `${countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate}%` : '0%'}</span>
                     <span className="text-[10px] text-slate-400 font-medium block">{(countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate) != null ? `+ ${countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate}% ${countryRecoData?.tax_label || 'VAT'}` : '+ Tax N/A'}</span>
                   </div>
-                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm text-center space-y-1">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
                     <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Compliance Index</span>
                     <span className="text-2xl font-bold text-amber-600 dark:text-amber-400 block">{(countryRecoData?.compliance?.score ?? countryRecoData?.complianceScore ?? 0)}/100</span>
                     <span className="text-[10px] text-slate-400 font-medium block">{(countryRecoData?.documentsRequired || countryRecoData?.compliance?.documentsCount || countryRecoData?.documents?.length || 0)} docs, {(countryRecoData?.certificationsRequired || countryRecoData?.compliance?.certificationsCount || countryRecoData?.certifications?.length || 0)} certs</span>
@@ -1431,23 +1435,23 @@ export default function AnalysisView({
 
                 {/* Extended Metrics Row */}
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                  <div className="bg-slate-100/40 border border-slate-200 p-3 rounded-xl text-center">
+                  <div className="bg-slate-100/40 border border-border p-3 rounded-xl text-center">
                     <span className="text-[10px] font-medium text-slate-400 uppercase block">Export Difficulty</span>
                     <span className="text-xs font-bold text-foreground mt-0.5 block">{countryRecoData?.compliance?.complexityLevel || countryRecoData?.complexity || 'N/A'}</span>
                   </div>
-                  <div className="bg-slate-100/40 border border-slate-200 p-3 rounded-xl text-center">
+                  <div className="bg-slate-100/40 border border-border p-3 rounded-xl text-center">
                     <span className="text-[10px] font-medium text-slate-400 uppercase block">Documents</span>
                     <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.documentsCount ?? countryRecoData?.documentsRequired ?? countryRecoData?.documents?.length ?? 0)}</span>
                   </div>
-                  <div className="bg-slate-100/40 border border-slate-200 p-3 rounded-xl text-center">
+                  <div className="bg-slate-100/40 border border-border p-3 rounded-xl text-center">
                     <span className="text-[10px] font-medium text-slate-400 uppercase block">Certificates</span>
                     <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.certificationsCount ?? countryRecoData?.certificationsRequired ?? countryRecoData?.certifications?.length ?? 0)}</span>
                   </div>
-                  <div className="bg-slate-100/40 border border-slate-200 p-3 rounded-xl text-center">
+                  <div className="bg-slate-100/40 border border-border p-3 rounded-xl text-center">
                     <span className="text-[10px] font-medium text-slate-400 uppercase block">Restrictions</span>
                     <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.restrictionsCount ?? countryRecoData?.restrictionsCount ?? countryRecoData?.restrictions?.length ?? 0)}</span>
                   </div>
-                  <div className="bg-slate-100/40 border border-slate-200 p-3 rounded-xl text-center">
+                  <div className="bg-slate-100/40 border border-border p-3 rounded-xl text-center">
                     <span className="text-[10px] font-medium text-slate-400 uppercase block">Country Risk</span>
                     <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.score || countryRecoData?.opportunityScore) ? ((countryRecoData?.compliance?.score || countryRecoData?.opportunityScore) >= 80 ? 'Low' : (countryRecoData?.compliance?.score || countryRecoData?.opportunityScore) >= 50 ? 'Medium' : 'High') : 'N/A'}</span>
                   </div>
@@ -1455,17 +1459,17 @@ export default function AnalysisView({
 
                 {/* AI Summary Box */}
                 {countryRecoData && (
-                  <div className="bg-accent/60 border border-slate-200 rounded-2xl p-5">
+                  <div className="bg-accent/60 border border-border rounded-2xl p-5">
                     <div className="flex items-start gap-3">
-                      <span className="text-lg text-sky-600 font-bold">✦</span>
+                      <span className="text-lg text-primary font-bold">✦</span>
                       <div>
-                        <span className="text-xs font-bold text-sky-600 uppercase tracking-wider block mb-1">Recommendation Summary{countryRecoData?.verdict ? `: ${countryRecoData.verdict}` : ''}</span>
+                        <span className="text-xs font-bold text-primary uppercase tracking-wider block mb-1">Recommendation Summary{countryRecoData?.verdict ? `: ${countryRecoData.verdict}` : ''}</span>
                         <p className="text-xs text-foreground leading-relaxed">{countryRecoData?.summary || `${selectedCountry} assessment for ${selectedAnalysisProduct}.`}</p>
                         {countryRecoData?.reasons?.length > 0 && (
                           <div className="mt-2.5 space-y-1">
                             <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider block">{selectedCountry} is recommended because:</span>
                             {countryRecoData.reasons.map((rsn, i) => (
-                              <div key={i} className="flex gap-1.5 items-start"><span className="text-sky-600 shrink-0 text-xs">✓</span><span className="text-xs text-foreground/90 leading-relaxed">{rsn}</span></div>
+                              <div key={i} className="flex gap-1.5 items-start"><span className="text-primary shrink-0 text-xs">✓</span><span className="text-xs text-foreground/90 leading-relaxed">{rsn}</span></div>
                             ))}
                           </div>
                         )}
@@ -1477,7 +1481,7 @@ export default function AnalysisView({
                             typeof s === 'string' ? (
                               <span key={i} className="text-slate-400 font-medium">{s}</span>
                             ) : s.url ? (
-                              <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="underline text-sky-600 hover:opacity-80 cursor-pointer font-medium">{s.source}</a>
+                              <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="underline text-primary hover:opacity-80 cursor-pointer font-medium">{s.source}</a>
                             ) : (
                               <span key={i} className="text-slate-400 font-medium">{s.source}</span>
                             )
@@ -1493,7 +1497,7 @@ export default function AnalysisView({
                 {/* Card navigation buttons (Workflow action cards) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Action 1: Compliance */}
-                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Compliance Report</span>
                       <p className="text-xs text-slate-400 font-normal">Verify customs documents, certifications status, labeling rules, and index parameters.</p>
@@ -1507,7 +1511,7 @@ export default function AnalysisView({
                   </div>
 
                   {/* Action 2: Cost Estimation */}
-                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Cost & Profit Estimation</span>
                       <p className="text-xs text-slate-400 font-normal">Calculate product cost, transport freight, insurance, taxes, and net landed cost margins.</p>
@@ -1525,21 +1529,21 @@ export default function AnalysisView({
                   </div>
 
                   {/* Action 4: Create Order */}
-                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Commit & Export</span>
                       <p className="text-xs text-slate-400 font-normal">Create a provisional Indian SME export order and lock this trade route in your tracking log.</p>
                     </div>
                     <button
                       onClick={handleOpenCommitExport}
-                      className="w-full py-2.5 text-xs font-bold text-white bg-sky-500 hover:bg-sky-400 rounded-xl shadow transition-all cursor-pointer text-center"
+                      className="w-full py-2.5 text-xs font-bold text-primary-foreground bg-primary hover:bg-primary-hover rounded-xl shadow transition-all cursor-pointer text-center"
                     >
                       Create Export Order
                     </button>
                   </div>
 
                   {/* Action 5: Explain Recommendation */}
-                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Explain Recommendation</span>
                       <p className="text-xs text-slate-400 font-normal">Why {selectedCountry} is recommended, required certificates, restrictions, labeling rules.</p>
@@ -1553,7 +1557,7 @@ export default function AnalysisView({
                   </div>
 
                   {/* Action 6: Regulations */}
-                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Export Regulations</span>
                       <p className="text-xs text-slate-400 font-normal">Structured import regulations, customs rules, labeling and packaging requirements for {selectedCountry}.</p>
@@ -1562,7 +1566,7 @@ export default function AnalysisView({
                   </div>
 
                   {/* Action 7: Step-by-Step Guidance */}
-                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Step-by-Step Guide</span>
                       <p className="text-xs text-slate-400 font-normal">Personalized export guide for {selectedAnalysisProduct} to {selectedCountry}: IEC, documents, customs, payment.</p>
@@ -1577,7 +1581,7 @@ export default function AnalysisView({
             {/* SUB-VIEW: EXPLAIN RECOMMENDATION */}
             {analysisSubView === 'explain' && (
               <div className="space-y-5 animate-in fade-in duration-300">
-                <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-xs font-bold text-indigo-700 flex items-center justify-between gap-2 flex-wrap">
+                <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4 text-xs font-bold text-primary flex items-center justify-between gap-2 flex-wrap">
                   <span className="flex items-center gap-2"><span>-</span><span>Explanation: Why export <strong>{selectedAnalysisProduct}</strong> to <strong>{explainCountry}</strong>?</span></span>
                   {explainData && (
                     <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${explainData.aiGenerated ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -1586,10 +1590,10 @@ export default function AnalysisView({
                   )}
                 </div>
                 {explainLoading ? (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-12 flex flex-col items-center gap-4"><Loader2 className="w-8 h-8 text-indigo-500 animate-spin"/><span className="text-xs font-bold text-slate-500">Generating explanation</span></div>
+                  <div className="bg-card border border-border rounded-2xl p-12 flex flex-col items-center gap-4"><Loader2 className="w-8 h-8 text-primary animate-spin"/><span className="text-xs font-bold text-slate-500">Generating explanation</span></div>
                 ) : explainData ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
+                    <div className="bg-white border border-border rounded-2xl p-5 space-y-3">
                       <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2">Why Recommended</h3>
                       <p className="text-xs text-slate-600 leading-relaxed">{explainData.explanation}</p>
                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider pt-2">Compliance Summary</h4>
@@ -1598,7 +1602,7 @@ export default function AnalysisView({
                     <div className="space-y-4">
                       {[['Required Certificates', explainData.required_certificates, 'emerald'], ['Required Documents', explainData.required_documents, 'sky'], ['Import Restrictions', explainData.import_restrictions, 'amber'], ['Labeling Rules', explainData.labeling_rules, 'purple']].map(([title, items, color]) => (
                         items?.length > 0 && (
-                          <div key={title} className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2">
+                          <div key={title} className="bg-white border border-border rounded-2xl p-4 space-y-2">
                             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">{title}</h4>
                             <ul className="space-y-1">{items.map((item, i) => <li key={i} className={`text-xs font-semibold text-${color}-700 bg-${color}-50 px-2 py-1 rounded-lg`}> {renderItemText(item)}</li>)}</ul>
                           </div>
@@ -1689,17 +1693,17 @@ export default function AnalysisView({
                 </div>
 
                 {regulationsLoading ? (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-16 flex flex-col items-center gap-4">
-                    <Loader2 className="w-9 h-9 text-indigo-600 animate-spin"/>
+                  <div className="bg-white border border-border rounded-2xl p-16 flex flex-col items-center gap-4">
+                    <Loader2 className="w-9 h-9 text-primary animate-spin"/>
                     <span className="text-xs font-bold text-slate-600">Retrieving verified regulations for {selectedAnalysisProduct} (HS {hsCode}) ➔ {selectedCountry}...</span>
-                    <div className="w-56 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-indigo-600 rounded-full animate-pulse w-3/4"></div>
+                    <div className="w-56 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-primary rounded-full animate-pulse w-3/4"></div>
                     </div>
                   </div>
                 ) : regulationsData ? (
                   <div className="space-y-6">
                     {/* Compliance Assessment Metrics */}
-                    <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+                    <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-4">
                       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                         <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                           <Shield className="w-4 h-4 text-indigo-600"/> Compliance Assessment
@@ -1763,7 +1767,7 @@ export default function AnalysisView({
 
                     {/* Relevant Authorities */}
                     {authorities.length > 0 && (
-                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                         <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                           <Globe className="w-4 h-4 text-indigo-600"/> Regulatory Authorities in This Transaction
                         </h3>
@@ -1786,7 +1790,7 @@ export default function AnalysisView({
                     {/* 2-Tier Requirements: Destination vs Origin */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                       {/* Destination Requirements (Import) */}
-                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                           <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                             <Shield className="w-4 h-4 text-purple-600"/> Destination Requirements ({selectedCountry})
@@ -1821,7 +1825,7 @@ export default function AnalysisView({
                       </div>
 
                       {/* Origin Requirements (Export) */}
-                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                           <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                             <Shield className="w-4 h-4 text-blue-600"/> Origin Requirements (India)
@@ -1857,7 +1861,7 @@ export default function AnalysisView({
                     </div>
 
                     {/* Required Documents (Deduplicated with Status Badges & Reasons) */}
-                    <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                    <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                       <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                         <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                           <FileText className="w-4 h-4 text-indigo-600"/> Required Documents ({docsList.length} Verified)
@@ -1868,7 +1872,7 @@ export default function AnalysisView({
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {docsList.map((doc, idx) => (
-                          <div key={idx} className="border border-slate-100 bg-slate-50/60 rounded-xl p-3.5 space-y-1.5 hover:border-slate-200 transition-all">
+                          <div key={idx} className="border border-border bg-muted/40 rounded-xl p-3.5 space-y-1.5 hover:border-primary/30 transition-all">
                             <div className="flex items-start justify-between gap-2">
                               <h5 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                                 <FileText className="w-3.5 h-3.5 text-indigo-500 shrink-0"/> {doc.document_name}
@@ -1901,7 +1905,7 @@ export default function AnalysisView({
                     {/* Certifications & Food Labeling */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                       {/* Product-Specific Certifications */}
-                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                           <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                             <Shield className="w-4 h-4 text-emerald-600"/> Product-Specific Certifications
@@ -1931,7 +1935,7 @@ export default function AnalysisView({
                       </div>
 
                       {/* Destination Labeling Standards */}
-                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                           <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                             <FileText className="w-4 h-4 text-amber-500"/> Destination Food Labeling Standards
@@ -1956,7 +1960,7 @@ export default function AnalysisView({
                     {/* Packaging, Restrictions, and Duties & Taxes */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                       {/* Packaging */}
-                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                         <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-2">
                           <Briefcase className="w-4 h-4 text-purple-500"/> Packaging Requirements
                         </h4>
@@ -1973,7 +1977,7 @@ export default function AnalysisView({
                       </div>
 
                       {/* Restrictions */}
-                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                         <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4 text-emerald-500"/> Product Restrictions
                         </h4>
@@ -1986,7 +1990,7 @@ export default function AnalysisView({
                       </div>
 
                       {/* Duties & Taxes */}
-                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                         <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-2">
                           <DollarSign className="w-4 h-4 text-emerald-600"/> Tariff & Tax Treatment
                         </h4>
@@ -2010,7 +2014,7 @@ export default function AnalysisView({
                     </div>
 
                     {/* Authoritative Sources */}
-                    <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-2.5">
+                    <div className="bg-slate-50 border border-border/80 rounded-2xl p-5 space-y-2.5">
                       <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-2">
                         <Globe className="w-4 h-4 text-indigo-600"/> Authoritative Government & Regulatory Sources
                       </h4>
@@ -2021,7 +2025,7 @@ export default function AnalysisView({
                             href={src.url || '#'}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs bg-white border border-slate-200 text-indigo-600 font-bold px-3 py-1.5 rounded-xl hover:border-indigo-300 hover:bg-indigo-50/50 transition-colors shadow-sm flex items-center gap-1.5"
+                            className="text-xs bg-white border border-border text-indigo-600 font-bold px-3 py-1.5 rounded-xl hover:border-indigo-300 hover:bg-indigo-50/50 transition-colors shadow-sm flex items-center gap-1.5"
                           >
                             <span>{src.title || src.source || `Official Source ${i+1}`}</span>
                             <span className="text-[10px] text-slate-400">({src.authority || 'Govt'})</span>
@@ -2057,7 +2061,7 @@ export default function AnalysisView({
               return (
               <div className="space-y-5 animate-in fade-in duration-300">
                 {/* Header */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
+                <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center"><MapPin className="w-5 h-5 text-emerald-600"/></div>
@@ -2074,81 +2078,81 @@ export default function AnalysisView({
                     </div>
                     <div className="flex items-center gap-2">
                       {!guidanceData && <button onClick={handleFetchGuidance} disabled={guidanceLoading} className="text-xs px-4 py-2 text-white bg-emerald-500 hover:bg-emerald-400 rounded-xl font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5 transition-all">{guidanceLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Generate Plan'}</button>}
-                      <span className="text-[10px] bg-slate-100 text-slate-400 font-semibold px-2.5 py-0.5 rounded-full border border-slate-200">{new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
+                      <span className="text-[10px] bg-slate-100 text-slate-400 font-semibold px-2.5 py-0.5 rounded-full border border-border">{new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
                     </div>
                   </div>
                 </div>
 
                 {guidanceLoading ? (
-                  <div className="bg-card border border-slate-200 rounded-2xl p-16 flex flex-col items-center gap-4">
-                    <Loader2 className="w-9 h-9 text-sky-600 animate-spin"/>
+                  <div className="bg-card border border-border rounded-2xl p-16 flex flex-col items-center gap-4">
+                    <Loader2 className="w-9 h-9 text-primary animate-spin"/>
                     <span className="text-xs font-semibold text-slate-400">Generating export execution plan for {selectedAnalysisProduct} to {selectedCountry}...</span>
-                    <div className="w-56 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-sky-500 rounded-full animate-pulse w-2/3"></div></div>
+                    <div className="w-56 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-primary rounded-full animate-pulse w-2/3"></div></div>
                   </div>
                 ) : guidanceData ? (
                   <div className="space-y-5">
                     {/* Progress & Summary */}
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                      <div className="bg-card border border-slate-200 rounded-2xl p-4 text-center space-y-1">
+                      <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-1">
                         <span className="text-[10px] font-medium text-slate-400 uppercase block">Total Steps</span>
                         <span className="text-2xl font-bold text-foreground block">{totalSteps}</span>
                       </div>
-                      <div className="bg-card border border-slate-200 rounded-2xl p-4 text-center space-y-1">
+                      <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-1">
                         <span className="text-[10px] font-medium text-slate-400 uppercase block">Est. Timeline</span>
-                        <span className="text-lg font-bold text-sky-600 block">{guidanceData.total_estimated_time || '--'}</span>
+                        <span className="text-lg font-bold text-primary block">{guidanceData.total_estimated_time || '--'}</span>
                       </div>
-                      <div className="bg-card border border-slate-200 rounded-2xl p-4 text-center space-y-1">
+                      <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-1">
                         <span className="text-[10px] font-medium text-slate-400 uppercase block">Difficulty</span>
                         <span className="text-lg font-bold text-amber-600 dark:text-amber-400 block">{totalSteps > 6 ? 'Medium' : 'Low'}</span>
                       </div>
-                      <div className="bg-card border border-slate-200 rounded-2xl p-4 text-center space-y-1">
+                      <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-1">
                         <span className="text-[10px] font-medium text-slate-400 uppercase block">Success Rate</span>
                         <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 block">{totalSteps <= 6 ? '95%' : '88%'}</span>
                       </div>
                     </div>
 
                     {/* AI Summary */}
-                    <div className="bg-accent/60 border border-slate-200 rounded-2xl p-5">
+                    <div className="bg-accent/60 border border-border rounded-2xl p-5">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-card border border-slate-200 flex items-center justify-center shrink-0"><Sparkles className="w-4 h-4 text-sky-600"/></div>
+                        <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center shrink-0"><Sparkles className="w-4 h-4 text-primary"/></div>
                         <div>
-                          <span className="text-xs font-bold text-sky-600 uppercase tracking-wider block mb-1">Export Execution Summary</span>
+                          <span className="text-xs font-bold text-primary uppercase tracking-wider block mb-1">Export Execution Summary</span>
                           <p className="text-xs text-foreground leading-relaxed">Your export plan for <strong>{selectedAnalysisProduct}</strong> (HS {hsCode}) to <strong>{selectedCountry}</strong> consists of {totalSteps} steps with an estimated timeline of {guidanceData.total_estimated_time || 'standard duration'}. {totalSteps <= 5 ? 'This is a straightforward export process.' : 'Complete each step sequentially for best results.'} Start with document preparation and IEC verification.</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Steps Timeline */}
-                    <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-4">
-                      <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2">Execution Steps</h3>
+                    <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+                      <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2">Execution Steps</h3>
                       <div className="relative pl-10 space-y-4">
                         <div className="absolute left-[15px] top-4 bottom-4 w-0.5 bg-border"></div>
                         {guidanceData.steps?.map((step) => (
-                          <div key={step.step_number} className="relative bg-slate-100/30 border border-slate-200 rounded-xl p-4 space-y-2 hover:border-slate-200/80 transition-colors">
-                            <div className="absolute -left-10 top-4 w-7 h-7 rounded-full bg-sky-500 flex items-center justify-center text-[10px] font-bold text-sky-600-foreground shadow-xs">{step.step_number}</div>
+                          <div key={step.step_number} className="relative bg-muted/30 border border-border rounded-xl p-4 space-y-2 hover:border-primary/30 transition-colors">
+                            <div className="absolute -left-10 top-4 w-7 h-7 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-primary-foreground shadow-xs">{step.step_number}</div>
                             <div className="flex items-start justify-between gap-2">
                               <h4 className="text-xs font-bold text-foreground">{step.title}</h4>
                               <div className="flex items-center gap-1.5 shrink-0">
-                                {step.estimated_time && <span className="text-[10px] bg-sky-500/10 text-sky-600 font-semibold px-2 py-0.5 rounded">{step.estimated_time}</span>}
+                                {step.estimated_time && <span className="text-[10px] bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded">{step.estimated_time}</span>}
                                 <span className="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold px-1.5 py-0.5 rounded">{step.step_number <= 2 ? 'High' : step.step_number <= 4 ? 'Medium' : 'Low'}</span>
                               </div>
                             </div>
                             <p className="text-xs text-slate-400 leading-relaxed">{step.description}</p>
                             {step.documents_needed?.length > 0 && (
                               <div className="flex flex-wrap gap-1.5 pt-1">
-                                {step.documents_needed.map((d, i) => <span key={i} className="text-[10px] bg-sky-500/10 text-sky-600 px-2.5 py-0.5 rounded-full font-medium border border-sky-500/20">{d}</span>)}
+                                {step.documents_needed.map((d, i) => <span key={i} className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-medium border border-primary/20">{d}</span>)}
                               </div>
                             )}
                             {step.tips && <p className="text-xs text-amber-600 dark:text-amber-400 font-medium pt-1">Tip: {step.tips}</p>}
-                            {step.government_portal && <a href={step.government_portal} target="_blank" rel="noopener noreferrer" className="text-xs text-sky-600 font-medium hover:underline inline-block pt-1">Open Portal</a>}
+                            {step.government_portal && <a href={step.government_portal} target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium hover:underline inline-block pt-1">Open Portal</a>}
                           </div>
                         ))}
                       </div>
                     </div>
 
                     {/* Pre-Shipment Checklist - Interactive */}
-                    <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-4">
-                      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                    <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+                      <div className="flex items-center justify-between border-b border-border pb-3">
                         <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Export Readiness Checklist</h3>
                         <div className="flex items-center gap-3">
                           <span className="text-[10px] font-medium text-slate-400">{Object.values(completedChecklist).filter(Boolean).length} / {(guidanceData.steps || []).length} completed</span>
@@ -2165,12 +2169,12 @@ export default function AnalysisView({
                           const isComplete = completedChecklist[step.step_number];
                           const prevComplete = step.step_number === 1 || completedChecklist[step.step_number - 1];
                           return (
-                          <div key={step.step_number} className={`p-3 rounded-xl border transition-all ${isComplete ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-200 hover:border-slate-200/80'}`}>
+                          <div key={step.step_number} className={`p-3 rounded-xl border transition-all ${isComplete ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border hover:border-primary/30'}`}>
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => { if (prevComplete || isComplete) { setCompletedChecklist(prev => ({...prev, [step.step_number]: !prev[step.step_number]})); addToast(isComplete ? `Unmarked: ${step.title}` : `Completed: ${step.title}`, isComplete ? 'info' : 'success'); }}}
                                 disabled={!prevComplete && !isComplete}
-                                className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 cursor-pointer transition-all ${isComplete ? 'bg-emerald-500 border-emerald-500' : prevComplete ? 'border-slate-200 hover:border-emerald-500' : 'border-slate-200 opacity-40 cursor-not-allowed'}`}
+                                className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 cursor-pointer transition-all ${isComplete ? 'bg-emerald-500 border-emerald-500' : prevComplete ? 'border-border hover:border-emerald-500' : 'border-border opacity-40 cursor-not-allowed'}`}
                               >
                                 {isComplete && <Check className="w-3 h-3 text-white"/>}
                               </button>
@@ -2185,7 +2189,7 @@ export default function AnalysisView({
                             </div>
                             {!isComplete && step.documents_needed?.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-2 ml-8">
-                                {step.documents_needed.map((d, i) => <span key={i} className="text-[10px] bg-sky-500/10 text-sky-600 px-1.5 py-0.5 rounded font-medium">{d}</span>)}
+                                {step.documents_needed.map((d, i) => <span key={i} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">{d}</span>)}
                               </div>
                             )}
                           </div>
@@ -2201,12 +2205,12 @@ export default function AnalysisView({
                       )}
                       {/* Next Action */}
                       {Object.values(completedChecklist).filter(Boolean).length < (guidanceData.steps || []).length && (
-                        <div className="bg-sky-500/5 border border-sky-500/20 rounded-xl p-3 flex items-center justify-between">
+                        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between">
                           <div>
-                            <span className="text-[10px] font-bold text-sky-600 uppercase block">Next Action</span>
+                            <span className="text-[10px] font-bold text-primary uppercase block">Next Action</span>
                             <span className="text-xs font-semibold text-foreground">{(guidanceData.steps || []).find(s => !completedChecklist[s.step_number])?.title || '--'}</span>
                           </div>
-                          <span className="text-[10px] bg-sky-500/10 text-sky-600 px-2 py-0.5 rounded font-semibold">{(guidanceData.steps || []).find(s => !completedChecklist[s.step_number])?.estimated_time || '--'}</span>
+                          <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">{(guidanceData.steps || []).find(s => !completedChecklist[s.step_number])?.estimated_time || '--'}</span>
                         </div>
                       )}
                     </div>
@@ -2220,12 +2224,12 @@ export default function AnalysisView({
                     )}
 
                     {/* Disclaimer */}
-                    <div className="bg-slate-100/40 border border-slate-200 rounded-xl p-3 text-center">
+                    <div className="bg-slate-100/40 border border-border rounded-xl p-3 text-center">
                       <p className="text-xs text-slate-400 font-normal">This execution plan is generated dynamically based on HS Code {hsCode} and destination {selectedCountry}. Verify all steps with relevant authorities.</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-card border border-slate-200 p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
+                  <div className="bg-card border border-border p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
                     <MapPin className="w-10 h-10 text-slate-400/40 mb-3"/>
                     <span className="text-sm font-semibold text-foreground">Click "Generate Plan" to create your export execution plan</span>
                     <span className="text-xs text-slate-400 mt-1">Personalized step-by-step guide for {selectedAnalysisProduct} to {selectedCountry}</span>
@@ -2244,7 +2248,7 @@ export default function AnalysisView({
               const score = compData?.compliance_score || 0;
               const readyPct = compData?.readiness_percent ?? score;
               const readiness = compData?.export_readiness || (readyPct >= 85 ? 'Ready' : readyPct >= 70 ? 'Minor Actions Required' : readyPct >= 55 ? 'Moderate Actions Required' : 'High Preparation Required');
-              const readinessColor = readyPct >= 85 ? 'text-emerald-600 dark:text-emerald-400' : readyPct >= 70 ? 'text-sky-600' : readyPct >= 55 ? 'text-amber-600 dark:text-amber-400' : 'text-destructive';
+              const readinessColor = readyPct >= 85 ? 'text-emerald-600 dark:text-emerald-400' : readyPct >= 70 ? 'text-primary' : readyPct >= 55 ? 'text-amber-600 dark:text-amber-400' : 'text-destructive';
               const allItems = [...(compData?.required_certifications || []), ...(compData?.required_licenses || []), ...(compData?.required_inspections || [])];
               const docsCount = (compData?.required_licenses || []).length;
               const certsCount = (compData?.required_certifications || []).length;
@@ -2261,10 +2265,10 @@ export default function AnalysisView({
               return (
               <div className="space-y-5 animate-in fade-in duration-300">
                 {/* Header */}
-                <div className="bg-card border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sm font-bold text-sky-600">{countryCode}</div>
+                      <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-sm font-bold text-primary">{countryCode}</div>
                       <div>
                         <h2 className="text-lg font-bold text-foreground">Compliance Audit Report</h2>
                         <div className="flex items-center gap-3 mt-0.5">
@@ -2278,49 +2282,49 @@ export default function AnalysisView({
                     </div>
                     <div className="flex items-center gap-2">
                       {!compData && <button onClick={handleFetchComplianceCheck} disabled={complianceCheckLoading} className="text-xs px-4 py-2 text-white bg-emerald-500 hover:bg-emerald-400 rounded-xl font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5 transition-all">{complianceCheckLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Run Compliance Audit'}</button>}
-                      <span className="text-[10px] bg-slate-100 text-slate-400 font-semibold px-2.5 py-0.5 rounded-full border border-slate-200">Updated: {new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
+                      <span className="text-[10px] bg-slate-100 text-slate-400 font-semibold px-2.5 py-0.5 rounded-full border border-border">Updated: {new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
                     </div>
                   </div>
                 </div>
 
                 {complianceCheckLoading ? (
-                  <div className="bg-card border border-slate-200 rounded-2xl p-16 flex flex-col items-center gap-4">
-                    <Loader2 className="w-9 h-9 text-sky-600 animate-spin"/>
+                  <div className="bg-card border border-border rounded-2xl p-16 flex flex-col items-center gap-4">
+                    <Loader2 className="w-9 h-9 text-primary animate-spin"/>
                     <span className="text-xs font-semibold text-slate-400">Running compliance audit for {selectedAnalysisProduct} ({hsCode})...</span>
-                    <div className="w-56 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-sky-500 rounded-full animate-pulse w-2/3"></div></div>
+                    <div className="w-56 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-primary rounded-full animate-pulse w-2/3"></div></div>
                   </div>
                 ) : compData ? (
                   <div className="space-y-5">
                     {/* Export Readiness & Summary */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      <div className="bg-card border border-slate-200 rounded-2xl p-5 text-center space-y-2">
+                      <div className="bg-card border border-border rounded-2xl p-5 text-center space-y-2">
                         <span className="text-[10px] font-medium text-slate-400 uppercase block">Export Readiness</span>
                         <span className={`text-3xl font-bold block ${readinessColor}`}>{readyPct}%</span>
                         <span className={`text-xs font-semibold ${readinessColor}`}>{readiness}</span>
                         <span className="text-[10px] text-slate-400 block">Compliance score {score}/100</span>
                       </div>
-                      <div className="bg-card border border-slate-200 rounded-2xl p-5 text-center space-y-2">
+                      <div className="bg-card border border-border rounded-2xl p-5 text-center space-y-2">
                         <span className="text-[10px] font-medium text-slate-400 uppercase block">Complexity</span>
                         <span className={`text-xl font-bold block ${compData.overall_complexity === 'Low' ? 'text-emerald-600 dark:text-emerald-400' : compData.overall_complexity === 'Medium' ? 'text-amber-600 dark:text-amber-400' : 'text-destructive'}`}>{compData.overall_complexity}</span>
                         <span className="text-xs text-slate-400">{docsCount + certsCount + inspCount} total requirements</span>
                         {compData.complexity_index !== undefined && <span className="text-[10px] text-slate-400 block">Difficulty index {compData.complexity_index}/100</span>}
                       </div>
-                      <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-2">
+                      <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
                         <span className="text-[10px] font-medium text-slate-400 uppercase block">Summary</span>
                         <div className="grid grid-cols-3 gap-2 text-center">
-                          <div><span className="text-sm font-bold text-sky-600 block">{docsCount}</span><span className="text-[9px] text-slate-400 uppercase">Docs</span></div>
-                          <div><span className="text-sm font-bold text-sky-600 block">{certsCount}</span><span className="text-[9px] text-slate-400 uppercase">Certs</span></div>
-                          <div><span className="text-sm font-bold text-sky-600 block">{inspCount}</span><span className="text-[9px] text-slate-400 uppercase">Inspect</span></div>
+                          <div><span className="text-sm font-bold text-primary block">{docsCount}</span><span className="text-[9px] text-slate-400 uppercase">Docs</span></div>
+                          <div><span className="text-sm font-bold text-primary block">{certsCount}</span><span className="text-[9px] text-slate-400 uppercase">Certs</span></div>
+                          <div><span className="text-sm font-bold text-primary block">{inspCount}</span><span className="text-[9px] text-slate-400 uppercase">Inspect</span></div>
                         </div>
                       </div>
                     </div>
 
                     {/* AI Summary */}
-                    <div className="bg-accent/60 border border-slate-200 rounded-2xl p-5">
+                    <div className="bg-accent/60 border border-border rounded-2xl p-5">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-card border border-slate-200 flex items-center justify-center shrink-0"><Shield className="w-4 h-4 text-sky-600"/></div>
+                        <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center shrink-0"><Shield className="w-4 h-4 text-primary"/></div>
                         <div>
-                          <span className="text-xs font-bold text-sky-600 uppercase tracking-wider block mb-1">Compliance Assessment</span>
+                          <span className="text-xs font-bold text-primary uppercase tracking-wider block mb-1">Compliance Assessment</span>
                           <p className="text-xs text-foreground leading-relaxed">{compData.recommendation || `${selectedAnalysisProduct} (HS ${hsCode}) to ${selectedCountry}. Compliance score: ${score}/100. Complexity: ${compData.overall_complexity}. ${allItems.filter(i => i.required).length} mandatory requirements identified.`}</p>
                           <p className="text-xs text-slate-400 leading-relaxed mt-1.5">{docsCount} document(s), {certsCount} certification(s), {inspCount} inspection(s), {packCount} packaging rule(s) and {labelCount} labelling rule(s) apply for {selectedCountry}. Readiness: {readiness} ({readyPct}%).</p>
                         </div>
@@ -2329,10 +2333,10 @@ export default function AnalysisView({
 
                     {/* Required Documents & Licenses */}
                     {compData.required_licenses?.length > 0 && (
-                      <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-sky-600"/>Required Documents</h3>
+                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-primary"/>Required Documents</h3>
                         <div className="space-y-2">{compData.required_licenses.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-accent/40 transition-colors">
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
                             <span className={`text-xs font-bold ${item.required ? 'text-amber-500' : 'text-emerald-500'}`}>{item.required ? '!' : '+'}</span>
                             <div className="flex-grow">
                               <span className="text-xs font-semibold text-foreground block">{item.name}</span>
@@ -2349,17 +2353,17 @@ export default function AnalysisView({
 
                     {/* Required Certifications */}
                     {compData.required_certifications?.length > 0 && (
-                      <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-sky-600"/>Required Certifications</h3>
+                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-primary"/>Required Certifications</h3>
                         <div className="space-y-2">{compData.required_certifications.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-accent/40 transition-colors">
-                            <span className="text-sky-600 text-xs font-bold">*</span>
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
+                            <span className="text-primary text-xs font-bold">*</span>
                             <div className="flex-grow">
                               <span className="text-xs font-semibold text-foreground block">{item.name}</span>
                               <span className="text-[10px] text-slate-400">{item.description}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {item.estimated_days && <span className="text-[10px] bg-sky-500/10 text-sky-600 px-2 py-0.5 rounded font-medium">{item.estimated_days}</span>}
+                              {item.estimated_days && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">{item.estimated_days}</span>}
                               {item.issuing_authority && <span className="text-[10px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded font-medium">{item.issuing_authority}</span>}
                             </div>
                           </div>
@@ -2369,16 +2373,16 @@ export default function AnalysisView({
 
                     {/* Required Inspections */}
                     {compData.required_inspections?.length > 0 && (
-                      <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><Eye className="w-3.5 h-3.5 text-sky-600"/>Required Inspections</h3>
+                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Eye className="w-3.5 h-3.5 text-primary"/>Required Inspections</h3>
                         <div className="space-y-2">{compData.required_inspections.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-accent/40 transition-colors">
-                            <span className="text-sky-600 text-xs font-bold">*</span>
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
+                            <span className="text-primary text-xs font-bold">*</span>
                             <div className="flex-grow">
                               <span className="text-xs font-semibold text-foreground block">{item.name}</span>
                               <span className="text-[10px] text-slate-400">{item.description}</span>
                             </div>
-                            {item.estimated_days && <span className="text-[10px] bg-sky-500/10 text-sky-600 px-2 py-0.5 rounded font-medium">{item.estimated_days}</span>}
+                            {item.estimated_days && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">{item.estimated_days}</span>}
                           </div>
                         ))}</div>
                       </div>
@@ -2386,31 +2390,31 @@ export default function AnalysisView({
 
                     {/* Packaging & Labeling */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <div className="bg-card border border-slate-200 rounded-2xl p-4 space-y-2.5">
-                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-sky-600"/>Packaging Requirements ({packCount})</h4>
-                        {compData.packaging_requirements?.length > 0 ? <div className="space-y-1.5">{compData.packaging_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30"><span className="text-sky-600 shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No specific packaging requirements.</p>}
+                      <div className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
+                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-primary"/>Packaging Requirements ({packCount})</h4>
+                        {compData.packaging_requirements?.length > 0 ? <div className="space-y-1.5">{compData.packaging_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30"><span className="text-primary shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No specific packaging requirements.</p>}
                       </div>
-                      <div className="bg-card border border-slate-200 rounded-2xl p-4 space-y-2.5">
-                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-sky-600"/>Labeling Requirements ({labelCount})</h4>
-                        {compData.labeling_requirements?.length > 0 ? <div className="space-y-1.5">{compData.labeling_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30"><span className="text-sky-600 shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No specific labeling requirements.</p>}
+                      <div className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
+                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-primary"/>Labeling Requirements ({labelCount})</h4>
+                        {compData.labeling_requirements?.length > 0 ? <div className="space-y-1.5">{compData.labeling_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30"><span className="text-primary shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No specific labeling requirements.</p>}
                       </div>
                     </div>
 
                     {/* Customs Requirements & Import Restrictions */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-sky-600"/>Customs Requirements ({customsRules.length})</h3>
-                        {customsRules.length > 0 ? <div className="space-y-1.5">{customsRules.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30"><span className="text-sky-600 shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No customs requirements returned.</p>}
+                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-primary"/>Customs Requirements ({customsRules.length})</h3>
+                        {customsRules.length > 0 ? <div className="space-y-1.5">{customsRules.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30"><span className="text-primary shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No customs requirements returned.</p>}
                       </div>
-                      <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 text-destructive"/>Import Restrictions ({importRestrictions.length})</h3>
+                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 text-destructive"/>Import Restrictions ({importRestrictions.length})</h3>
                         {importRestrictions.length > 0 ? <div className="space-y-1.5">{importRestrictions.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-destructive/10"><span className="text-destructive shrink-0 text-xs">!</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No import restrictions apply to this product.</p>}
                       </div>
                     </div>
 
                     {/* Import Duties & Charges */}
                     {dutyData.duty_rate !== undefined && (
-                      <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
+                      <div className="bg-white border border-border rounded-2xl p-5 space-y-3">
                         <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5"><Globe className="w-3.5 h-3.5 text-indigo-500"/>Import Duties & Charges</h3>
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                           {[['Import Duty', `${dutyData.duty_rate}%`, dutyData.explanations?.duty_rate],
@@ -2432,7 +2436,7 @@ export default function AnalysisView({
                     )}
 
                     {/* Risk Analysis */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
+                    <div className="bg-white border border-border rounded-2xl p-5 space-y-3">
                       <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 text-amber-500"/>Risk Analysis</h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                         {[['Documentation', riskData.documentation], ['Certification', riskData.certification], ['Inspection', riskData.inspection], ['Packaging', riskData.packaging], ['Customs', riskData.customs], ['Political', riskData.political], ['Trade', riskData.trade], ['Currency', riskData.currency], ['Overall', riskData.overall]].filter(([, level]) => !!level).map(([label, level]) => (
@@ -2445,20 +2449,20 @@ export default function AnalysisView({
                     </div>
 
                     {/* Compliance Timeline */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-                      <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5"><Activity className="w-3.5 h-3.5 text-sky-500"/>Estimated Compliance Timeline</h3>
+                    <div className="bg-white border border-border rounded-2xl p-5 space-y-3">
+                      <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5"><Activity className="w-3.5 h-3.5 text-primary"/>Estimated Compliance Timeline</h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                         {[['Documents', `${tl.documents_days ?? 0} days`], ['Certifications', `${tl.certifications_days ?? 0} days`], ['Inspection', `${tl.inspection_days ?? 0} days`], ['Customs', `${tl.customs_days ?? 0} days`], ['Shipping', `${tl.shipping_days ?? 0} days`], ['Total Estimate', `${tl.total_days ?? 0} days`]].map(([label, val]) => (
-                          <div key={label} className={`p-3 rounded-xl text-center ${label === 'Total Estimate' ? 'bg-sky-50 border border-sky-100' : 'bg-slate-50 border border-slate-100'}`}>
+                          <div key={label} className={`p-3 rounded-xl text-center ${label === 'Total Estimate' ? 'bg-primary/5 border border-primary/15' : 'bg-slate-50 border border-slate-100'}`}>
                             <span className="text-[8px] font-bold text-slate-400 uppercase block">{label}</span>
-                            <span className={`text-xs font-black block ${label === 'Total Estimate' ? 'text-sky-600' : 'text-slate-800'}`}>{val}</span>
+                            <span className={`text-xs font-black block ${label === 'Total Estimate' ? 'text-primary' : 'text-slate-800'}`}>{val}</span>
                           </div>
                         ))}
                       </div>
                     </div>
 
                     {/* Compliance Checklist */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
+                    <div className="bg-white border border-border rounded-2xl p-5 space-y-3">
                       <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2">Compliance Checklist</h3>
                       <div className="space-y-1.5">
                         {[['Export Documents', docsCount, docsCount > 0], ['Certifications', certsCount, certsCount === 0], ['Inspections', inspCount, inspCount === 0], ['Packaging Compliance', packCount, packCount > 0], ['Labeling Compliance', labelCount, labelCount > 0], ['Customs Requirements', customsRules.length, customsRules.length > 0], ['Import Restrictions', importRestrictions.length, importRestrictions.length === 0]].map(([label, count, ready]) => (
@@ -2480,7 +2484,7 @@ export default function AnalysisView({
                     {compData.sources?.length > 0 && (
                       <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2">
                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5"><Globe className="w-3 h-3"/>Official Sources</h4>
-                        <div className="flex flex-wrap gap-2">{compData.sources.map((src, i) => src.url ? <a key={i} href={src.url} target="_blank" rel="noopener noreferrer" className="text-[10px] bg-white border border-slate-200 hover:border-sky-300 hover:text-sky-600 text-slate-600 font-bold px-2.5 py-1.5 rounded-lg cursor-pointer">{src.source || src.title || `Source ${i+1}`}</a> : <span key={i} className="text-[10px] bg-white border border-slate-200 text-slate-600 font-bold px-2.5 py-1.5 rounded-lg">{src.source || src.title || `Source ${i+1}`}</span>)}</div>
+                        <div className="flex flex-wrap gap-2">{compData.sources.map((src, i) => src.url ? <a key={i} href={src.url} target="_blank" rel="noopener noreferrer" className="text-[10px] bg-white border border-border hover:border-primary/40 hover:text-primary text-slate-600 font-bold px-2.5 py-1.5 rounded-lg cursor-pointer">{src.source || src.title || `Source ${i+1}`}</a> : <span key={i} className="text-[10px] bg-white border border-border text-slate-600 font-bold px-2.5 py-1.5 rounded-lg">{src.source || src.title || `Source ${i+1}`}</span>)}</div>
                       </div>
                     )}
 
@@ -2490,7 +2494,7 @@ export default function AnalysisView({
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-white border border-slate-200/80 p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
+                  <div className="bg-white border border-border/80 p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
                     <Shield className="w-10 h-10 text-slate-200 mb-3"/>
                     <span className="text-sm font-bold text-slate-500">Click "Run Compliance Audit" to generate your report</span>
                     <span className="text-[10px] text-slate-400 mt-1">Full compliance analysis for {selectedAnalysisProduct} to {selectedCountry}</span>
@@ -2506,9 +2510,9 @@ export default function AnalysisView({
             {analysisSubView === 'cost' && (
               <div className="space-y-5 animate-in fade-in duration-300">
                 {/* Input Config */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                    <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1.5"><Calculator className="w-3.5 h-3.5 text-sky-500"/>Export Cost Parameters</h3>
+                    <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1.5"><Calculator className="w-3.5 h-3.5 text-primary"/>Export Cost Parameters</h3>
                     <span className="text-[9px] font-bold text-slate-400">{selectedAnalysisProduct} to {selectedCountry}</span>
                   </div>
                   {/* Validation errors */}
@@ -2554,7 +2558,7 @@ export default function AnalysisView({
 
                   {/* Optional advanced fields */}
                   <div className="flex items-center justify-between">
-                    <button onClick={() => setShowAdvancedCost(v => !v)} className="text-xs font-medium text-sky-600 hover:underline cursor-pointer flex items-center gap-1">
+                    <button onClick={() => setShowAdvancedCost(v => !v)} className="text-xs font-medium text-primary hover:underline cursor-pointer flex items-center gap-1">
                       {showAdvancedCost ? '- Hide' : '+ Show'} advanced fields (packaging, freight detail, duties, destination costs)
                     </button>
                     <span className="text-xs text-slate-400">Incoterm: <strong className="text-foreground">{costIncoterm}</strong></span>
@@ -2602,7 +2606,7 @@ export default function AnalysisView({
                   )}
 
                   <div className="flex gap-2">
-                    <button onClick={handleCalculateCost} disabled={isCalculatingCost} className="flex-1 py-2.5 text-xs font-bold text-white bg-sky-500 hover:bg-sky-400 rounded-xl shadow cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all">
+                    <button onClick={handleCalculateCost} disabled={isCalculatingCost} className="flex-1 py-2.5 text-xs font-bold text-primary-foreground bg-primary hover:bg-primary-hover rounded-xl shadow cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all">
                       {isCalculatingCost ? 'Analyzing...' : 'Analyze Costs'}
                       {isCalculatingCost && <Loader2 className="w-4 h-4 animate-spin ml-1"/>}
                     </button>
@@ -2615,10 +2619,10 @@ export default function AnalysisView({
                 </div>
 
                 {isCalculatingCost ? (
-                  <div className="bg-card border border-slate-200 p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
-                    <Loader2 className="w-8 h-8 text-sky-600 animate-spin mb-4" />
+                  <div className="bg-card border border-border p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
                     <span className="text-xs font-bold uppercase text-foreground tracking-wider">Analyzing Export Costs &amp; Profitability</span>
-                    <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-3"><div className="h-full bg-sky-500 rounded-full animate-pulse w-2/3"></div></div>
+                    <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-3"><div className="h-full bg-primary rounded-full animate-pulse w-2/3"></div></div>
                   </div>
                 ) : calculationResult ? (() => {
                   const r = calculationResult;
@@ -2635,7 +2639,7 @@ export default function AnalysisView({
                   return (
                     <div className="space-y-6">
                       {/* 1. Header Bar: Dynamic Confidence & Audit Timestamp */}
-                      <div className="flex items-center justify-between flex-wrap gap-2 bg-slate-50 border border-slate-200/70 p-3 rounded-2xl">
+                      <div className="flex items-center justify-between flex-wrap gap-2 bg-slate-50 border border-border/70 p-3 rounded-2xl">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5 text-slate-400"/>
@@ -2643,7 +2647,7 @@ export default function AnalysisView({
                           </span>
                           <span className="text-slate-300">|</span>
                           <span className="text-[10px] font-bold text-slate-600">
-                            Calculation Currency: <strong className="text-sky-600">{CC}</strong> (1 {origCurr} = ₹{r.currencies?.exchangeRate?.toFixed(2) || '22.25'})
+                            Calculation Currency: <strong className="text-primary">{CC}</strong> (1 {origCurr} = ₹{r.currencies?.exchangeRate?.toFixed(2) || '22.25'})
                           </span>
                         </div>
                         <span className={`text-[10px] font-black px-3 py-1 rounded-full border flex items-center gap-1.5 shadow-sm ${
@@ -2679,7 +2683,7 @@ export default function AnalysisView({
                             }`}>
                               {isAboveBreakeven ? '✓ Selling Price is Above Exporter Break-Even' : '✗ Selling Price is Below Break-Even'}
                             </span>
-                            <span className="text-[10px] font-bold text-slate-500 bg-white/80 px-2 py-0.5 rounded-md border border-slate-200/50">
+                            <span className="text-[10px] font-bold text-slate-500 bg-white/80 px-2 py-0.5 rounded-md border border-border/50">
                               Incoterm: <strong>{r.transaction.incoterm}</strong> ({r.transaction.incotermDescription})
                             </span>
                           </div>
@@ -2692,20 +2696,20 @@ export default function AnalysisView({
                       {/* 3. Executive KPI Dashboard (6 Core Cards) */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                         {/* 1. SELLING PRICE */}
-                        <div className="bg-card border border-slate-200 rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-sky-500/50 transition-all">
-                          <div className="absolute top-0 left-0 right-0 h-1 bg-sky-500"></div>
+                        <div className="bg-card border border-border rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-primary/50 transition-all">
+                          <div className="absolute top-0 left-0 right-0 h-1 bg-primary"></div>
                           <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider block mb-1">Selling Price</span>
                           <span className="text-sm font-bold text-foreground block leading-tight">
                             {r.revenue.sellingPricePerUnit != null ? `${r.revenue.sellingPricePerUnit} ${origCurr}` : '—'}
                           </span>
-                          <span className="text-[10px] font-semibold text-sky-600 block mt-1">
+                          <span className="text-[10px] font-semibold text-primary block mt-1">
                             ≈ {fmtCC(r.revenue.sellingPricePerUnitCC, 2)}/unit
                           </span>
                         </div>
 
                         {/* 2. SELLER COST */}
-                        <div className="bg-card border border-slate-200 rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-sky-500/50 transition-all">
-                          <div className="absolute top-0 left-0 right-0 h-1 bg-sky-500/70"></div>
+                        <div className="bg-card border border-border rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-primary/50 transition-all">
+                          <div className="absolute top-0 left-0 right-0 h-1 bg-primary/70"></div>
                           <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider block mb-1">Seller Cost ({r.transaction.incoterm})</span>
                           <span className="text-sm font-bold text-foreground block leading-tight">
                             {fmtCC(r.sellerCost.amountCC)}
@@ -2718,7 +2722,7 @@ export default function AnalysisView({
                         {/* 3. EXPORTER PROFIT */}
                         <div className={`border rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group transition-all ${
                           isProfitable ? 'bg-emerald-50/40 border-emerald-200 hover:border-emerald-300' :
-                          isLoss ? 'bg-red-50/40 border-red-200 hover:border-red-300' : 'bg-white border-slate-200'
+                          isLoss ? 'bg-red-50/40 border-red-200 hover:border-red-300' : 'bg-card border-border'
                         }`}>
                           <div className={`absolute top-0 left-0 right-0 h-1 ${isProfitable ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
                           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Exporter Profit</span>
@@ -2731,7 +2735,7 @@ export default function AnalysisView({
                         </div>
 
                         {/* 4. EXPORTER MARGIN */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-violet-300 transition-all">
+                        <div className="bg-white border border-border/80 rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-violet-300 transition-all">
                           <div className="absolute top-0 left-0 right-0 h-1 bg-violet-500"></div>
                           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Exporter Margin</span>
                           <span className="text-sm font-black text-violet-700 block leading-tight">
@@ -2743,7 +2747,7 @@ export default function AnalysisView({
                         </div>
 
                         {/* 5. EXPORTER BREAK-EVEN */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-amber-300 transition-all">
+                        <div className="bg-white border border-border/80 rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-amber-300 transition-all">
                           <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
                           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Exporter Break-Even</span>
                           <span className="text-sm font-black text-amber-700 block leading-tight">
@@ -2755,7 +2759,7 @@ export default function AnalysisView({
                         </div>
 
                         {/* 6. ESTIMATED LANDED COST */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-teal-300 transition-all">
+                        <div className="bg-white border border-border/80 rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-teal-300 transition-all">
                           <div className="absolute top-0 left-0 right-0 h-1 bg-teal-500"></div>
                           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Est. Landed Cost</span>
                           <span className="text-sm font-black text-slate-800 block leading-tight">
@@ -2770,25 +2774,25 @@ export default function AnalysisView({
                       {/* 4. Three Distinct Cost Totals & Incoterm Cost Responsibility Map */}
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {/* A. Product Cost */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                        <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                              <Package className="w-3.5 h-3.5 text-sky-500"/>
+                              <Package className="w-3.5 h-3.5 text-primary"/>
                               1. Product / Mfg Cost
                             </span>
-                            <span className="text-xs font-black text-sky-700">{fmtCC(r.productCost.amountCC)}</span>
+                            <span className="text-xs font-black text-primary">{fmtCC(r.productCost.amountCC)}</span>
                           </div>
                           <p className="text-[10px] text-slate-500 leading-relaxed">
                             Factory floor variable cost: Manufacturing ({fmtCC(r.productCost.unitMfgCost * r.transaction.quantity)}), Packaging ({fmtCC(r.productCost.packagingPerUnit * r.transaction.quantity)}), Labeling ({fmtCC(r.productCost.labelingPerUnit * r.transaction.quantity)}) &amp; Quality Compliance ({fmtCC(r.productCost.qualityComplianceTotal)}).
                           </p>
-                          <div className="bg-sky-50 border border-sky-100 rounded-xl p-2.5 flex justify-between items-center text-[10px]">
-                            <span className="font-bold text-sky-900">Per Unit Factory Cost</span>
-                            <span className="font-black text-sky-700">{fmtCC(r.productCost.amountPerUnitCC, 2)} / unit</span>
+                          <div className="bg-primary/5 border border-primary/15 rounded-xl p-2.5 flex justify-between items-center text-[10px]">
+                            <span className="font-bold text-primary">Per Unit Factory Cost</span>
+                            <span className="font-black text-primary">{fmtCC(r.productCost.amountPerUnitCC, 2)} / unit</span>
                           </div>
                         </div>
 
                         {/* B. Seller Incoterm Export Cost */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                        <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                               <Scale className="w-3.5 h-3.5 text-indigo-500"/>
@@ -2806,7 +2810,7 @@ export default function AnalysisView({
                         </div>
 
                         {/* C. Total Buyer Landed Cost */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                        <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                               <Anchor className="w-3.5 h-3.5 text-teal-500"/>
@@ -2827,7 +2831,7 @@ export default function AnalysisView({
                       {/* 5. Incoterms Responsibility Card & Pricing Strategy */}
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Incoterm Responsibility */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                        <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                             <h4 className="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
                               <Scale className="w-3.5 h-3.5 text-indigo-500"/>
@@ -2836,10 +2840,10 @@ export default function AnalysisView({
                             <span className="text-[9px] font-bold text-slate-400">{selectedCountry}</span>
                           </div>
                           <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-sky-50/60 border border-sky-100 rounded-xl p-3 space-y-1.5">
+                            <div className="bg-primary/5 border border-primary/15 rounded-xl p-3 space-y-1.5">
                               <div className="flex justify-between items-center">
-                                <span className="text-[9px] font-black text-sky-800 uppercase">Seller Bears</span>
-                                <span className="text-xs font-black text-sky-700">{fmtCC(r.sellerCost.amountCC)}</span>
+                                <span className="text-[9px] font-black text-primary uppercase">Seller Bears</span>
+                                <span className="text-xs font-black text-primary">{fmtCC(r.sellerCost.amountCC)}</span>
                               </div>
                               <ul className="text-[9px] text-slate-600 space-y-1">
                                 <li className="flex items-center gap-1"><span className="text-emerald-500 font-bold">✓</span> Manufacturing &amp; Packaging</li>
@@ -2849,7 +2853,7 @@ export default function AnalysisView({
                                 <li className="flex items-center gap-1"><span className="text-emerald-500 font-bold">✓</span> Marine Cargo Insurance ({fmtCC(r.insurance.amountCC)})</li>
                               </ul>
                             </div>
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5">
+                            <div className="bg-slate-50 border border-border rounded-xl p-3 space-y-1.5">
                               <div className="flex justify-between items-center">
                                 <span className="text-[9px] font-black text-slate-700 uppercase">Buyer Bears</span>
                                 <span className="text-xs font-black text-slate-800">{fmtCC(r.buyerCost.amountCC)}</span>
@@ -2869,7 +2873,7 @@ export default function AnalysisView({
                         </div>
 
                         {/* Pricing Strategy & Target Margin */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                        <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                             <h4 className="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
                               <TrendingUp className="w-3.5 h-3.5 text-emerald-500"/>
@@ -2882,7 +2886,7 @@ export default function AnalysisView({
                           <div className="grid grid-cols-2 gap-3">
                             <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center space-y-1">
                               <span className="text-[8px] font-bold text-slate-400 uppercase block">Target Price / Unit</span>
-                              <span className="text-base font-black text-sky-700 block">{fmtCC(r.targetSellingPrice.targetPricePerUnitCC, 2)}</span>
+                              <span className="text-base font-black text-primary block">{fmtCC(r.targetSellingPrice.targetPricePerUnitCC, 2)}</span>
                               <span className="text-[10px] font-bold text-slate-500 block">≈ {fmtOrig(r.targetSellingPrice.targetPricePerUnitOriginal, 2)} / unit</span>
                             </div>
                             <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center space-y-1">
@@ -2893,7 +2897,7 @@ export default function AnalysisView({
                           </div>
                           <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-[9px] text-slate-600">
                             <span className="font-bold">Formula:</span>
-                            <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200">
+                            <span className="font-mono bg-white px-2 py-0.5 rounded border border-border">
                               Target Price = Seller Cost Per Unit / (1 - Target Margin / 100)
                             </span>
                           </div>
@@ -2901,10 +2905,10 @@ export default function AnalysisView({
                       </div>
 
                       {/* 6. Detailed Cost Breakdown Ledger */}
-                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+                      <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                           <h4 className="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
-                            <Layers className="w-3.5 h-3.5 text-sky-500"/>
+                            <Layers className="w-3.5 h-3.5 text-primary"/>
                             Itemized Cost Breakdown Ledger
                           </h4>
                           <span className="text-[9px] font-bold text-slate-400">{Object.keys(r.costLedger).length} Line Items Accounted</span>
@@ -2969,13 +2973,13 @@ export default function AnalysisView({
                       </div>
 
                       {/* 7. Calculation Traceability & Auditable Mathematical Formulas */}
-                      <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
-                        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                      <div className="bg-slate-50/80 border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
+                        <div className="flex items-center justify-between border-b border-border pb-2">
                           <h4 className="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
-                            <Calculator className="w-3.5 h-3.5 text-sky-500"/>
+                            <Calculator className="w-3.5 h-3.5 text-primary"/>
                             Mathematical Traceability &amp; Formula Audit Trail
                           </h4>
-                          <span className="text-[9px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100">
+                          <span className="text-[9px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded-full border border-primary/15">
                             Auditable Standard
                           </span>
                         </div>
@@ -2984,9 +2988,9 @@ export default function AnalysisView({
                         </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                           {r.traceability.map((t, idx) => (
-                            <div key={idx} className="bg-white border border-slate-200/70 rounded-xl p-3 space-y-1">
+                            <div key={idx} className="bg-white border border-border/70 rounded-xl p-3 space-y-1">
                               <span className="text-[9px] font-black text-slate-700 uppercase tracking-wide block">{t.title}</span>
-                              <div className="text-[10px] font-mono text-sky-700 bg-sky-50/50 p-2 rounded-lg border border-sky-100/60 break-all leading-relaxed">
+                              <div className="text-[10px] font-mono text-primary bg-primary/5/50 p-2 rounded-lg border border-primary/15/60 break-all leading-relaxed">
                                 {t.formula}
                               </div>
                             </div>
@@ -2997,7 +3001,7 @@ export default function AnalysisView({
                       {/* 8. Profitability Scenarios & Sensitivity Analysis */}
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Scenarios */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                        <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                             <h4 className="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
                               <TrendingUp className="w-3.5 h-3.5 text-emerald-500"/>
@@ -3008,7 +3012,7 @@ export default function AnalysisView({
                           <div className="grid grid-cols-3 gap-2">
                             {r.scenarios.map((s) => (
                               <div key={s.name} className={`p-3 rounded-xl border text-center space-y-1.5 ${
-                                s.name === 'Expected (Current)' ? 'bg-sky-50/60 border-sky-200' :
+                                s.name === 'Expected (Current)' ? 'bg-primary/5 border-primary/20' :
                                 s.profitCC > 0 ? 'bg-emerald-50/30 border-emerald-100' : 'bg-red-50/30 border-red-100'
                               }`}>
                                 <span className="text-[9px] font-black text-slate-700 uppercase block">{s.name}</span>
@@ -3025,7 +3029,7 @@ export default function AnalysisView({
                         </div>
 
                         {/* Sensitivity Analysis */}
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                        <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                             <h4 className="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
                               <Activity className="w-3.5 h-3.5 text-amber-500"/>
@@ -3066,7 +3070,7 @@ export default function AnalysisView({
                       </div>
 
                       {/* 9. Quantity Economics (Shipment Logistics Scaling) */}
-                      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="bg-white border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                           <h4 className="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
                             <Package className="w-3.5 h-3.5 text-teal-500"/>
@@ -3093,10 +3097,10 @@ export default function AnalysisView({
                             </thead>
                             <tbody className="divide-y divide-slate-100/80">
                               {r.qtyEconomics.map((q) => (
-                                <tr key={q.quantity} className={`hover:bg-slate-50/50 ${q.isCurrent ? 'bg-sky-50/50 font-bold' : ''}`}>
+                                <tr key={q.quantity} className={`hover:bg-slate-50/50 ${q.isCurrent ? 'bg-primary/5/50 font-bold' : ''}`}>
                                   <td className="py-2.5 font-bold text-slate-800">
                                     {q.quantity.toLocaleString()} units
-                                    {q.isCurrent && <span className="ml-1.5 text-[8px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-bold">Current</span>}
+                                    {q.isCurrent && <span className="ml-1.5 text-[8px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-bold">Current</span>}
                                   </td>
                                   <td className="py-2.5 text-slate-600">{q.totalWeightKg.toLocaleString()} kg</td>
                                   <td className="py-2.5 text-right font-bold text-slate-700">{fmtCC(q.sellerCostCC)}</td>
@@ -3113,8 +3117,8 @@ export default function AnalysisView({
                       </div>
 
                       {/* 10. Assumptions & Verified Data Sources Panel */}
-                      <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
-                        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                      <div className="bg-slate-50 border border-border/80 rounded-2xl p-5 shadow-sm space-y-3">
+                        <div className="flex items-center justify-between border-b border-border pb-2">
                           <h4 className="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
                             <Bookmark className="w-3.5 h-3.5 text-slate-500"/>
                             Assumptions &amp; Verification Evidence
@@ -3123,11 +3127,11 @@ export default function AnalysisView({
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                           {r.confidence.reasons.map((cr, idx) => (
-                            <div key={idx} className="bg-white border border-slate-200/70 rounded-xl p-3 flex items-start gap-2.5 shadow-sm">
+                            <div key={idx} className="bg-white border border-border/70 rounded-xl p-3 flex items-start gap-2.5 shadow-sm">
                               <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold shrink-0 mt-0.5 ${
                                 cr.status === 'Verified' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
                                 cr.status === 'User-provided' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                                'bg-slate-100 text-slate-600 border border-slate-200'
+                                'bg-slate-100 text-slate-600 border border-border'
                               }`}>
                                 {cr.status}
                               </span>
@@ -3145,7 +3149,7 @@ export default function AnalysisView({
                     </div>
                   );
                 })() : (
-                  <div className="bg-white border border-slate-200/80 p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[280px]">
+                  <div className="bg-white border border-border/80 p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[280px]">
                     <DollarSign className="w-10 h-10 text-slate-200 mb-3"/>
                     <span className="text-sm font-bold text-slate-500">Enter parameters and click "Analyze Costs"</span>
                     <span className="text-[10px] text-slate-400 mt-1 max-w-xs leading-relaxed">Full cost intelligence: break-even, profitability scenarios, sensitivity analysis, quantity economics, assumptions panel and confidence scoring.</span>
@@ -3159,14 +3163,14 @@ export default function AnalysisView({
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-xl w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-sky-600 via-indigo-600 to-indigo-700 px-6 py-5 text-white flex items-center justify-between">
+            <div className="bg-gradient-to-r from-primary via-primary-hover to-primary-hover px-6 py-5 text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur border border-white/20">
                   <Package className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h3 className="text-sm font-black tracking-wide uppercase">Commit Export Order</h3>
-                  <p className="text-[10px] text-sky-100 font-medium">Lock trade route & submit for international logistics matching</p>
+                  <p className="text-[10px] text-primary-foreground/80 font-medium">Lock trade route & submit for international logistics matching</p>
                 </div>
               </div>
               <button
@@ -3181,7 +3185,7 @@ export default function AnalysisView({
             {/* Modal Body */}
             <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
               {/* Route Summary Pill */}
-              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex items-center justify-between">
+              <div className="bg-slate-50 border border-border/80 rounded-2xl p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-xl">🇮🇳</span>
                   <div>
@@ -3210,10 +3214,10 @@ export default function AnalysisView({
                 const prod = getTargetProduct();
                 const price = prod?.price || 150;
                 return (
-                  <div className="bg-sky-50/50 border border-sky-100 rounded-2xl p-4 space-y-2">
+                  <div className="bg-primary/5/50 border border-primary/15 rounded-2xl p-4 space-y-2">
                     <div className="flex items-start justify-between">
                       <div>
-                        <span className="text-[10px] font-bold text-sky-600 uppercase tracking-wider block">Selected Commodity</span>
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-wider block">Selected Commodity</span>
                         <h4 className="text-xs font-black text-slate-900">{prod?.name || selectedAnalysisProduct}</h4>
                         <span className="text-xxs text-slate-500 font-mono mt-0.5 block">HS Code: {prod?.hscode || hsCode || '10063090'} • Category: {prod?.category || 'Export Good'}</span>
                       </div>
@@ -3237,7 +3241,7 @@ export default function AnalysisView({
                     step="50"
                     value={orderQuantity}
                     onChange={(e) => setOrderQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-sky-500 transition-all"
+                    className="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-primary transition-all"
                   />
                 </div>
 
@@ -3247,7 +3251,7 @@ export default function AnalysisView({
                   <select
                     value={orderShippingMode}
                     onChange={(e) => setOrderShippingMode(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-sky-500 transition-all cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-primary transition-all cursor-pointer"
                   >
                     <option value="Sea Freight">Sea Freight (Containerized / FCL)</option>
                     <option value="Air Freight">Air Freight (Express Cargo)</option>
@@ -3262,7 +3266,7 @@ export default function AnalysisView({
                 <select
                   value={orderPickupLocation}
                   onChange={(e) => setOrderPickupLocation(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-sky-500 transition-all cursor-pointer"
+                  className="w-full px-3.5 py-2.5 bg-white border border-border rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-primary transition-all cursor-pointer"
                 >
                   <option value="Nhava Sheva (JNPT), Mumbai, Maharashtra">Nhava Sheva (JNPT), Mumbai, Maharashtra (Major West Coast Port)</option>
                   <option value="Mundra Port, Kutch, Gujarat">Mundra Port, Kutch, Gujarat (Major Bulk & Container Port)</option>
@@ -3280,7 +3284,7 @@ export default function AnalysisView({
                   rows="2"
                   value={orderSpecialInstructions}
                   onChange={(e) => setOrderSpecialInstructions(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:border-sky-500 transition-all leading-relaxed"
+                  className="w-full px-3.5 py-2 bg-white border border-border rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:border-primary transition-all leading-relaxed"
                   placeholder="e.g., Phytosanitary certification required, Halal batch number, food-grade container"
                 />
               </div>
@@ -3292,7 +3296,7 @@ export default function AnalysisView({
                 const totalOrderVal = unitPrice * (Number(orderQuantity) || 1000);
                 const dutyRate = countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate ?? 0;
                 return (
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2">
+                  <div className="bg-slate-50 border border-border/80 rounded-2xl p-4 space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-500 font-medium">Estimated Order Value (FOB):</span>
                       <span className="font-bold text-slate-800">₹{totalOrderVal.toLocaleString('en-IN')}</span>
@@ -3301,7 +3305,7 @@ export default function AnalysisView({
                       <span className="text-slate-500 font-medium">Destination Entry Customs Duty:</span>
                       <span className="font-bold text-emerald-600">{dutyRate}% MFN Tariff</span>
                     </div>
-                    <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
+                    <div className="border-t border-border pt-2 flex items-center justify-between">
                       <span className="text-xs font-black text-slate-900">Total Contract Value:</span>
                       <span className="text-sm font-black text-indigo-600">₹{totalOrderVal.toLocaleString('en-IN')} INR</span>
                     </div>
@@ -3324,7 +3328,7 @@ export default function AnalysisView({
                 type="button"
                 onClick={handleConfirmExportOrder}
                 disabled={isSubmittingOrder}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
               >
                 {isSubmittingOrder ? (
                   <>
