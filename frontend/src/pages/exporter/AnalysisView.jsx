@@ -539,6 +539,20 @@ export default function AnalysisView({
            null;
   };
 
+  // Navigate to country detail view and load recommendation data
+  const handleSelectCountryForDetail = (countryName) => {
+    if (!countryName) return;
+    setSelectedCountry(countryName);
+    setAnalysisSubView('country-overview');
+    setComplianceCheckData(null);
+    setRegulationsData(null);
+    setGuidanceData(null);
+    setCalculatedCostBreakdown(null);
+    setCompletedChecklist({});
+    setCountryRecoData(null);
+    fetchCountryRecommendation(countryName);
+  };
+
   const handleOpenCommitExport = async () => {
     const productObj = getTargetProduct();
     if (!productObj) {
@@ -1115,24 +1129,24 @@ export default function AnalysisView({
             {analysisSubView === 'select' && (
               <div className="max-w-xl mx-auto py-8">
                 {isAnalyzing ? (
-                  <div className="bg-card border border-border rounded-2xl p-12 text-center shadow-sm flex flex-col items-center justify-center min-h-[350px] animate-in fade-in duration-300">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                  <div className="bg-card border border-slate-200 rounded-2xl p-12 text-center shadow-sm flex flex-col items-center justify-center min-h-[350px] animate-in fade-in duration-300">
+                    <div className="w-16 h-16 rounded-full bg-sky-500/10 flex items-center justify-center mb-6">
+                      <Loader2 className="w-8 h-8 text-sky-600 animate-spin" />
                     </div>
                     <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Running Market Analysis</h3>
-                    <p className="text-xs text-muted-foreground mt-2 max-w-xs leading-relaxed">
+                    <p className="text-xs text-slate-400 mt-2 max-w-xs leading-relaxed">
                       Evaluating tariff indices, phytosanitary requirements, shipping freight costs, and country credit risks for <strong>{selectedAnalysisProduct}</strong>...
                     </p>
                   </div>
                 ) : (
-                  <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in duration-300">
-                    <div className="flex items-center gap-3 border-b border-border pb-4">
-                      <div className="p-3 rounded-xl bg-primary/10 text-primary">
+                  <div className="bg-card border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6 animate-in fade-in duration-300">
+                    <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
+                      <div className="p-3 rounded-xl bg-sky-500/10 text-sky-600">
                         <Globe className="w-6 h-6" />
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Select Product to Analyze</h3>
-                        <p className="text-xs text-muted-foreground font-normal">Access compliance complexity ratings and landed cost estimates</p>
+                        <p className="text-xs text-slate-400 font-normal">Access compliance complexity ratings and landed cost estimates</p>
                       </div>
                     </div>
 
@@ -1162,7 +1176,7 @@ export default function AnalysisView({
 
                       <button
                         onClick={handleStartAnalysis}
-                        className="btn-primary w-full py-3 text-xs font-semibold cursor-pointer"
+                        className="w-full py-3 text-xs font-bold text-white bg-sky-500 hover:bg-sky-400 rounded-xl shadow transition-all cursor-pointer"
                       >
                         <span>Start Market Analysis</span>
                         <ArrowRight className="w-4 h-4" />
@@ -1178,13 +1192,13 @@ export default function AnalysisView({
                       </button>
 
                       {countryRankings.length > 0 && (
-                        <div className="border border-border rounded-xl overflow-hidden mt-2">
-                          <div className="bg-muted px-4 py-2 text-[10px] font-bold text-foreground uppercase tracking-wider">Country Rankings</div>
+                        <div className="border border-slate-200 rounded-xl overflow-hidden mt-2">
+                          <div className="bg-slate-100 px-4 py-2 text-[10px] font-bold text-foreground uppercase tracking-wider">Country Rankings</div>
                           <div className="divide-y divide-border">
                             {countryRankings.slice(0, 5).map((r, i) => (
                               <div key={r.country_code} className="flex items-center justify-between px-4 py-2.5">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-muted-foreground">#{r.rank}</span>
+                                  <span className="text-xs font-bold text-slate-400">#{r.rank}</span>
                                   <span className="text-xs font-semibold text-foreground">{r.country_name || r.country_code}</span>
                                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ${
                                     r.reliability_tier === 'High' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
@@ -1200,8 +1214,8 @@ export default function AnalysisView({
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-primary">{r.xgb_predicted_score?.toFixed(1)}</span>
-                                  <button onClick={() => handleExplainCountry(r.country_code, r.country_name || r.country_code)} className="btn-ghost text-xs px-2 py-1 text-primary font-medium cursor-pointer">Explain</button>
+                                  <span className="text-xs font-bold text-sky-600">{r.xgb_predicted_score?.toFixed(1)}</span>
+                                  <button onClick={() => handleExplainCountry(r.country_code, r.country_name || r.country_code)} className="text-xs px-2 py-1 text-sky-600 hover:bg-sky-50 font-medium rounded-lg cursor-pointer transition-all">Explain</button>
                                 </div>
                               </div>
                             ))}
@@ -1217,24 +1231,24 @@ export default function AnalysisView({
             {/* SUB-VIEW: RECOMMENDATIONS TABLE */}
             {analysisSubView === 'recommendations' && (
               <div className="space-y-5 animate-in fade-in duration-300">
-                <div className="bg-accent/60 border border-border rounded-2xl p-4 flex items-center justify-between text-xs font-medium text-foreground">
+                <div className="bg-accent/60 border border-slate-200 rounded-2xl p-4 flex items-center justify-between text-xs font-medium text-foreground">
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                     <span>Export suggestions matching <strong>{selectedAnalysisProduct}</strong> parameters:</span>
                   </div>
-                  <span className="bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">
+                  <span className="bg-sky-500/10 text-sky-600 border border-sky-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">
                     {countryRankings.filter(c => c.reliability_tier === 'High' || c.reliability_tier === 'Moderate').length} Target Markets
                   </span>
                 </div>
 
-                <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+                <div className="bg-card border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
                   {rankingsLoading ? (
-                    <div className="p-12 flex flex-col items-center gap-3"><Loader2 className="w-6 h-6 text-primary animate-spin"/><span className="text-xs font-semibold text-muted-foreground">Ranking countries...</span></div>
+                    <div className="p-12 flex flex-col items-center gap-3"><Loader2 className="w-6 h-6 text-sky-600 animate-spin"/><span className="text-xs font-semibold text-slate-400">Ranking countries...</span></div>
                   ) : countryRankings.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="border-b border-border bg-muted/40 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          <tr className="border-b border-slate-200 bg-slate-100/40 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                             <th className="py-3 px-4">#</th>
                             <th className="py-3 px-4">Country</th>
                             <th className="py-3 px-4">Score</th>
@@ -1246,15 +1260,15 @@ export default function AnalysisView({
                           {countryRankings.slice(0, 10).map((r, idx) => (
                             <React.Fragment key={`${r.country_name}-${idx}`}>
                               <tr className="hover:bg-accent/40 transition-colors">
-                                <td className="py-3 px-4 text-muted-foreground font-bold">#{r.rank}</td>
+                                <td className="py-3 px-4 text-slate-400 font-bold">#{r.rank}</td>
                                 <td className="py-3 px-4">
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-muted-foreground">{r.country_code}</span>
+                                    <span className="text-xs font-bold text-slate-400">{r.country_code}</span>
                                     <span className="font-semibold text-foreground">{r.country_name || r.country_code}</span>
                                   </div>
                                 </td>
                                 <td className="py-3 px-4">
-                                  <span className="text-primary font-bold text-sm">{r.xgb_predicted_score?.toFixed(1)}</span>
+                                  <span className="text-sky-600 font-bold text-sm">{r.xgb_predicted_score?.toFixed(1)}</span>
                                 </td>
                                 <td className="py-3 px-4">
                                   <span className={`inline-flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-1 rounded-full ${
@@ -1276,13 +1290,13 @@ export default function AnalysisView({
                                   <div className="flex items-center justify-end gap-2">
                                     <button
                                       onClick={() => handleExplainCountry(r.country_code, r.country_name || r.country_code)}
-                                      className="btn-ghost text-xs px-2.5 py-1 text-primary font-medium cursor-pointer"
+                                      className="text-xs px-2.5 py-1 text-sky-600 hover:bg-sky-50 font-medium rounded-lg cursor-pointer transition-all"
                                     >
                                       Explain
                                     </button>
                                     <button
                                       onClick={() => handleSelectCountryForDetail(r.country_name || r.country_code)}
-                                      className="btn-primary text-xs px-3 py-1 cursor-pointer"
+                                      className="text-xs px-3 py-1.5 text-white bg-sky-500 hover:bg-sky-400 rounded-lg font-bold cursor-pointer transition-all"
                                     >
                                       Details
                                     </button>
@@ -1291,7 +1305,7 @@ export default function AnalysisView({
                               </tr>
                           {/* Factor breakdown — shows why this country ranks here */}
                           {r.market_demand != null && (
-                            <tr className="bg-muted/30">
+                            <tr className="bg-slate-100/30">
                               <td></td>
                               <td colSpan={4} className="px-4 pb-3 pt-0">
                                 <div className="flex flex-wrap gap-1.5 items-center">
@@ -1299,16 +1313,16 @@ export default function AnalysisView({
                                     ['Tariff', r.tariff_score], ['Landed Cost', r.landed_cost_score],
                                     ['FTA', r.agreement_score], ['Competition', r.competition_score],
                                     ['Risk', r.risk_score]].map(([lbl, v]) => v != null && (
-                                    <span key={lbl} className="text-[10px] font-medium px-2 py-0.5 rounded bg-card border border-border text-foreground">
+                                    <span key={lbl} className="text-[10px] font-medium px-2 py-0.5 rounded bg-card border border-slate-200 text-foreground">
                                       {lbl} {Math.round(v)}
                                     </span>
                                   ))}
                                   {r.duty_rate != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">Duty {r.duty_rate}%</span>}
                                   {r.tax_rate != null && r.tax_rate > 0 && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">{r.tax_label} {r.tax_rate}%</span>}
-                                  {r.lead_time_days != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">{r.lead_time_days}d lead</span>}
-                                  {r.landed_cost_per_unit != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">INR {r.landed_cost_per_unit}/unit</span>}
+                                  {r.lead_time_days != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-sky-600">{r.lead_time_days}d lead</span>}
+                                  {r.landed_cost_per_unit != null && <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-sky-600">INR {r.landed_cost_per_unit}/unit</span>}
                                 </div>
-                                {r.reason && <p className="text-xs text-muted-foreground leading-relaxed mt-1.5">{r.reason}</p>}
+                                {r.reason && <p className="text-xs text-slate-400 leading-relaxed mt-1.5">{r.reason}</p>}
                               </td>
                             </tr>
                           )}
@@ -1319,7 +1333,7 @@ export default function AnalysisView({
                   </div>
                   ) : (
                     <div className="p-8 text-center">
-                      <p className="text-xs text-muted-foreground">No rankings yet. Click "Start Market Analysis" on the product selection page to generate recommendations.</p>
+                      <p className="text-xs text-slate-400">No rankings yet. Click "Start Market Analysis" on the product selection page to generate recommendations.</p>
                     </div>
                   )}
                 </div>
@@ -1330,97 +1344,97 @@ export default function AnalysisView({
             {analysisSubView === 'country-overview' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 {/* Header overview banner */}
-                <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="bg-card border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-lg font-bold text-foreground">
+                    <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-bold text-foreground">
                       {countries.find(c => c.name === selectedCountry)?.code || selectedCountry.slice(0,2).toUpperCase()}
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-foreground tracking-tight">{selectedCountry} Market Summary</h2>
-                      <p className="text-xs text-muted-foreground font-medium mt-0.5">Route evaluation for {selectedAnalysisProduct}</p>
+                      <p className="text-xs text-slate-400 font-medium mt-0.5">Route evaluation for {selectedAnalysisProduct}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">Recommended</span>
-                    <span className="text-[10px] text-muted-foreground">Updated: {new Date().toLocaleDateString()}</span>
+                    <span className="text-[10px] text-slate-400">Updated: {new Date().toLocaleDateString()}</span>
                   </div>
                 </div>
 
                 {/* AI Recommendation Summary - Enhanced Metrics */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Score</span>
-                    <span className="text-2xl font-bold text-primary block">{(countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 0)}/100</span>
-                    <span className="text-[10px] text-muted-foreground font-medium block">Source: {countryRecoData?.scoreSource === 'ML_MODEL_V4' ? 'ML Model v4' : countryRecoData?.scoreSource === 'KNOWLEDGE_ENGINE' ? 'Knowledge Engine' : countryRecoData?.scoreSource || 'Verified Tariff'}</span>
+                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm text-center space-y-1">
+                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Score</span>
+                    <span className="text-2xl font-bold text-sky-600 block">{(countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 0)}/100</span>
+                    <span className="text-[10px] text-slate-400 font-medium block">Source: {countryRecoData?.scoreSource === 'ML_MODEL_V4' ? 'ML Model v4' : countryRecoData?.scoreSource === 'KNOWLEDGE_ENGINE' ? 'Knowledge Engine' : countryRecoData?.scoreSource || 'Verified Tariff'}</span>
                   </div>
-                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Market Demand</span>
+                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm text-center space-y-1">
+                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Market Demand</span>
                     <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 block">{((countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 0) >= 80 ? 'HIGH' : (countryRecoData?.opportunityScore ?? countryRecoData?.compliance?.score ?? 0) >= 50 ? 'MEDIUM' : 'LOW')}</span>
-                    <span className="text-[10px] text-muted-foreground font-medium block">Complexity: {countryRecoData?.complexity || countryRecoData?.compliance?.complexityLevel || 'N/A'}</span>
+                    <span className="text-[10px] text-slate-400 font-medium block">Complexity: {countryRecoData?.complexity || countryRecoData?.compliance?.complexityLevel || 'N/A'}</span>
                   </div>
-                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Duty Rate</span>
+                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm text-center space-y-1">
+                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Duty Rate</span>
                     <span className="text-2xl font-bold text-foreground block">{(countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate) != null ? `${countryRecoData?.tariff?.dutyRate ?? countryRecoData?.dutyRate}%` : '0%'}</span>
-                    <span className="text-[10px] text-muted-foreground font-medium block">{(countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate) != null ? `+ ${countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate}% ${countryRecoData?.tax_label || 'VAT'}` : '+ Tax N/A'}</span>
+                    <span className="text-[10px] text-slate-400 font-medium block">{(countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate) != null ? `+ ${countryRecoData?.tariff?.taxRate ?? countryRecoData?.taxRate}% ${countryRecoData?.tax_label || 'VAT'}` : '+ Tax N/A'}</span>
                   </div>
-                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm text-center space-y-1">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Compliance Index</span>
+                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm text-center space-y-1">
+                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Compliance Index</span>
                     <span className="text-2xl font-bold text-amber-600 dark:text-amber-400 block">{(countryRecoData?.compliance?.score ?? countryRecoData?.complianceScore ?? 0)}/100</span>
-                    <span className="text-[10px] text-muted-foreground font-medium block">{(countryRecoData?.documentsRequired || countryRecoData?.compliance?.documentsCount || countryRecoData?.documents?.length || 0)} docs, {(countryRecoData?.certificationsRequired || countryRecoData?.compliance?.certificationsCount || countryRecoData?.certifications?.length || 0)} certs</span>
+                    <span className="text-[10px] text-slate-400 font-medium block">{(countryRecoData?.documentsRequired || countryRecoData?.compliance?.documentsCount || countryRecoData?.documents?.length || 0)} docs, {(countryRecoData?.certificationsRequired || countryRecoData?.compliance?.certificationsCount || countryRecoData?.certifications?.length || 0)} certs</span>
                   </div>
                 </div>
 
                 {/* Extended Metrics Row */}
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                  <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase block">Export Difficulty</span>
+                  <div className="bg-slate-100/40 border border-slate-200 p-3 rounded-xl text-center">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase block">Export Difficulty</span>
                     <span className="text-xs font-bold text-foreground mt-0.5 block">{countryRecoData?.compliance?.complexityLevel || countryRecoData?.complexity || 'N/A'}</span>
                   </div>
-                  <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase block">Documents</span>
+                  <div className="bg-slate-100/40 border border-slate-200 p-3 rounded-xl text-center">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase block">Documents</span>
                     <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.documentsCount ?? countryRecoData?.documentsRequired ?? countryRecoData?.documents?.length ?? 0)}</span>
                   </div>
-                  <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase block">Certificates</span>
+                  <div className="bg-slate-100/40 border border-slate-200 p-3 rounded-xl text-center">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase block">Certificates</span>
                     <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.certificationsCount ?? countryRecoData?.certificationsRequired ?? countryRecoData?.certifications?.length ?? 0)}</span>
                   </div>
-                  <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase block">Restrictions</span>
+                  <div className="bg-slate-100/40 border border-slate-200 p-3 rounded-xl text-center">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase block">Restrictions</span>
                     <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.restrictionsCount ?? countryRecoData?.restrictionsCount ?? countryRecoData?.restrictions?.length ?? 0)}</span>
                   </div>
-                  <div className="bg-muted/40 border border-border p-3 rounded-xl text-center">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase block">Country Risk</span>
+                  <div className="bg-slate-100/40 border border-slate-200 p-3 rounded-xl text-center">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase block">Country Risk</span>
                     <span className="text-xs font-bold text-foreground mt-0.5 block">{(countryRecoData?.compliance?.score || countryRecoData?.opportunityScore) ? ((countryRecoData?.compliance?.score || countryRecoData?.opportunityScore) >= 80 ? 'Low' : (countryRecoData?.compliance?.score || countryRecoData?.opportunityScore) >= 50 ? 'Medium' : 'High') : 'N/A'}</span>
                   </div>
                 </div>
 
                 {/* AI Summary Box */}
                 {countryRecoData && (
-                  <div className="bg-accent/60 border border-border rounded-2xl p-5">
+                  <div className="bg-accent/60 border border-slate-200 rounded-2xl p-5">
                     <div className="flex items-start gap-3">
-                      <span className="text-lg text-primary font-bold">✦</span>
+                      <span className="text-lg text-sky-600 font-bold">✦</span>
                       <div>
-                        <span className="text-xs font-bold text-primary uppercase tracking-wider block mb-1">Recommendation Summary{countryRecoData?.verdict ? `: ${countryRecoData.verdict}` : ''}</span>
+                        <span className="text-xs font-bold text-sky-600 uppercase tracking-wider block mb-1">Recommendation Summary{countryRecoData?.verdict ? `: ${countryRecoData.verdict}` : ''}</span>
                         <p className="text-xs text-foreground leading-relaxed">{countryRecoData?.summary || `${selectedCountry} assessment for ${selectedAnalysisProduct}.`}</p>
                         {countryRecoData?.reasons?.length > 0 && (
                           <div className="mt-2.5 space-y-1">
-                            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider block">{selectedCountry} is recommended because:</span>
+                            <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider block">{selectedCountry} is recommended because:</span>
                             {countryRecoData.reasons.map((rsn, i) => (
-                              <div key={i} className="flex gap-1.5 items-start"><span className="text-primary shrink-0 text-xs">✓</span><span className="text-xs text-foreground/90 leading-relaxed">{rsn}</span></div>
+                              <div key={i} className="flex gap-1.5 items-start"><span className="text-sky-600 shrink-0 text-xs">✓</span><span className="text-xs text-foreground/90 leading-relaxed">{rsn}</span></div>
                             ))}
                           </div>
                         )}
-                        <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground flex-wrap">
+                        <div className="flex items-center gap-3 mt-3 text-[10px] text-slate-400 flex-wrap">
                           <span className="font-semibold text-foreground">Sources:</span>
                           {((countryRecoData?.sources && countryRecoData.sources.length > 0) ? countryRecoData.sources : [
                             { source: 'DGFT India', url: 'https://dgft.gov.in' }
                           ]).map((s, i) => (
                             typeof s === 'string' ? (
-                              <span key={i} className="text-muted-foreground font-medium">{s}</span>
+                              <span key={i} className="text-slate-400 font-medium">{s}</span>
                             ) : s.url ? (
-                              <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="underline text-primary hover:opacity-80 cursor-pointer font-medium">{s.source}</a>
+                              <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="underline text-sky-600 hover:opacity-80 cursor-pointer font-medium">{s.source}</a>
                             ) : (
-                              <span key={i} className="text-muted-foreground font-medium">{s.source}</span>
+                              <span key={i} className="text-slate-400 font-medium">{s.source}</span>
                             )
                           ))}
                           <span>•</span>
@@ -1434,10 +1448,10 @@ export default function AnalysisView({
                 {/* Card navigation buttons (Workflow action cards) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Action 1: Compliance */}
-                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Compliance Report</span>
-                      <p className="text-xs text-muted-foreground font-normal">Verify customs documents, certifications status, labeling rules, and index parameters.</p>
+                      <p className="text-xs text-slate-400 font-normal">Verify customs documents, certifications status, labeling rules, and index parameters.</p>
                     </div>
                     <button
                       onClick={() => setAnalysisSubView('compliance')}
@@ -1448,10 +1462,10 @@ export default function AnalysisView({
                   </div>
 
                   {/* Action 2: Cost Estimation */}
-                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Cost & Profit Estimation</span>
-                      <p className="text-xs text-muted-foreground font-normal">Calculate product cost, transport freight, insurance, taxes, and net landed cost margins.</p>
+                      <p className="text-xs text-slate-400 font-normal">Calculate product cost, transport freight, insurance, taxes, and net landed cost margins.</p>
                     </div>
                     <button
                       onClick={() => {
@@ -1466,24 +1480,24 @@ export default function AnalysisView({
                   </div>
 
                   {/* Action 4: Create Order */}
-                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Commit & Export</span>
-                      <p className="text-xs text-muted-foreground font-normal">Create a provisional Indian SME export order and lock this trade route in your tracking log.</p>
+                      <p className="text-xs text-slate-400 font-normal">Create a provisional Indian SME export order and lock this trade route in your tracking log.</p>
                     </div>
                     <button
                       onClick={handleOpenCommitExport}
-                      className="btn-primary w-full py-2.5 text-xs font-semibold cursor-pointer text-center"
+                      className="w-full py-2.5 text-xs font-bold text-white bg-sky-500 hover:bg-sky-400 rounded-xl shadow transition-all cursor-pointer text-center"
                     >
                       Create Export Order
                     </button>
                   </div>
 
                   {/* Action 5: Explain Recommendation */}
-                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Explain Recommendation</span>
-                      <p className="text-xs text-muted-foreground font-normal">Why {selectedCountry} is recommended, required certificates, restrictions, labeling rules.</p>
+                      <p className="text-xs text-slate-400 font-normal">Why {selectedCountry} is recommended, required certificates, restrictions, labeling rules.</p>
                     </div>
                     <button
                       onClick={() => { const found = countries.find(c => c.name === selectedCountry); handleExplainCountry(found?.code || selectedCountry.slice(0,2).toUpperCase(), selectedCountry); }}
@@ -1494,19 +1508,19 @@ export default function AnalysisView({
                   </div>
 
                   {/* Action 6: Regulations */}
-                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Export Regulations</span>
-                      <p className="text-xs text-muted-foreground font-normal">Structured import regulations, customs rules, labeling and packaging requirements for {selectedCountry}.</p>
+                      <p className="text-xs text-slate-400 font-normal">Structured import regulations, customs rules, labeling and packaging requirements for {selectedCountry}.</p>
                     </div>
                     <button onClick={() => handleFetchRegulations(selectedCountry)} className="btn-outline w-full py-2.5 text-xs font-semibold cursor-pointer text-center">View Regulations</button>
                   </div>
 
                   {/* Action 7: Step-by-Step Guidance */}
-                  <div className="bg-card border border-border p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
+                  <div className="bg-card border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5 flex flex-col justify-between">
                     <div className="space-y-1">
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider block">Step-by-Step Guide</span>
-                      <p className="text-xs text-muted-foreground font-normal">Personalized export guide for {selectedAnalysisProduct} to {selectedCountry}: IEC, documents, customs, payment.</p>
+                      <p className="text-xs text-slate-400 font-normal">Personalized export guide for {selectedAnalysisProduct} to {selectedCountry}: IEC, documents, customs, payment.</p>
                     </div>
                     <button onClick={handleFetchGuidance} className="btn-outline w-full py-2.5 text-xs font-semibold cursor-pointer text-center">Generate Guide</button>
                   </div>
@@ -2009,90 +2023,90 @@ export default function AnalysisView({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!guidanceData && <button onClick={handleFetchGuidance} disabled={guidanceLoading} className="btn-primary text-xs px-4 py-2 cursor-pointer disabled:opacity-50 flex items-center gap-1.5">{guidanceLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Generate Plan'}</button>}
-                      <span className="text-[10px] bg-muted text-muted-foreground font-semibold px-2.5 py-0.5 rounded-full border border-border">{new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
+                      {!guidanceData && <button onClick={handleFetchGuidance} disabled={guidanceLoading} className="text-xs px-4 py-2 text-white bg-emerald-500 hover:bg-emerald-400 rounded-xl font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5 transition-all">{guidanceLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Generate Plan'}</button>}
+                      <span className="text-[10px] bg-slate-100 text-slate-400 font-semibold px-2.5 py-0.5 rounded-full border border-slate-200">{new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
                     </div>
                   </div>
                 </div>
 
                 {guidanceLoading ? (
-                  <div className="bg-card border border-border rounded-2xl p-16 flex flex-col items-center gap-4">
-                    <Loader2 className="w-9 h-9 text-primary animate-spin"/>
-                    <span className="text-xs font-semibold text-muted-foreground">Generating export execution plan for {selectedAnalysisProduct} to {selectedCountry}...</span>
-                    <div className="w-56 h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary rounded-full animate-pulse w-2/3"></div></div>
+                  <div className="bg-card border border-slate-200 rounded-2xl p-16 flex flex-col items-center gap-4">
+                    <Loader2 className="w-9 h-9 text-sky-600 animate-spin"/>
+                    <span className="text-xs font-semibold text-slate-400">Generating export execution plan for {selectedAnalysisProduct} to {selectedCountry}...</span>
+                    <div className="w-56 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-sky-500 rounded-full animate-pulse w-2/3"></div></div>
                   </div>
                 ) : guidanceData ? (
                   <div className="space-y-5">
                     {/* Progress & Summary */}
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                      <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-1">
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Total Steps</span>
+                      <div className="bg-card border border-slate-200 rounded-2xl p-4 text-center space-y-1">
+                        <span className="text-[10px] font-medium text-slate-400 uppercase block">Total Steps</span>
                         <span className="text-2xl font-bold text-foreground block">{totalSteps}</span>
                       </div>
-                      <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-1">
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Est. Timeline</span>
-                        <span className="text-lg font-bold text-primary block">{guidanceData.total_estimated_time || '--'}</span>
+                      <div className="bg-card border border-slate-200 rounded-2xl p-4 text-center space-y-1">
+                        <span className="text-[10px] font-medium text-slate-400 uppercase block">Est. Timeline</span>
+                        <span className="text-lg font-bold text-sky-600 block">{guidanceData.total_estimated_time || '--'}</span>
                       </div>
-                      <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-1">
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Difficulty</span>
+                      <div className="bg-card border border-slate-200 rounded-2xl p-4 text-center space-y-1">
+                        <span className="text-[10px] font-medium text-slate-400 uppercase block">Difficulty</span>
                         <span className="text-lg font-bold text-amber-600 dark:text-amber-400 block">{totalSteps > 6 ? 'Medium' : 'Low'}</span>
                       </div>
-                      <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-1">
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Success Rate</span>
+                      <div className="bg-card border border-slate-200 rounded-2xl p-4 text-center space-y-1">
+                        <span className="text-[10px] font-medium text-slate-400 uppercase block">Success Rate</span>
                         <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 block">{totalSteps <= 6 ? '95%' : '88%'}</span>
                       </div>
                     </div>
 
                     {/* AI Summary */}
-                    <div className="bg-accent/60 border border-border rounded-2xl p-5">
+                    <div className="bg-accent/60 border border-slate-200 rounded-2xl p-5">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center shrink-0"><Sparkles className="w-4 h-4 text-primary"/></div>
+                        <div className="w-8 h-8 rounded-lg bg-card border border-slate-200 flex items-center justify-center shrink-0"><Sparkles className="w-4 h-4 text-sky-600"/></div>
                         <div>
-                          <span className="text-xs font-bold text-primary uppercase tracking-wider block mb-1">Export Execution Summary</span>
+                          <span className="text-xs font-bold text-sky-600 uppercase tracking-wider block mb-1">Export Execution Summary</span>
                           <p className="text-xs text-foreground leading-relaxed">Your export plan for <strong>{selectedAnalysisProduct}</strong> (HS {hsCode}) to <strong>{selectedCountry}</strong> consists of {totalSteps} steps with an estimated timeline of {guidanceData.total_estimated_time || 'standard duration'}. {totalSteps <= 5 ? 'This is a straightforward export process.' : 'Complete each step sequentially for best results.'} Start with document preparation and IEC verification.</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Steps Timeline */}
-                    <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-                      <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2">Execution Steps</h3>
+                    <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-4">
+                      <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2">Execution Steps</h3>
                       <div className="relative pl-10 space-y-4">
                         <div className="absolute left-[15px] top-4 bottom-4 w-0.5 bg-border"></div>
                         {guidanceData.steps?.map((step) => (
-                          <div key={step.step_number} className="relative bg-muted/30 border border-border rounded-xl p-4 space-y-2 hover:border-border/80 transition-colors">
-                            <div className="absolute -left-10 top-4 w-7 h-7 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-primary-foreground shadow-xs">{step.step_number}</div>
+                          <div key={step.step_number} className="relative bg-slate-100/30 border border-slate-200 rounded-xl p-4 space-y-2 hover:border-slate-200/80 transition-colors">
+                            <div className="absolute -left-10 top-4 w-7 h-7 rounded-full bg-sky-500 flex items-center justify-center text-[10px] font-bold text-sky-600-foreground shadow-xs">{step.step_number}</div>
                             <div className="flex items-start justify-between gap-2">
                               <h4 className="text-xs font-bold text-foreground">{step.title}</h4>
                               <div className="flex items-center gap-1.5 shrink-0">
-                                {step.estimated_time && <span className="text-[10px] bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded">{step.estimated_time}</span>}
+                                {step.estimated_time && <span className="text-[10px] bg-sky-500/10 text-sky-600 font-semibold px-2 py-0.5 rounded">{step.estimated_time}</span>}
                                 <span className="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold px-1.5 py-0.5 rounded">{step.step_number <= 2 ? 'High' : step.step_number <= 4 ? 'Medium' : 'Low'}</span>
                               </div>
                             </div>
-                            <p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
+                            <p className="text-xs text-slate-400 leading-relaxed">{step.description}</p>
                             {step.documents_needed?.length > 0 && (
                               <div className="flex flex-wrap gap-1.5 pt-1">
-                                {step.documents_needed.map((d, i) => <span key={i} className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-medium border border-primary/20">{d}</span>)}
+                                {step.documents_needed.map((d, i) => <span key={i} className="text-[10px] bg-sky-500/10 text-sky-600 px-2.5 py-0.5 rounded-full font-medium border border-sky-500/20">{d}</span>)}
                               </div>
                             )}
                             {step.tips && <p className="text-xs text-amber-600 dark:text-amber-400 font-medium pt-1">Tip: {step.tips}</p>}
-                            {step.government_portal && <a href={step.government_portal} target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium hover:underline inline-block pt-1">Open Portal</a>}
+                            {step.government_portal && <a href={step.government_portal} target="_blank" rel="noopener noreferrer" className="text-xs text-sky-600 font-medium hover:underline inline-block pt-1">Open Portal</a>}
                           </div>
                         ))}
                       </div>
                     </div>
 
                     {/* Pre-Shipment Checklist - Interactive */}
-                    <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-                      <div className="flex items-center justify-between border-b border-border pb-3">
+                    <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                         <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Export Readiness Checklist</h3>
                         <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-medium text-muted-foreground">{Object.values(completedChecklist).filter(Boolean).length} / {(guidanceData.steps || []).length} completed</span>
+                          <span className="text-[10px] font-medium text-slate-400">{Object.values(completedChecklist).filter(Boolean).length} / {(guidanceData.steps || []).length} completed</span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${Object.values(completedChecklist).filter(Boolean).length === (guidanceData.steps || []).length ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>{Math.round((Object.values(completedChecklist).filter(Boolean).length / Math.max(1, (guidanceData.steps || []).length)) * 100)}%</span>
                         </div>
                       </div>
                       {/* Progress Bar */}
-                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                         <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{width: `${Math.round((Object.values(completedChecklist).filter(Boolean).length / Math.max(1, (guidanceData.steps || []).length)) * 100)}%`}}></div>
                       </div>
                       {/* Checklist Items */}
@@ -2101,27 +2115,27 @@ export default function AnalysisView({
                           const isComplete = completedChecklist[step.step_number];
                           const prevComplete = step.step_number === 1 || completedChecklist[step.step_number - 1];
                           return (
-                          <div key={step.step_number} className={`p-3 rounded-xl border transition-all ${isComplete ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border hover:border-border/80'}`}>
+                          <div key={step.step_number} className={`p-3 rounded-xl border transition-all ${isComplete ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-200 hover:border-slate-200/80'}`}>
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => { if (prevComplete || isComplete) { setCompletedChecklist(prev => ({...prev, [step.step_number]: !prev[step.step_number]})); addToast(isComplete ? `Unmarked: ${step.title}` : `Completed: ${step.title}`, isComplete ? 'info' : 'success'); }}}
                                 disabled={!prevComplete && !isComplete}
-                                className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 cursor-pointer transition-all ${isComplete ? 'bg-emerald-500 border-emerald-500' : prevComplete ? 'border-border hover:border-emerald-500' : 'border-border opacity-40 cursor-not-allowed'}`}
+                                className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 cursor-pointer transition-all ${isComplete ? 'bg-emerald-500 border-emerald-500' : prevComplete ? 'border-slate-200 hover:border-emerald-500' : 'border-slate-200 opacity-40 cursor-not-allowed'}`}
                               >
                                 {isComplete && <Check className="w-3 h-3 text-white"/>}
                               </button>
                               <div className="flex-grow">
-                                <span className={`text-xs font-semibold ${isComplete ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{step.title}</span>
-                                {!isComplete && step.estimated_time && <span className="text-[10px] text-muted-foreground ml-2">{step.estimated_time}</span>}
+                                <span className={`text-xs font-semibold ${isComplete ? 'text-slate-400 line-through' : 'text-foreground'}`}>{step.title}</span>
+                                {!isComplete && step.estimated_time && <span className="text-[10px] text-slate-400 ml-2">{step.estimated_time}</span>}
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
-                                {!isComplete && <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${step.step_number <= 2 ? 'bg-destructive/10 text-destructive' : step.step_number <= 4 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-muted text-muted-foreground'}`}>{step.step_number <= 2 ? 'High' : step.step_number <= 4 ? 'Medium' : 'Low'}</span>}
+                                {!isComplete && <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${step.step_number <= 2 ? 'bg-destructive/10 text-destructive' : step.step_number <= 4 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-slate-100 text-slate-400'}`}>{step.step_number <= 2 ? 'High' : step.step_number <= 4 ? 'Medium' : 'Low'}</span>}
                                 {isComplete && <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-semibold">Done</span>}
                               </div>
                             </div>
                             {!isComplete && step.documents_needed?.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-2 ml-8">
-                                {step.documents_needed.map((d, i) => <span key={i} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">{d}</span>)}
+                                {step.documents_needed.map((d, i) => <span key={i} className="text-[10px] bg-sky-500/10 text-sky-600 px-1.5 py-0.5 rounded font-medium">{d}</span>)}
                               </div>
                             )}
                           </div>
@@ -2132,17 +2146,17 @@ export default function AnalysisView({
                       {Object.values(completedChecklist).filter(Boolean).length === (guidanceData.steps || []).length && (guidanceData.steps || []).length > 0 && (
                         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center space-y-2">
                           <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Export Ready! All mandatory tasks completed.</p>
-                          <button onClick={() => { setAnalysisSubView('country-overview'); }} className="btn-primary px-4 py-2 text-xs font-semibold cursor-pointer">Proceed to Create Export Order</button>
+                          <button onClick={() => { setAnalysisSubView('country-overview'); }} className="px-4 py-2 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-400 rounded-xl cursor-pointer transition-all">Proceed to Create Export Order</button>
                         </div>
                       )}
                       {/* Next Action */}
                       {Object.values(completedChecklist).filter(Boolean).length < (guidanceData.steps || []).length && (
-                        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between">
+                        <div className="bg-sky-500/5 border border-sky-500/20 rounded-xl p-3 flex items-center justify-between">
                           <div>
-                            <span className="text-[10px] font-bold text-primary uppercase block">Next Action</span>
+                            <span className="text-[10px] font-bold text-sky-600 uppercase block">Next Action</span>
                             <span className="text-xs font-semibold text-foreground">{(guidanceData.steps || []).find(s => !completedChecklist[s.step_number])?.title || '--'}</span>
                           </div>
-                          <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">{(guidanceData.steps || []).find(s => !completedChecklist[s.step_number])?.estimated_time || '--'}</span>
+                          <span className="text-[10px] bg-sky-500/10 text-sky-600 px-2 py-0.5 rounded font-semibold">{(guidanceData.steps || []).find(s => !completedChecklist[s.step_number])?.estimated_time || '--'}</span>
                         </div>
                       )}
                     </div>
@@ -2156,15 +2170,15 @@ export default function AnalysisView({
                     )}
 
                     {/* Disclaimer */}
-                    <div className="bg-muted/40 border border-border rounded-xl p-3 text-center">
-                      <p className="text-xs text-muted-foreground font-normal">This execution plan is generated dynamically based on HS Code {hsCode} and destination {selectedCountry}. Verify all steps with relevant authorities.</p>
+                    <div className="bg-slate-100/40 border border-slate-200 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-400 font-normal">This execution plan is generated dynamically based on HS Code {hsCode} and destination {selectedCountry}. Verify all steps with relevant authorities.</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-card border border-border p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
-                    <MapPin className="w-10 h-10 text-muted-foreground/40 mb-3"/>
+                  <div className="bg-card border border-slate-200 p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
+                    <MapPin className="w-10 h-10 text-slate-400/40 mb-3"/>
                     <span className="text-sm font-semibold text-foreground">Click "Generate Plan" to create your export execution plan</span>
-                    <span className="text-xs text-muted-foreground mt-1">Personalized step-by-step guide for {selectedAnalysisProduct} to {selectedCountry}</span>
+                    <span className="text-xs text-slate-400 mt-1">Personalized step-by-step guide for {selectedAnalysisProduct} to {selectedCountry}</span>
                   </div>
                 )}
               </div>
@@ -2180,7 +2194,7 @@ export default function AnalysisView({
               const score = compData?.compliance_score || 0;
               const readyPct = compData?.readiness_percent ?? score;
               const readiness = compData?.export_readiness || (readyPct >= 85 ? 'Ready' : readyPct >= 70 ? 'Minor Actions Required' : readyPct >= 55 ? 'Moderate Actions Required' : 'High Preparation Required');
-              const readinessColor = readyPct >= 85 ? 'text-emerald-600 dark:text-emerald-400' : readyPct >= 70 ? 'text-primary' : readyPct >= 55 ? 'text-amber-600 dark:text-amber-400' : 'text-destructive';
+              const readinessColor = readyPct >= 85 ? 'text-emerald-600 dark:text-emerald-400' : readyPct >= 70 ? 'text-sky-600' : readyPct >= 55 ? 'text-amber-600 dark:text-amber-400' : 'text-destructive';
               const allItems = [...(compData?.required_certifications || []), ...(compData?.required_licenses || []), ...(compData?.required_inspections || [])];
               const docsCount = (compData?.required_licenses || []).length;
               const certsCount = (compData?.required_certifications || []).length;
@@ -2192,91 +2206,91 @@ export default function AnalysisView({
               const riskData = compData?.risk_analysis || {};
               const tl = compData?.timeline || {};
               const dutyData = compData?.duties || {};
-              const riskColor = (lvl) => lvl === 'Low' || lvl === 'Very Low' ? 'text-emerald-600 dark:text-emerald-400' : lvl === 'Medium' ? 'text-amber-600 dark:text-amber-400' : lvl === 'High' ? 'text-destructive' : 'text-muted-foreground';
+              const riskColor = (lvl) => lvl === 'Low' || lvl === 'Very Low' ? 'text-emerald-600 dark:text-emerald-400' : lvl === 'Medium' ? 'text-amber-600 dark:text-amber-400' : lvl === 'High' ? 'text-destructive' : 'text-slate-400';
 
               return (
               <div className="space-y-5 animate-in fade-in duration-300">
                 {/* Header */}
-                <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+                <div className="bg-card border border-slate-200 rounded-2xl p-5 shadow-sm">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-sm font-bold text-primary">{countryCode}</div>
+                      <div className="w-11 h-11 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sm font-bold text-sky-600">{countryCode}</div>
                       <div>
                         <h2 className="text-lg font-bold text-foreground">Compliance Audit Report</h2>
                         <div className="flex items-center gap-3 mt-0.5">
                           <span className="text-xs font-semibold text-foreground">{selectedAnalysisProduct}</span>
-                          <span className="text-xs text-muted-foreground/40">|</span>
-                          <span className="text-xs text-muted-foreground">HS: {hsCode}</span>
-                          <span className="text-xs text-muted-foreground/40">|</span>
-                          <span className="text-xs text-muted-foreground">{selectedCountry}</span>
+                          <span className="text-xs text-slate-400/40">|</span>
+                          <span className="text-xs text-slate-400">HS: {hsCode}</span>
+                          <span className="text-xs text-slate-400/40">|</span>
+                          <span className="text-xs text-slate-400">{selectedCountry}</span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!compData && <button onClick={handleFetchComplianceCheck} disabled={complianceCheckLoading} className="btn-primary text-xs px-4 py-2 cursor-pointer disabled:opacity-50 flex items-center gap-1.5">{complianceCheckLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Run Compliance Audit'}</button>}
-                      <span className="text-[10px] bg-muted text-muted-foreground font-semibold px-2.5 py-0.5 rounded-full border border-border">Updated: {new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
+                      {!compData && <button onClick={handleFetchComplianceCheck} disabled={complianceCheckLoading} className="text-xs px-4 py-2 text-white bg-emerald-500 hover:bg-emerald-400 rounded-xl font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5 transition-all">{complianceCheckLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Run Compliance Audit'}</button>}
+                      <span className="text-[10px] bg-slate-100 text-slate-400 font-semibold px-2.5 py-0.5 rounded-full border border-slate-200">Updated: {new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})}</span>
                     </div>
                   </div>
                 </div>
 
                 {complianceCheckLoading ? (
-                  <div className="bg-card border border-border rounded-2xl p-16 flex flex-col items-center gap-4">
-                    <Loader2 className="w-9 h-9 text-primary animate-spin"/>
-                    <span className="text-xs font-semibold text-muted-foreground">Running compliance audit for {selectedAnalysisProduct} ({hsCode})...</span>
-                    <div className="w-56 h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary rounded-full animate-pulse w-2/3"></div></div>
+                  <div className="bg-card border border-slate-200 rounded-2xl p-16 flex flex-col items-center gap-4">
+                    <Loader2 className="w-9 h-9 text-sky-600 animate-spin"/>
+                    <span className="text-xs font-semibold text-slate-400">Running compliance audit for {selectedAnalysisProduct} ({hsCode})...</span>
+                    <div className="w-56 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-sky-500 rounded-full animate-pulse w-2/3"></div></div>
                   </div>
                 ) : compData ? (
                   <div className="space-y-5">
                     {/* Export Readiness & Summary */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      <div className="bg-card border border-border rounded-2xl p-5 text-center space-y-2">
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Export Readiness</span>
+                      <div className="bg-card border border-slate-200 rounded-2xl p-5 text-center space-y-2">
+                        <span className="text-[10px] font-medium text-slate-400 uppercase block">Export Readiness</span>
                         <span className={`text-3xl font-bold block ${readinessColor}`}>{readyPct}%</span>
                         <span className={`text-xs font-semibold ${readinessColor}`}>{readiness}</span>
-                        <span className="text-[10px] text-muted-foreground block">Compliance score {score}/100</span>
+                        <span className="text-[10px] text-slate-400 block">Compliance score {score}/100</span>
                       </div>
-                      <div className="bg-card border border-border rounded-2xl p-5 text-center space-y-2">
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Complexity</span>
+                      <div className="bg-card border border-slate-200 rounded-2xl p-5 text-center space-y-2">
+                        <span className="text-[10px] font-medium text-slate-400 uppercase block">Complexity</span>
                         <span className={`text-xl font-bold block ${compData.overall_complexity === 'Low' ? 'text-emerald-600 dark:text-emerald-400' : compData.overall_complexity === 'Medium' ? 'text-amber-600 dark:text-amber-400' : 'text-destructive'}`}>{compData.overall_complexity}</span>
-                        <span className="text-xs text-muted-foreground">{docsCount + certsCount + inspCount} total requirements</span>
-                        {compData.complexity_index !== undefined && <span className="text-[10px] text-muted-foreground block">Difficulty index {compData.complexity_index}/100</span>}
+                        <span className="text-xs text-slate-400">{docsCount + certsCount + inspCount} total requirements</span>
+                        {compData.complexity_index !== undefined && <span className="text-[10px] text-slate-400 block">Difficulty index {compData.complexity_index}/100</span>}
                       </div>
-                      <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase block">Summary</span>
+                      <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-2">
+                        <span className="text-[10px] font-medium text-slate-400 uppercase block">Summary</span>
                         <div className="grid grid-cols-3 gap-2 text-center">
-                          <div><span className="text-sm font-bold text-primary block">{docsCount}</span><span className="text-[9px] text-muted-foreground uppercase">Docs</span></div>
-                          <div><span className="text-sm font-bold text-primary block">{certsCount}</span><span className="text-[9px] text-muted-foreground uppercase">Certs</span></div>
-                          <div><span className="text-sm font-bold text-primary block">{inspCount}</span><span className="text-[9px] text-muted-foreground uppercase">Inspect</span></div>
+                          <div><span className="text-sm font-bold text-sky-600 block">{docsCount}</span><span className="text-[9px] text-slate-400 uppercase">Docs</span></div>
+                          <div><span className="text-sm font-bold text-sky-600 block">{certsCount}</span><span className="text-[9px] text-slate-400 uppercase">Certs</span></div>
+                          <div><span className="text-sm font-bold text-sky-600 block">{inspCount}</span><span className="text-[9px] text-slate-400 uppercase">Inspect</span></div>
                         </div>
                       </div>
                     </div>
 
                     {/* AI Summary */}
-                    <div className="bg-accent/60 border border-border rounded-2xl p-5">
+                    <div className="bg-accent/60 border border-slate-200 rounded-2xl p-5">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center shrink-0"><Shield className="w-4 h-4 text-primary"/></div>
+                        <div className="w-8 h-8 rounded-lg bg-card border border-slate-200 flex items-center justify-center shrink-0"><Shield className="w-4 h-4 text-sky-600"/></div>
                         <div>
-                          <span className="text-xs font-bold text-primary uppercase tracking-wider block mb-1">Compliance Assessment</span>
+                          <span className="text-xs font-bold text-sky-600 uppercase tracking-wider block mb-1">Compliance Assessment</span>
                           <p className="text-xs text-foreground leading-relaxed">{compData.recommendation || `${selectedAnalysisProduct} (HS ${hsCode}) to ${selectedCountry}. Compliance score: ${score}/100. Complexity: ${compData.overall_complexity}. ${allItems.filter(i => i.required).length} mandatory requirements identified.`}</p>
-                          <p className="text-xs text-muted-foreground leading-relaxed mt-1.5">{docsCount} document(s), {certsCount} certification(s), {inspCount} inspection(s), {packCount} packaging rule(s) and {labelCount} labelling rule(s) apply for {selectedCountry}. Readiness: {readiness} ({readyPct}%).</p>
+                          <p className="text-xs text-slate-400 leading-relaxed mt-1.5">{docsCount} document(s), {certsCount} certification(s), {inspCount} inspection(s), {packCount} packaging rule(s) and {labelCount} labelling rule(s) apply for {selectedCountry}. Readiness: {readiness} ({readyPct}%).</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Required Documents & Licenses */}
                     {compData.required_licenses?.length > 0 && (
-                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-primary"/>Required Documents</h3>
+                      <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-sky-600"/>Required Documents</h3>
                         <div className="space-y-2">{compData.required_licenses.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-accent/40 transition-colors">
                             <span className={`text-xs font-bold ${item.required ? 'text-amber-500' : 'text-emerald-500'}`}>{item.required ? '!' : '+'}</span>
                             <div className="flex-grow">
                               <span className="text-xs font-semibold text-foreground block">{item.name}</span>
-                              <span className="text-[10px] text-muted-foreground">{item.description}</span>
+                              <span className="text-[10px] text-slate-400">{item.description}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {item.issuing_authority && <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded font-medium">{item.issuing_authority}</span>}
-                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${item.required ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>{item.required ? 'Mandatory' : 'Optional'}</span>
+                              {item.issuing_authority && <span className="text-[10px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded font-medium">{item.issuing_authority}</span>}
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${item.required ? 'bg-destructive/10 text-destructive' : 'bg-slate-100 text-slate-400'}`}>{item.required ? 'Mandatory' : 'Optional'}</span>
                             </div>
                           </div>
                         ))}</div>
@@ -2285,18 +2299,18 @@ export default function AnalysisView({
 
                     {/* Required Certifications */}
                     {compData.required_certifications?.length > 0 && (
-                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-primary"/>Required Certifications</h3>
+                      <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-sky-600"/>Required Certifications</h3>
                         <div className="space-y-2">{compData.required_certifications.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
-                            <span className="text-primary text-xs font-bold">*</span>
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-accent/40 transition-colors">
+                            <span className="text-sky-600 text-xs font-bold">*</span>
                             <div className="flex-grow">
                               <span className="text-xs font-semibold text-foreground block">{item.name}</span>
-                              <span className="text-[10px] text-muted-foreground">{item.description}</span>
+                              <span className="text-[10px] text-slate-400">{item.description}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {item.estimated_days && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">{item.estimated_days}</span>}
-                              {item.issuing_authority && <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded font-medium">{item.issuing_authority}</span>}
+                              {item.estimated_days && <span className="text-[10px] bg-sky-500/10 text-sky-600 px-2 py-0.5 rounded font-medium">{item.estimated_days}</span>}
+                              {item.issuing_authority && <span className="text-[10px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded font-medium">{item.issuing_authority}</span>}
                             </div>
                           </div>
                         ))}</div>
@@ -2305,16 +2319,16 @@ export default function AnalysisView({
 
                     {/* Required Inspections */}
                     {compData.required_inspections?.length > 0 && (
-                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Eye className="w-3.5 h-3.5 text-primary"/>Required Inspections</h3>
+                      <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><Eye className="w-3.5 h-3.5 text-sky-600"/>Required Inspections</h3>
                         <div className="space-y-2">{compData.required_inspections.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
-                            <span className="text-primary text-xs font-bold">*</span>
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-accent/40 transition-colors">
+                            <span className="text-sky-600 text-xs font-bold">*</span>
                             <div className="flex-grow">
                               <span className="text-xs font-semibold text-foreground block">{item.name}</span>
-                              <span className="text-[10px] text-muted-foreground">{item.description}</span>
+                              <span className="text-[10px] text-slate-400">{item.description}</span>
                             </div>
-                            {item.estimated_days && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">{item.estimated_days}</span>}
+                            {item.estimated_days && <span className="text-[10px] bg-sky-500/10 text-sky-600 px-2 py-0.5 rounded font-medium">{item.estimated_days}</span>}
                           </div>
                         ))}</div>
                       </div>
@@ -2322,25 +2336,25 @@ export default function AnalysisView({
 
                     {/* Packaging & Labeling */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <div className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
-                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-primary"/>Packaging Requirements ({packCount})</h4>
-                        {compData.packaging_requirements?.length > 0 ? <div className="space-y-1.5">{compData.packaging_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-muted/30"><span className="text-primary shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-muted-foreground italic">No specific packaging requirements.</p>}
+                      <div className="bg-card border border-slate-200 rounded-2xl p-4 space-y-2.5">
+                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-sky-600"/>Packaging Requirements ({packCount})</h4>
+                        {compData.packaging_requirements?.length > 0 ? <div className="space-y-1.5">{compData.packaging_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30"><span className="text-sky-600 shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No specific packaging requirements.</p>}
                       </div>
-                      <div className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
-                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-primary"/>Labeling Requirements ({labelCount})</h4>
-                        {compData.labeling_requirements?.length > 0 ? <div className="space-y-1.5">{compData.labeling_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-muted/30"><span className="text-primary shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-muted-foreground italic">No specific labeling requirements.</p>}
+                      <div className="bg-card border border-slate-200 rounded-2xl p-4 space-y-2.5">
+                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-sky-600"/>Labeling Requirements ({labelCount})</h4>
+                        {compData.labeling_requirements?.length > 0 ? <div className="space-y-1.5">{compData.labeling_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30"><span className="text-sky-600 shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No specific labeling requirements.</p>}
                       </div>
                     </div>
 
                     {/* Customs Requirements & Import Restrictions */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-primary"/>Customs Requirements ({customsRules.length})</h3>
-                        {customsRules.length > 0 ? <div className="space-y-1.5">{customsRules.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-muted/30"><span className="text-primary shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-muted-foreground italic">No customs requirements returned.</p>}
+                      <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-sky-600"/>Customs Requirements ({customsRules.length})</h3>
+                        {customsRules.length > 0 ? <div className="space-y-1.5">{customsRules.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30"><span className="text-sky-600 shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No customs requirements returned.</p>}
                       </div>
-                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 text-destructive"/>Import Restrictions ({importRestrictions.length})</h3>
-                        {importRestrictions.length > 0 ? <div className="space-y-1.5">{importRestrictions.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-destructive/10"><span className="text-destructive shrink-0 text-xs">!</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-muted-foreground italic">No import restrictions apply to this product.</p>}
+                      <div className="bg-card border border-slate-200 rounded-2xl p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 text-destructive"/>Import Restrictions ({importRestrictions.length})</h3>
+                        {importRestrictions.length > 0 ? <div className="space-y-1.5">{importRestrictions.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-destructive/10"><span className="text-destructive shrink-0 text-xs">!</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No import restrictions apply to this product.</p>}
                       </div>
                     </div>
 
@@ -2490,27 +2504,27 @@ export default function AnalysisView({
 
                   {/* Optional advanced fields */}
                   <div className="flex items-center justify-between">
-                    <button onClick={() => setShowAdvancedCost(v => !v)} className="text-xs font-medium text-primary hover:underline cursor-pointer flex items-center gap-1">
+                    <button onClick={() => setShowAdvancedCost(v => !v)} className="text-xs font-medium text-sky-600 hover:underline cursor-pointer flex items-center gap-1">
                       {showAdvancedCost ? '- Hide' : '+ Show'} advanced fields (packaging, freight detail, duties, destination costs)
                     </button>
-                    <span className="text-xs text-muted-foreground">Incoterm: <strong className="text-foreground">{costIncoterm}</strong></span>
+                    <span className="text-xs text-slate-400">Incoterm: <strong className="text-foreground">{costIncoterm}</strong></span>
                   </div>
                   {showAdvancedCost && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Packaging/unit (INR)</label>
+                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Packaging/unit (INR)</label>
                         <input type="number" min="0" step="0.01" value={costPackagingPerUnit} onChange={e => { setCostPackagingPerUnit(e.target.value); setCalculationResult(null); }} placeholder="0" className="input-claude"/>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Inland Transport (INR)</label>
+                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Inland Transport (INR)</label>
                         <input type="number" min="0" step="1" value={costInlandTransport} onChange={e => { setCostInlandTransport(e.target.value); setCalculationResult(null); }} placeholder="Auto from weight" className="input-claude"/>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Insurance Rate (%)</label>
+                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Insurance Rate (%)</label>
                         <input type="number" min="0" max="100" step="0.01" value={costInsuranceRate} onChange={e => { setCostInsuranceRate(e.target.value); setCalculationResult(null); }} placeholder={costShippingMode === 'Sea' ? '1.5 (default)' : costShippingMode === 'Air' ? '0.8 (default)' : '0.5 (default)'} className="input-claude"/>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Incoterm</label>
+                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Incoterm</label>
                         <select value={costIncoterm} onChange={e => setCostIncoterm(e.target.value)} className="input-claude cursor-pointer">
                           <option value="EXW">EXW - Ex Works</option>
                           <option value="FOB">FOB - Free On Board</option>
@@ -2519,26 +2533,26 @@ export default function AnalysisView({
                         </select>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Customs Duty Rate (%)</label>
+                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Customs Duty Rate (%)</label>
                         <input type="number" min="0" max="100" step="0.01" value={costManualDutyRate} onChange={e => { setCostManualDutyRate(e.target.value); setCalculationResult(null); }} placeholder="Enter verified rate" className="input-claude"/>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Import VAT/GST (%)</label>
+                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Import VAT/GST (%)</label>
                         <input type="number" min="0" max="100" step="0.01" value={costManualTaxRate} onChange={e => { setCostManualTaxRate(e.target.value); setCalculationResult(null); }} placeholder="Enter verified rate" className="input-claude"/>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Freight Amount (INR)</label>
+                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Freight Amount (INR)</label>
                         <input type="number" min="0" step="1" value={costFreightAmount} onChange={e => { setCostFreightAmount(e.target.value); setCalculationResult(null); }} placeholder="Enter actual freight" className="input-claude"/>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-medium text-muted-foreground uppercase block">Target Margin (%)</label>
+                        <label className="text-[10px] font-medium text-slate-400 uppercase block">Target Margin (%)</label>
                         <input type="number" min="0" max="100" step="0.5" value={costTargetMargin} onChange={e => { setCostTargetMargin(e.target.value); setCalculationResult(null); }} placeholder="20" className="input-claude"/>
                       </div>
                     </div>
                   )}
 
                   <div className="flex gap-2">
-                    <button onClick={handleCalculateCost} disabled={isCalculatingCost} className="btn-primary flex-1 py-2.5 text-xs font-semibold cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5">
+                    <button onClick={handleCalculateCost} disabled={isCalculatingCost} className="flex-1 py-2.5 text-xs font-bold text-white bg-sky-500 hover:bg-sky-400 rounded-xl shadow cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all">
                       {isCalculatingCost ? 'Analyzing...' : 'Analyze Costs'}
                       {isCalculatingCost && <Loader2 className="w-4 h-4 animate-spin ml-1"/>}
                     </button>
@@ -2551,10 +2565,10 @@ export default function AnalysisView({
                 </div>
 
                 {isCalculatingCost ? (
-                  <div className="bg-card border border-border p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
-                    <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
+                  <div className="bg-card border border-slate-200 p-12 text-center rounded-2xl flex flex-col items-center justify-center min-h-[300px]">
+                    <Loader2 className="w-8 h-8 text-sky-600 animate-spin mb-4" />
                     <span className="text-xs font-bold uppercase text-foreground tracking-wider">Analyzing Export Costs &amp; Profitability</span>
-                    <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden mt-3"><div className="h-full bg-primary rounded-full animate-pulse w-2/3"></div></div>
+                    <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-3"><div className="h-full bg-sky-500 rounded-full animate-pulse w-2/3"></div></div>
                   </div>
                 ) : calculationResult ? (() => {
                   const r = calculationResult;
@@ -2628,25 +2642,25 @@ export default function AnalysisView({
                       {/* 3. Executive KPI Dashboard (6 Core Cards) */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                         {/* 1. SELLING PRICE */}
-                        <div className="bg-card border border-border rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-primary/50 transition-all">
-                          <div className="absolute top-0 left-0 right-0 h-1 bg-primary"></div>
-                          <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">Selling Price</span>
+                        <div className="bg-card border border-slate-200 rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-sky-500/50 transition-all">
+                          <div className="absolute top-0 left-0 right-0 h-1 bg-sky-500"></div>
+                          <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider block mb-1">Selling Price</span>
                           <span className="text-sm font-bold text-foreground block leading-tight">
                             {r.revenue.sellingPricePerUnit != null ? `${r.revenue.sellingPricePerUnit} ${origCurr}` : '—'}
                           </span>
-                          <span className="text-[10px] font-semibold text-primary block mt-1">
+                          <span className="text-[10px] font-semibold text-sky-600 block mt-1">
                             ≈ {fmtCC(r.revenue.sellingPricePerUnitCC, 2)}/unit
                           </span>
                         </div>
 
                         {/* 2. SELLER COST */}
-                        <div className="bg-card border border-border rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-primary/50 transition-all">
-                          <div className="absolute top-0 left-0 right-0 h-1 bg-primary/70"></div>
-                          <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">Seller Cost ({r.transaction.incoterm})</span>
+                        <div className="bg-card border border-slate-200 rounded-2xl p-4 shadow-sm text-center relative overflow-hidden group hover:border-sky-500/50 transition-all">
+                          <div className="absolute top-0 left-0 right-0 h-1 bg-sky-500/70"></div>
+                          <span className="text-[9px] font-medium text-slate-400 uppercase tracking-wider block mb-1">Seller Cost ({r.transaction.incoterm})</span>
                           <span className="text-sm font-bold text-foreground block leading-tight">
                             {fmtCC(r.sellerCost.amountCC)}
                           </span>
-                          <span className="text-[10px] font-medium text-muted-foreground block mt-1">
+                          <span className="text-[10px] font-medium text-slate-400 block mt-1">
                             ≈ {fmtOrig(r.sellerCost.amountOriginal, 0)} · {fmtCC(r.sellerCost.amountPerUnitCC, 2)}/u
                           </span>
                         </div>
@@ -3074,7 +3088,7 @@ export default function AnalysisView({
                             </div>
                           ))}
                         </div>
-                        <p className="text-[9px] text-muted-foreground text-center pt-2">
+                        <p className="text-[9px] text-slate-400 text-center pt-2">
                           TradeBridge verified calculation model • Currency rates refreshed daily • GCC unified customs classifications aligned with Saudi ZATCA standards.
                         </p>
                       </div>
