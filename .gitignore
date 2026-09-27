@@ -89,3 +89,12 @@ backend/_test50_report.txt
 
 # ===== Compiled test output =====
 backend/target/maven-status/
+
+# ===== Generated docs, diagrams & one-off generator scripts =====
+TradeWise_Chapters_4_5_6.docx
+TradeWise_Class_Diagram.docx
+TradeWise_Class_Diagram.html
+TradeWise_Class_Diagram.png
+TradeWise_Class_Diagram.svg
+generate_focused_class_diagram.py
+generate_tradewise_class_diagram.py
