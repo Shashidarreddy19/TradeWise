@@ -658,13 +658,58 @@ export default function AnalysisView({
     setExplainData(null);
     setExplainLoading(true);
     setAnalysisSubView('explain');
+
     const productObj = products.find(p => p.name === selectedAnalysisProduct);
-    const hs = productObj?.hscode?.replace('.','') || '';
+    const hs = productObj?.hscode?.replace(/\./g, '') || '';
+
+    if (!hs) {
+      addToast('Select a product with a valid HS code first', 'error');
+      setExplainLoading(false);
+      setAnalysisSubView('recommendations');
+      return;
+    }
+
+    // Pull the real recommendation drivers already computed for this country.
+    const reco = countryRecoData || {};
+    const complianceScore = reco?.compliance?.score ?? reco?.complianceScore ?? reco?.opportunityScore ?? null;
+    const dutyRate = reco?.tariff?.dutyRate ?? reco?.dutyRate ?? null;
+    const mlScore = reco?.opportunityScore ?? reco?.mlPrediction?.score ?? null;
+    const mlAvailable = reco?.mlPrediction?.available ?? (reco?.scoreSource === 'ML_MODEL_V4');
+
     try {
-      const res = await regulatoryApi.getCompliance(countryCode, hs);
-      setExplainData(res);
-    } catch (err) { addToast(err.message || 'Explain failed', 'error'); setAnalysisSubView('recommendations'); }
-    finally { setExplainLoading(false); }
+      const res = await aiApi.explainRecommendation({
+        country: countryName,
+        hsCode: hs,
+        productName: productObj?.name || selectedAnalysisProduct || '',
+        category: productObj?.category || '',
+        complianceScore,
+        dutyRate,
+        mlScore,
+        mlAvailable,
+      });
+
+      // Map AI response into the fields the explain view renders (product-wise, real data).
+      setExplainData({
+        explanation: res.explanation || '',
+        compliance_summary: res.compliance_summary || '',
+        required_certificates: normalizeItemList(res.required_certificates),
+        required_documents: normalizeItemList(res.required_documents),
+        import_restrictions: normalizeItemList(res.import_restrictions),
+        labeling_rules: normalizeItemList(res.labeling_rules),
+        aiGenerated: res.aiGenerated,
+        dataSource: res.dataSource,
+        sources: res.sources || [],
+      });
+
+      if (res.aiGenerated === false) {
+        addToast('AI narrative unavailable — showing verified knowledge-based explanation', 'info');
+      }
+    } catch (err) {
+      addToast(err.message || 'Explain failed', 'error');
+      setAnalysisSubView('recommendations');
+    } finally {
+      setExplainLoading(false);
+    }
   };
 
   //  Feature 4: Export Regulations 
@@ -1532,8 +1577,13 @@ export default function AnalysisView({
             {/* SUB-VIEW: EXPLAIN RECOMMENDATION */}
             {analysisSubView === 'explain' && (
               <div className="space-y-5 animate-in fade-in duration-300">
-                <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-xs font-bold text-indigo-700 flex items-center gap-2">
-                  <span>-</span><span>Explanation: Why export <strong>{selectedAnalysisProduct}</strong> to <strong>{explainCountry}</strong>?</span>
+                <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-xs font-bold text-indigo-700 flex items-center justify-between gap-2 flex-wrap">
+                  <span className="flex items-center gap-2"><span>-</span><span>Explanation: Why export <strong>{selectedAnalysisProduct}</strong> to <strong>{explainCountry}</strong>?</span></span>
+                  {explainData && (
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${explainData.aiGenerated ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {explainData.aiGenerated ? 'AI-Generated' : 'Knowledge-Based'}{explainData.dataSource ? ` · ${explainData.dataSource}` : ''}
+                    </span>
+                  )}
                 </div>
                 {explainLoading ? (
                   <div className="bg-white border border-slate-200 rounded-2xl p-12 flex flex-col items-center gap-4"><Loader2 className="w-8 h-8 text-indigo-500 animate-spin"/><span className="text-xs font-bold text-slate-500">Generating explanation</span></div>

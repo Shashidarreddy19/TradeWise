@@ -19,6 +19,16 @@ export const aiApi = {
   },
 
   /**
+   * POST /api/v1/ai/explain-recommendation — Product-wise AI explanation of why
+   * a destination country is recommended for a specific product.
+   * @param {object} payload { country, hsCode, productName, category,
+   *                           complianceScore, dutyRate, mlScore, mlAvailable }
+   */
+  explainRecommendation(payload) {
+    return post('/v1/ai/explain-recommendation', payload);
+  },
+
+  /**
    * POST /api/v1/ai/summarize-document — Document summarization
    * @param {string} text - document text content
    * @param {string} title - document title
