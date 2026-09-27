@@ -84,13 +84,15 @@ public class NvidiaAiService {
             "- Be precise and conservative: exporters rely on this for legal compliance.";
 
     /** Retry attempts for transient upstream errors. */
-    private static final int MAX_ATTEMPTS = 1;
+    private static final int MAX_ATTEMPTS = 2;
 
     public NvidiaAiService() {
-        // Fast timeouts: fail fast to local database fallback so UI stays responsive.
+        // Timeouts sized for the Nemotron-3-Ultra reasoning model, which can take
+        // tens of seconds to respond. If the call still fails, callers fall back to
+        // the structured knowledge base so the UI always shows real data.
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(4_000);   // 4s to connect
-        factory.setReadTimeout(8_000);     // 8s to read
+        factory.setConnectTimeout(5_000);    // 5s to connect
+        factory.setReadTimeout(60_000);      // 60s to read (large reasoning model)
         this.restTemplate = new RestTemplate(factory);
     }
 
