@@ -547,7 +547,7 @@ export default function AnalysisView({
     setComplianceCheckData(null);
     setRegulationsData(null);
     setGuidanceData(null);
-    setCalculatedCostBreakdown(null);
+    setCalculationResult(null);
     setCompletedChecklist({});
     setCountryRecoData(null);
     fetchCountryRecommendation(countryName);
