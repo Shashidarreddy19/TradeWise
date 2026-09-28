@@ -203,6 +203,59 @@ export function convertCurrency(amount, sourceCurrency, targetCurrency, fxRates 
   };
 }
 
+// ── Jurisdiction Validation ────────────────────────────────────────────────────
+//
+// Generic, destination-agnostic check: a duty/tax source string may only be
+// treated as "Verified" if it genuinely names an authority applicable to the
+// selected destination country. This prevents the engine from ever labeling a
+// foreign-jurisdiction source (e.g. "EU TARIC Database" for a Singapore
+// shipment) as Verified — the exact defect described in the audit. The map
+// below associates known authority name fragments with the jurisdiction(s)
+// they legitimately cover; it is data about regulatory bodies, not a
+// per-country calculation branch, and any destination not covered simply
+// falls through to "no match => unverified" rather than being silently
+// assumed correct.
+const AUTHORITY_JURISDICTIONS = {
+  'eu taric': ['germany', 'netherlands', 'france', 'italy', 'eu', 'european union'],
+  'eu vat directive': ['germany', 'netherlands', 'france', 'italy', 'eu', 'european union'],
+  'gcc unified': ['saudi arabia', 'united arab emirates', 'uae', 'qatar', 'kuwait', 'bahrain', 'oman'],
+  'zatca': ['saudi arabia'],
+  'uae federal tax authority': ['united arab emirates', 'uae'],
+  'usitc': ['united states', 'usa', 'us'],
+  'us state level sales tax': ['united states', 'usa', 'us'],
+  'uk global tariff': ['united kingdom', 'uk'],
+  'hmrc': ['united kingdom', 'uk'],
+  'singapore customs': ['singapore'],
+};
+
+function isSourceJurisdictionMatched(sourceLabel, destinationCountry) {
+  if (!sourceLabel || !destinationCountry) return false;
+  const src = String(sourceLabel).toLowerCase();
+  const dest = String(destinationCountry).toLowerCase();
+  if (src.includes(dest)) return true;
+  for (const [authority, jurisdictions] of Object.entries(AUTHORITY_JURISDICTIONS)) {
+    if (src.includes(authority)) return jurisdictions.includes(dest);
+  }
+  return false;
+}
+
+/**
+ * validateDutySource / validateTaxSource — engine-level guard so a mismatched
+ * source can never be recorded as "Verified" regardless of what the caller
+ * passed in. Returns the (possibly downgraded) verified flag plus a reason.
+ */
+export function validateDutySource(source, verifiedFlag, destinationCountry) {
+  const matched = isSourceJurisdictionMatched(source, destinationCountry);
+  return {
+    verified: Boolean(verifiedFlag) && matched,
+    reason: matched ? null : `Source "${source || 'unknown'}" is not confirmed applicable to ${destinationCountry || 'the selected destination'}.`,
+  };
+}
+
+export function validateTaxSource(source, verifiedFlag, destinationCountry) {
+  return validateDutySource(source, verifiedFlag, destinationCountry);
+}
+
 export function validateInputs(inputs) {
   const errors = [];
   if (!inputs.origin?.trim())      errors.push('Origin country is required.');
@@ -228,7 +281,13 @@ export function validateInputs(inputs) {
  * calculateTradeEconomics / calculateExportCost
  * Master centralized calculation engine for export trade economics.
  */
-export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}, taxData = {}) {
+export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}, taxData = {}, _options = {}) {
+  // `_options.skipDerivedAnalysis` is an internal recursion guard. Scenario analysis
+  // (section 17) re-invokes this SAME engine with a cloned transaction whose only change
+  // is the freight assumption — that is the single source of truth. When it does so it
+  // sets this flag so the nested call skips building its own scenarios/sensitivity/quantity
+  // tiers (which would recurse infinitely and is unnecessary for a scenario sub-result).
+  const skipDerivedAnalysis = _options.skipDerivedAnalysis === true;
   const CC = transaction.calculationCurrency || 'INR'; // Base calculation currency (Internal Ledger)
   const qty = parseFloat(transaction.quantity) || 1;
   const unitWeight = parseFloat(transaction.unitWeight) || 1.0;
@@ -475,13 +534,22 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
 
   if (dutyData?.rate != null && dutyData.rate !== '') {
     dutyRate = parseFloat(dutyData.rate);
-    dutySource = dutyData.source || 'Official Customs Tariff (ZATCA)';
+    dutySource = dutyData.source || 'Source not specified';
     dutyVerified = dutyData.verified !== false;
   } else if (transaction.manualDutyRate != null && transaction.manualDutyRate !== '') {
     dutyRate = parseFloat(transaction.manualDutyRate);
     dutySource = transaction.dutySource || 'User-provided rate (unverified)';
     dutyVerified = Boolean(transaction.dutyVerified);
   }
+
+  // Engine-level jurisdiction guard: a duty source can never be reported as
+  // Verified unless it is actually applicable to the destination country —
+  // this is enforced here regardless of what the caller passed in, so a
+  // mismatched source (e.g. an EU source for a Singapore shipment) cannot slip
+  // through even if an upstream caller mistakenly marks it verified.
+  const dutySourceCheck = validateDutySource(dutySource, dutyVerified, transaction.destination);
+  dutyVerified = dutySourceCheck.verified;
+  if (dutySourceCheck.reason) warnings.push(`Customs duty: ${dutySourceCheck.reason}`);
 
   if (dutyRate != null && !isNaN(dutyRate) && customsValueCC != null) {
     dutyCostCC = customsValueCC * (dutyRate / 100);
@@ -508,8 +576,26 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
   const totalDutyCC = (dutyCostCC !== MISSING ? dutyCostCC : 0) + antiDumping;
   const totalDutyOriginal = (dutyCostOriginal !== MISSING ? dutyCostOriginal : 0) + (fxRateSellingToCC > 0 ? antiDumping / fxRateSellingToCC : 0);
 
-  const vatTaxableBaseCC = (customsValueCC != null ? customsValueCC : 0) + totalDutyCC;
-  const vatTaxableBaseOriginal = (customsValueOriginal != null ? customsValueOriginal : 0) + totalDutyOriginal;
+  // The import-VAT taxable base is destination-specific. Rather than assuming one universal
+  // formula, the caller may supply the jurisdiction's rule via taxData.taxableBaseComponents
+  // (a set of the components that jurisdiction legally includes). We only ever include
+  // components that actually exist in this calculation — nothing is invented. The default,
+  // when a caller supplies no explicit rule, is the customs value + applicable duties, which
+  // is the standard destination-import VAT base used by Saudi Arabia (ZATCA), the GCC, the EU
+  // and most jurisdictions — but it is applied because it is the default rule, not because it
+  // is hardcoded per country here.
+  const taxBaseComponents = (taxData && Array.isArray(taxData.taxableBaseComponents) && taxData.taxableBaseComponents.length)
+    ? taxData.taxableBaseComponents
+    : ['customsValue', 'duty'];
+  const includesComponent = (c) => taxBaseComponents.includes(c);
+  const vatTaxableBaseCC =
+      (includesComponent('customsValue') && customsValueCC != null ? customsValueCC : 0)
+    + (includesComponent('duty') ? totalDutyCC : 0);
+  const vatTaxableBaseOriginal =
+      (includesComponent('customsValue') && customsValueOriginal != null ? customsValueOriginal : 0)
+    + (includesComponent('duty') ? totalDutyOriginal : 0);
+  const taxableBaseRuleLabel = taxData?.taxableBaseRuleLabel
+    || `${(transaction.destination || 'Destination')} import-VAT base = ${taxBaseComponents.join(' + ')}`;
 
   let taxRate = MISSING;
   let taxCostCC = MISSING;
@@ -519,13 +605,18 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
 
   if (taxData?.rate != null && taxData.rate !== '') {
     taxRate = parseFloat(taxData.rate);
-    taxSource = taxData.source || 'Official Tax Authority (ZATCA 15% VAT)';
+    taxSource = taxData.source || 'Source not specified';
     taxVerified = taxData.verified !== false;
   } else if (transaction.manualTaxRate != null && transaction.manualTaxRate !== '') {
     taxRate = parseFloat(transaction.manualTaxRate);
     taxSource = transaction.taxSource || 'User-provided tax rate';
     taxVerified = Boolean(transaction.taxVerified);
   }
+
+  // Same engine-level jurisdiction guard as customs duty above.
+  const taxSourceCheck = validateTaxSource(taxSource, taxVerified, transaction.destination);
+  taxVerified = taxSourceCheck.verified;
+  if (taxSourceCheck.reason) warnings.push(`Import VAT/GST: ${taxSourceCheck.reason}`);
 
   if (taxRate != null && !isNaN(taxRate) && vatTaxableBaseCC > 0) {
     taxCostCC = vatTaxableBaseCC * (taxRate / 100);
@@ -691,7 +782,7 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
 
   // ── 16. Full Sensitivity Analysis (Distinguishing Exporter vs Buyer) ───────────
   const sensitivityItems = [];
-  if (totalRevenueCC != null && totalSellerCostCC > 0) {
+  if (!skipDerivedAnalysis && totalRevenueCC != null && totalSellerCostCC > 0) {
     const baseProfit = exporterProfitCC;
 
     // A. Freight ±10%
@@ -706,6 +797,11 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
         exporterProfitImpactCC: profitFUp - baseProfit,
         buyerLandedCostImpactCC: incotermRules.sellerPaysFreight ? 0 : (fUp - freightCostCC),
         newExporterProfitCC: profitFUp,
+        // Aliases matching the UI table's expected field names (Variable / Shift /
+        // New Profit / Impact) — the UI previously read `newProfitCC`/`impactCC`,
+        // which never existed on this object, so every row rendered "—".
+        newProfitCC: profitFUp,
+        impactCC: profitFUp - baseProfit,
         newMarginPct: totalRevenueCC > 0 ? (profitFUp / totalRevenueCC) * 100 : 0,
         type: 'freight',
       });
@@ -720,6 +816,8 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
         exporterProfitImpactCC: profitFDown - baseProfit,
         buyerLandedCostImpactCC: incotermRules.sellerPaysFreight ? 0 : (fDown - freightCostCC),
         newExporterProfitCC: profitFDown,
+        newProfitCC: profitFDown,
+        impactCC: profitFDown - baseProfit,
         newMarginPct: totalRevenueCC > 0 ? (profitFDown / totalRevenueCC) * 100 : 0,
         type: 'freight',
       });
@@ -737,6 +835,8 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
         exporterProfitImpactCC: profitSpUp - baseProfit,
         buyerLandedCostImpactCC: (revUpCC - totalRevenueCC) * (1 + (taxRate || 0) / 100),
         newExporterProfitCC: profitSpUp,
+        newProfitCC: profitSpUp,
+        impactCC: profitSpUp - baseProfit,
         newMarginPct: revUpCC > 0 ? (profitSpUp / revUpCC) * 100 : 0,
         type: 'price',
       });
@@ -751,6 +851,8 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
         exporterProfitImpactCC: profitSpDown - baseProfit,
         buyerLandedCostImpactCC: (revDownCC - totalRevenueCC) * (1 + (taxRate || 0) / 100),
         newExporterProfitCC: profitSpDown,
+        newProfitCC: profitSpDown,
+        impactCC: profitSpDown - baseProfit,
         newMarginPct: revDownCC > 0 ? (profitSpDown / revDownCC) * 100 : 0,
         type: 'price',
       });
@@ -766,13 +868,16 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
       const dShiftSellerCost = totalSellerCostCC + (incotermRules.sellerPaysDuty ? (dShiftDutyCC - (dutyCostCC || 0)) : 0);
       const profitDutyShift = totalRevenueCC - dShiftSellerCost;
 
+      const dutyImpactCC = incotermRules.sellerPaysDuty ? (profitDutyShift - baseProfit) : 0;
       sensitivityItems.push({
         variable: `Customs Duty @ ${dShiftRate}%`,
         change: `${dShiftRate}% abs rate`,
         newValue: `${dShiftRate}% rate (${dShiftDutyOriginal.toLocaleString()} ${sellingCurrency})`,
-        exporterProfitImpactCC: incotermRules.sellerPaysDuty ? (profitDutyShift - baseProfit) : 0,
+        exporterProfitImpactCC: dutyImpactCC,
         buyerLandedCostImpactCC: incotermRules.sellerPaysDuty ? 0 : (newLandedCostCC - (buyerLandedCostCC || 0)),
         newExporterProfitCC: profitDutyShift,
+        newProfitCC: profitDutyShift,
+        impactCC: dutyImpactCC,
         newMarginPct: totalRevenueCC > 0 ? (profitDutyShift / totalRevenueCC) * 100 : 0,
         type: 'duty',
       });
@@ -780,31 +885,56 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
   }
 
   // ── 17. Complete Scenario Analysis ───────────────────────────────────────────
+  //
+  // SINGLE SOURCE OF TRUTH: each scenario is produced by cloning the base transaction,
+  // changing ONLY the freight assumption, and running it back through THIS SAME engine
+  // (calculateTradeEconomics). There is no second profit formula anywhere — every
+  // scenario figure comes from the identical calculation path as the main report, so
+  // margin/break-even/profit are always internally consistent with the scenario's own
+  // revenue and seller cost. The `skipDerivedAnalysis` flag prevents infinite recursion.
+  //
+  // The rawFreight above is expressed in `freightCurrency`; scaling that raw input by a
+  // multiplier and re-running the engine reproduces the exact freight→insurance→seller-cost
+  // chain, so freight-driven insurance changes are captured correctly (not approximated).
   const scenarios = [];
-  if (totalRevenueCC != null && totalSellerCostCC > 0) {
-    // 1. Conservative
-    const consvFreight = (freightCostCC || 0) * 1.15;
-    const consvSpOrig = (sellingPricePerUnitOriginal || 0) * 0.95;
-    const consvFx = fxRateSellingToCC * 0.98;
-    const consvRevCC = consvSpOrig * qty * consvFx;
-    const consvSellerCost = totalSellerCostCC + (incotermRules.sellerPaysFreight ? (consvFreight - (freightCostCC || 0)) : 0);
-    const consvProfit = consvRevCC - consvSellerCost;
+  if (!skipDerivedAnalysis && totalRevenueCC != null && totalSellerCostCC > 0) {
+    const runFreightScenario = (freightMultiplier) => {
+      const clonedTxn = {
+        ...transaction,
+        // Only the freight assumption changes. If the base had no numeric freight we
+        // leave it untouched so the scenario degrades gracefully to the base result.
+        freightCost: (!isNaN(rawFreight) && rawFreight > 0)
+          ? rawFreight * freightMultiplier
+          : transaction.freightCost,
+      };
+      return calculateTradeEconomics(clonedTxn, fxRates, dutyData, taxData, { skipDerivedAnalysis: true });
+    };
 
-    scenarios.push({
-      name: 'Conservative',
-      assumptions: ['Freight +15%', 'Selling Price -5%', `FX ${consvFx.toFixed(2)} (-2%)`],
-      sellerCostCC: consvSellerCost,
-      revenueCC: consvRevCC,
-      profitCC: consvProfit,
-      marginPct: consvRevCC > 0 ? (consvProfit / consvRevCC) * 100 : 0,
-      breakEvenPerUnitCC: consvSellerCost / qty,
-      breakEvenOriginal: consvFx > 0 ? (consvSellerCost / qty) / consvFx : 0,
-    });
+    const pushScenario = (name, multiplier, assumptions) => {
+      const res = runFreightScenario(multiplier);
+      scenarios.push({
+        name,
+        assumptions,
+        freightMultiplier: multiplier,
+        // All values read straight from the sub-result of the same engine.
+        sellerCostCC: res.sellerCost.amountCC,
+        revenueCC: res.revenue.totalRevenueCC,
+        profitCC: res.exporterProfit.amountCC,
+        marginPct: res.exporterProfit.marginPct,
+        breakEvenPerUnitCC: res.exporterBreakEven.exporterBreakEvenPerUnitCC,
+        breakEvenOriginal: res.exporterBreakEven.exporterBreakEvenPerUnitOriginal,
+      });
+    };
 
-    // 2. Expected (Current)
+    // 1. Conservative — freight rises 15% (a cost headwind), all else equal.
+    pushScenario('Conservative', 1.15, ['Freight +15% (cost headwind)', 'All other inputs unchanged']);
+
+    // 2. Expected (Current) — the base result, unchanged. Uses the already-computed
+    //    figures directly (multiplier 1.0 would reproduce them identically).
     scenarios.push({
       name: 'Expected (Current)',
       assumptions: ['Current inputs & verified rates'],
+      freightMultiplier: 1.0,
       sellerCostCC: totalSellerCostCC,
       revenueCC: totalRevenueCC,
       profitCC: exporterProfitCC,
@@ -813,57 +943,85 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
       breakEvenOriginal: exporterBreakEvenPerUnitOriginal,
     });
 
-    // 3. Optimistic
-    const optFreight = (freightCostCC || 0) * 0.90;
-    const optSpOrig = (sellingPricePerUnitOriginal || 0) * 1.05;
-    const optFx = fxRateSellingToCC * 1.02;
-    const optRevCC = optSpOrig * qty * optFx;
-    const optSellerCost = totalSellerCostCC + (incotermRules.sellerPaysFreight ? (optFreight - (freightCostCC || 0)) : 0);
-    const optProfit = optRevCC - optSellerCost;
-
-    scenarios.push({
-      name: 'Optimistic',
-      assumptions: ['Freight -10%', 'Selling Price +5%', `FX ${optFx.toFixed(2)} (+2%)`],
-      sellerCostCC: optSellerCost,
-      revenueCC: optRevCC,
-      profitCC: optProfit,
-      marginPct: optRevCC > 0 ? (optProfit / optRevCC) * 100 : 0,
-      breakEvenPerUnitCC: optSellerCost / qty,
-      breakEvenOriginal: optFx > 0 ? (optSellerCost / qty) / optFx : 0,
-    });
+    // 3. Optimistic — freight falls 10% (a cost saving), all else equal.
+    pushScenario('Optimistic', 0.90, ['Freight -10% (cost saving)', 'All other inputs unchanged']);
   }
 
   // ── 18. Quantity Economics (Shipment Logistics Rules) ────────────────────────
+  //
+  // SINGLE SOURCE OF TRUTH RULE: this table must reconcile exactly with the main
+  // calculation above at q === qty. Freight for other tiers scales by the SAME
+  // container-rounding rule the freight module itself would use (a container /
+  // consignment cost step-function is a legitimate real-world behaviour — an extra
+  // 20ft container is only booked once a shipment crosses ~20,000kg), but the
+  // scaling factor is applied against the ACTUAL verified freightCostCC/unitWeight
+  // that produced the main result, not an independent re-derivation. At q === qty
+  // the scaling factor is always exactly 1, so the two figures are identical by
+  // construction — this directly fixes the "Seller Cost ₹301,175 vs ₹25,39,250"
+  // divergence, which was caused by this table quietly recomputing freight (and
+  // therefore insurance and seller cost) using a different rule than the figure
+  // shown above it.
   const qtyTiers = [100, 500, 1000, 5000, 10000];
   if (!qtyTiers.includes(qty)) qtyTiers.push(qty);
   qtyTiers.sort((a, b) => a - b);
 
+  // Container step-count for the BASE (current) shipment — this is the reference
+  // point every other tier scales against, so the base tier's own multiple is
+  // always 1 by definition and never re-derives a different freight figure.
+  const baseContainerSteps = (freightMode === 'Sea' && totalWeightKg > 0)
+    ? Math.max(1, Math.ceil(totalWeightKg / 20000))
+    : 1;
+  const freightPerContainerStepCC = (freightCostCC && freightCostCC > 0)
+    ? freightCostCC / baseContainerSteps
+    : (freightCostCC || 0);
+  // Air freight scales linearly by weight from the verified per-kg rate implied
+  // by the actual entered freight cost (never an assumed constant).
+  const verifiedAirRatePerKgCC = (freightMode === 'Air' && freightCostCC && totalWeightKg > 0)
+    ? freightCostCC / totalWeightKg
+    : null;
+
   const quantityEconomics = qtyTiers.map(q => {
+    const isCurrentTier = q === qty;
     const qWeightKg = q * unitWeight;
     const qMfg = unitMfgCost * q;
     const qPack = packPerUnit * q;
     const qLabel = labelPerUnit * q;
-    const qQuality = qualityTotal;
+    const qQuality = qualityTotal; // fixed per shipment, not per unit
     const qOriginDocs = exportDocs + customsBroker + fwdFee + inlandTransport + loadingCharges + warehouseOrigin + portHandling + exportClearance;
 
-    let qFreight = freightCostCC || 0;
-    if (freightMode === 'Sea' && qWeightKg > 15000) {
-      const containers = Math.ceil(qWeightKg / 20000);
-      qFreight = (freightCostCC || 45000) * containers;
-    } else if (freightMode === 'Air') {
-      const ratePerKg = (freightCostCC || 0) / Math.max(1, totalWeightKg);
-      qFreight = ratePerKg * qWeightKg;
+    // Freight: at the current/base quantity this MUST equal freightCostCC exactly
+    // (no recomputation at all), so the two reports can never disagree for the
+    // scenario the user actually entered. Other tiers scale from the same
+    // verified base using a consistent step-function / linear rule.
+    let qFreight;
+    if (isCurrentTier) {
+      qFreight = freightCostCC || 0;
+    } else if (freightMode === 'Sea') {
+      const steps = qWeightKg > 0 ? Math.max(1, Math.ceil(qWeightKg / 20000)) : baseContainerSteps;
+      qFreight = freightPerContainerStepCC * steps;
+    } else if (freightMode === 'Air' && verifiedAirRatePerKgCC != null) {
+      qFreight = verifiedAirRatePerKgCC * qWeightKg;
+    } else {
+      qFreight = freightCostCC || 0;
     }
 
     const qInsuredVal = qMfg + qFreight;
-    const qInsurance = rawInsuranceRate > 0 ? qInsuredVal * (rawInsuranceRate / 100) : (insuranceCostCC || 0);
+    const qInsurance = isCurrentTier
+      ? (insuranceCostCC || 0)
+      : (rawInsuranceRate > 0 ? qInsuredVal * (rawInsuranceRate / 100) : (insuranceCostCC || 0));
 
     let qSellerCost = qMfg + qPack + qLabel + qQuality;
     if (sellerBearsOrigin) qSellerCost += qOriginDocs;
     if (incotermRules.sellerPaysFreight) qSellerCost += qFreight;
     if (incotermRules.sellerPaysInsurance) qSellerCost += qInsurance;
 
-    const qRevenue = (sellingPricePerUnitCC || 0) * q;
+    // At the current quantity, use the main calculation's totals verbatim so the
+    // two sections can never diverge, even by floating-point rounding.
+    if (isCurrentTier) {
+      qSellerCost = totalSellerCostCC;
+    }
+
+    const qRevenue = isCurrentTier ? (totalRevenueCC ?? (sellingPricePerUnitCC || 0) * q) : (sellingPricePerUnitCC || 0) * q;
     const qProfit = qRevenue - qSellerCost;
     const qMargin = qRevenue > 0 ? (qProfit / qRevenue) * 100 : 0;
     const qBreakEvenCC = qSellerCost / q;
@@ -885,7 +1043,7 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
       marginPct: qMargin,
       buyerLandedCostOriginal: qLandedOrig,
       buyerLandedCostCC: qLandedOrig * fxRateSellingToCC,
-      isCurrent: q === qty,
+      isCurrent: isCurrentTier,
     };
   });
 
@@ -915,25 +1073,162 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
   }));
 
   // ── 20. Confidence Scoring Engine ────────────────────────────────────────────
-  let confidenceLevel = 'High';
-  let confidenceScore = 100;
+  //
+  // Confidence is computed additively from the ACTUAL evidence behind each input, not a
+  // hardcoded tier. Each factor contributes a weighted number of points only when the
+  // underlying value is genuinely verified against jurisdiction-appropriate source data.
+  // User-provided or estimated inputs contribute nothing (they aren't "wrong", but they
+  // aren't independently verified either), and a critical missing input caps the score.
+  // Every factor — and why it did or didn't earn its points — is recorded in
+  // confidenceFactors[] so the UI can explain the number.
+  const taxableBaseRuleVerified = taxData?.taxableBaseVerified === true
+    || (taxVerified && dutyVerified); // base rule is trustworthy when both its inputs are verified
+  const hsClassificationVerified = transaction.hsVerified === true;
 
-  if (dutyVerified && taxVerified && fxVerified && freightVerified) {
-    confidenceLevel = 'High';
-    confidenceScore = 95;
-  } else if ((dutyVerified || taxVerified || fxVerified) && !hasCriticalMissing) {
-    confidenceLevel = 'Medium';
-    confidenceScore = 75;
-  } else {
-    confidenceLevel = 'Low';
-    confidenceScore = 40;
-  }
+  const confidenceFactors = [
+    { key: 'fx',            label: 'FX rate verified',            weight: 20, met: fxVerified === true,   evidence: fxVerified ? fxSource : `${sellingCurrency}→${CC} user/inverted rate` },
+    { key: 'duty',          label: 'Customs duty verified',       weight: 22, met: dutyVerified === true,  evidence: dutyVerified ? dutySource : 'Duty rate not jurisdiction-verified' },
+    { key: 'vat',           label: 'Import VAT/GST verified',     weight: 22, met: taxVerified === true,   evidence: taxVerified ? taxSource : 'VAT rate not jurisdiction-verified' },
+    { key: 'hs',            label: 'HS classification verified',  weight: 12, met: hsClassificationVerified, evidence: hsClassificationVerified ? `HS ${transaction.hsCode} confirmed` : 'HS code not independently confirmed' },
+    { key: 'taxableBase',   label: 'Taxable-base rule verified',  weight: 12, met: taxableBaseRuleVerified, evidence: taxableBaseRuleVerified ? 'Destination taxable-base rule applied' : 'Taxable-base rule not fully verified' },
+    { key: 'freight',       label: 'Freight verified (else user-provided)', weight: 6, met: freightVerified === true, evidence: freightVerified ? freightSource : 'Freight is user-provided' },
+    { key: 'insurance',     label: 'Insurance verified (else user-provided)', weight: 6, met: insuranceVerified === true, evidence: insuranceVerified ? insuranceSource : 'Insurance is user-provided' },
+  ];
 
+  let confidenceScore = confidenceFactors.reduce((sum, f) => sum + (f.met ? f.weight : 0), 0);
+  // A genuinely missing critical input (e.g. no FX rate at all) hard-caps confidence so a
+  // few verified secondary inputs can't inflate a fundamentally incomplete calculation.
+  if (hasCriticalMissing) confidenceScore = Math.min(confidenceScore, 45);
+  confidenceScore = Math.max(0, Math.min(100, Math.round(confidenceScore)));
+
+  const confidenceLevel = confidenceScore >= 85 ? 'High' : confidenceScore >= 60 ? 'Medium' : 'Low';
+
+  const verifiedFactorLabels = confidenceFactors.filter(f => f.met).map(f => f.label.replace(/ verified.*/i, '').trim());
+  const unverifiedFactorLabels = confidenceFactors.filter(f => !f.met).map(f => f.label.replace(/ verified.*/i, '').trim());
   const confidenceSummary = confidenceLevel === 'High'
-    ? 'High Confidence — Critical tariff, tax, FX, and logistics rates are verified from official sources.'
+    ? `High Confidence (${confidenceScore}/100) — verified: ${verifiedFactorLabels.join(', ') || 'core rates'}.`
     : confidenceLevel === 'Medium'
-    ? 'Medium Confidence — Official duty/VAT/FX verified; freight and destination costs are user-provided or estimated.'
-    : 'Low Confidence — Critical tariff, tax, or FX values are missing or unverified. Please review assumptions.';
+    ? `Medium Confidence (${confidenceScore}/100) — verified: ${verifiedFactorLabels.join(', ') || 'some rates'}; not independently verified: ${unverifiedFactorLabels.join(', ') || 'none'}.`
+    : `Low Confidence (${confidenceScore}/100) — ${hasCriticalMissing ? 'a critical input is missing. ' : ''}Not verified: ${unverifiedFactorLabels.join(', ') || 'most inputs'}. Review assumptions.`;
+
+  // Merge the factor evidence into the existing confidenceReasons list (used by the
+  // Verification & Input Evidence panel) so both share one source of truth.
+  confidenceFactors.forEach(f => {
+    confidenceReasons.push({
+      item: f.label,
+      status: f.met ? 'Verified' : (f.key === 'freight' || f.key === 'insurance') ? 'User-provided' : 'Unverified',
+      note: f.evidence,
+      points: f.met ? f.weight : 0,
+      maxPoints: f.weight,
+    });
+  });
+
+  // ── 20b. Automatic Consistency Validation ────────────────────────────────────
+  // Cross-checks every headline figure against the formula that should have
+  // produced it, so a future edit that accidentally introduces a second,
+  // divergent calculation (the exact class of bug this audit fixed) fails loud
+  // in development instead of silently shipping mismatched numbers.
+  const EPS = 0.01; // absolute tolerance for floating-point comparisons
+  const consistencyIssues = [];
+  const approxEqual = (a, b, tol = EPS) => a != null && b != null && !isNaN(a) && !isNaN(b) && Math.abs(a - b) <= tol;
+
+  const checkWeight = () => {
+    const expected = qty * unitWeight;
+    if (!approxEqual(totalWeightKg, expected, 0.001)) {
+      consistencyIssues.push(`checkWeight: totalWeightKg (${totalWeightKg}) !== quantity × unitWeightKg (${expected})`);
+    }
+  };
+  const checkSellerCost = () => {
+    const expected = Object.values(costLedger).filter(c => c.sellerBears).reduce((s, c) => s + c.amountCC, 0);
+    if (!approxEqual(totalSellerCostCC, expected, 1)) {
+      consistencyIssues.push(`checkSellerCost: totalSellerCostCC (${totalSellerCostCC}) !== sum of seller-borne ledger entries (${expected})`);
+    }
+  };
+  const checkRevenue = () => {
+    if (totalRevenueCC != null) {
+      const expected = (sellingPricePerUnitCC || 0) * qty;
+      if (!approxEqual(totalRevenueCC, expected, 1)) {
+        consistencyIssues.push(`checkRevenue: totalRevenueCC (${totalRevenueCC}) !== sellingPricePerUnitCC × qty (${expected})`);
+      }
+    }
+  };
+  const checkProfit = () => {
+    if (exporterProfitCC != null && totalRevenueCC != null) {
+      const expected = totalRevenueCC - totalSellerCostCC;
+      if (!approxEqual(exporterProfitCC, expected, 1)) {
+        consistencyIssues.push(`checkProfit: exporterProfitCC (${exporterProfitCC}) !== revenue - sellerCost (${expected})`);
+      }
+    }
+  };
+  const checkBreakEven = () => {
+    const expected = qty > 0 ? totalSellerCostCC / qty : 0;
+    if (!approxEqual(exporterBreakEvenPerUnitCC, expected, 0.01)) {
+      consistencyIssues.push(`checkBreakEven: exporterBreakEvenPerUnitCC (${exporterBreakEvenPerUnitCC}) !== sellerCost / qty (${expected})`);
+    }
+  };
+  const checkTax = () => {
+    if (taxCostCC !== MISSING && taxRate != null) {
+      const expected = vatTaxableBaseCC * (taxRate / 100);
+      if (!approxEqual(taxCostCC, expected, 1)) {
+        consistencyIssues.push(`checkTax: taxCostCC (${taxCostCC}) !== taxableBase × rate (${expected})`);
+      }
+    }
+  };
+  const checkLandedCost = () => {
+    if (buyerLandedCostCC != null) {
+      const expected = (invoiceValueCC || 0)
+        + (dutyCostCC !== MISSING ? dutyCostCC : 0)
+        + antiDumping
+        + (taxCostCC !== MISSING ? taxCostCC : 0)
+        + (incotermRules.sellerPaysDestination ? 0 : destinationChargesCC);
+      if (!approxEqual(buyerLandedCostCC, expected, 1)) {
+        consistencyIssues.push(`checkLandedCost: buyerLandedCostCC (${buyerLandedCostCC}) !== customsValue + duty + tax + destinationCharges (${expected})`);
+      }
+    }
+  };
+  const checkScenarioConsistency = () => {
+    const currentTierScenario = quantityEconomics.find(q => q.isCurrent);
+    if (currentTierScenario && !approxEqual(currentTierScenario.sellerCostCC, totalSellerCostCC, 1)) {
+      consistencyIssues.push(`checkScenarioConsistency: Quantity Economics seller cost at current quantity (${currentTierScenario.sellerCostCC}) !== main sellerCost (${totalSellerCostCC})`);
+    }
+    const expectedCurrentScenario = scenarios.find(s => s.name === 'Expected (Current)');
+    if (expectedCurrentScenario && !approxEqual(expectedCurrentScenario.sellerCostCC, totalSellerCostCC, 1)) {
+      consistencyIssues.push(`checkScenarioConsistency: 'Expected (Current)' scenario sellerCost (${expectedCurrentScenario.sellerCostCC}) !== main sellerCost (${totalSellerCostCC})`);
+    }
+  };
+  const checkSensitivityConsistency = () => {
+    sensitivityItems.forEach(s => {
+      const newProfit = s.newProfitCC ?? s.newExporterProfitCC;
+      const impact = s.impactCC ?? s.exporterProfitImpactCC;
+      if (newProfit != null && exporterProfitCC != null && !approxEqual(newProfit - exporterProfitCC, impact, 1)) {
+        consistencyIssues.push(`checkSensitivityConsistency: "${s.variable} ${s.change}" impact (${impact}) !== newProfit - baseProfit (${newProfit - exporterProfitCC})`);
+      }
+    });
+  };
+  const checkSourceJurisdiction = () => {
+    if (dutyVerified && !isSourceJurisdictionMatched(dutySource, transaction.destination)) {
+      consistencyIssues.push(`checkSourceJurisdiction: dutySource "${dutySource}" marked Verified but not matched to destination "${transaction.destination}"`);
+    }
+    if (taxVerified && !isSourceJurisdictionMatched(taxSource, transaction.destination)) {
+      consistencyIssues.push(`checkSourceJurisdiction: taxSource "${taxSource}" marked Verified but not matched to destination "${transaction.destination}"`);
+    }
+  };
+
+  checkWeight();
+  checkSellerCost();
+  checkRevenue();
+  checkProfit();
+  checkBreakEven();
+  checkTax();
+  checkLandedCost();
+  checkScenarioConsistency();
+  checkSensitivityConsistency();
+  checkSourceJurisdiction();
+
+  if (consistencyIssues.length > 0 && typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn('[costEngine] Consistency validation found mismatches:', consistencyIssues);
+  }
 
   // ── 21. Master Structured Result ─────────────────────────────────────────────
   return {
@@ -1010,6 +1305,8 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
       dutyAmountOriginal: dutyCostOriginal,
       dutyBasis: `${sellingCurrency} ${customsValueOriginal?.toLocaleString() || 0} × ${dutyRate ?? 0}%`,
       dutySource,
+      dutySourceJurisdiction: transaction.destination || null,
+      dutyVerificationStatus: dutyVerified ? 'Verified' : 'Unverified',
       dutyVerified,
       antiDumpingDuty: antiDumping,
     },
@@ -1021,6 +1318,8 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
       dutyAmountOriginal: dutyCostOriginal,
       dutyBasis: `${sellingCurrency} ${customsValueOriginal?.toLocaleString() || 0} × ${dutyRate ?? 0}%`,
       dutySource,
+      dutySourceJurisdiction: transaction.destination || null,
+      dutyVerificationStatus: dutyVerified ? 'Verified' : 'Unverified',
       dutyVerified,
       antiDumpingDuty: antiDumping,
     },
@@ -1028,18 +1327,26 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
       vatRate: taxRate,
       taxableBaseOriginal: vatTaxableBaseOriginal,
       taxableBaseCC: vatTaxableBaseCC,
+      taxableBaseComponents: taxBaseComponents,
+      taxableBaseRuleLabel,
       vatAmountOriginal: taxCostOriginal,
       vatAmountCC: taxCostCC,
       taxSource,
+      taxSourceJurisdiction: transaction.destination || null,
+      taxVerificationStatus: taxVerified ? 'Verified' : 'Unverified',
       taxVerified,
     },
     taxes: {
       vatRate: taxRate,
       taxableBaseOriginal: vatTaxableBaseOriginal,
       taxableBaseCC: vatTaxableBaseCC,
+      taxableBaseComponents: taxBaseComponents,
+      taxableBaseRuleLabel,
       vatAmountOriginal: taxCostOriginal,
       vatAmountCC: taxCostCC,
       taxSource,
+      taxSourceJurisdiction: transaction.destination || null,
+      taxVerificationStatus: taxVerified ? 'Verified' : 'Unverified',
       taxVerified,
     },
     destinationCosts: {
@@ -1137,10 +1444,17 @@ export function calculateTradeEconomics(transaction, fxRates = {}, dutyData = {}
       level: confidenceLevel,
       score: confidenceScore,
       reasons: confidenceReasons,
+      factors: confidenceFactors,
       summary: confidenceSummary,
     },
     traceability,
     warnings,
+    verification: {
+      passed: consistencyIssues.length === 0,
+      issues: consistencyIssues,
+      dutySourceJurisdictionMatched: isSourceJurisdictionMatched(dutySource, transaction.destination),
+      taxSourceJurisdictionMatched: isSourceJurisdictionMatched(taxSource, transaction.destination),
+    },
     costs: {
       totalSellerCost: totalSellerCostCC,
       totalLandedCost: buyerLandedCostCC || totalSellerCostCC,

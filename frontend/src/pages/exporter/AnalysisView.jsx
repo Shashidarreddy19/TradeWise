@@ -161,13 +161,15 @@ export default function AnalysisView({
   const [costDestDelivery, setCostDestDelivery] = useState('4500');
   const [costDestOther, setCostDestOther] = useState('0');
 
-  // E. Duties & Taxes (Verified & User-provided)
+  // E. Duties & Taxes (Verified & User-provided) — start unverified with no
+  // destination-specific claim until the country-aware lookup below resolves;
+  // this avoids ever showing a stale/foreign source as "Verified" by default.
   const [costManualDutyRate, setCostManualDutyRate] = useState('0');
-  const [costDutySource, setCostDutySource] = useState('GCC Unified Customs Tariff (ZATCA)');
-  const [costDutyVerified, setCostDutyVerified] = useState(true);
-  const [costManualTaxRate, setCostManualTaxRate] = useState('15');
-  const [costTaxSource, setCostTaxSource] = useState('ZATCA Standard 15% VAT');
-  const [costTaxVerified, setCostTaxVerified] = useState(true);
+  const [costDutySource, setCostDutySource] = useState('Not yet looked up');
+  const [costDutyVerified, setCostDutyVerified] = useState(false);
+  const [costManualTaxRate, setCostManualTaxRate] = useState('0');
+  const [costTaxSource, setCostTaxSource] = useState('Not yet looked up');
+  const [costTaxVerified, setCostTaxVerified] = useState(false);
   const [costAntiDumpingDuty, setCostAntiDumpingDuty] = useState('0');
   const [costSafeguardDuty, setCostSafeguardDuty] = useState('0');
   const [costOtherGovtCharges, setCostOtherGovtCharges] = useState('0');
@@ -196,49 +198,115 @@ export default function AnalysisView({
     if (productObj?.price) setCostUnitCost(String(productObj.price));
     if (productObj?.weight) setCostUnitWeight(String(productObj.weight));
 
-    // Destination currency and official tariff presets
-    if (selectedCountry === 'Saudi Arabia') {
-      setCostSellingCurrency('SAR');
-      setCostManualDutyRate('0'); // 0% MFN for Rice
-      setCostDutySource('GCC Unified Tariff (Rice Exemption)');
-      setCostDutyVerified(true);
-      setCostManualTaxRate('15'); // 15% VAT ZATCA
-      setCostTaxSource('Saudi ZATCA 15% Standard VAT');
-      setCostTaxVerified(true);
-    } else if (selectedCountry === 'United States') {
-      setCostSellingCurrency('USD');
-      setCostManualDutyRate('3.5');
-      setCostDutySource('USITC HTS Tariff Database');
-      setCostDutyVerified(true);
-      setCostManualTaxRate('0');
-      setCostTaxSource('US State Level Sales Tax');
-      setCostTaxVerified(true);
-    } else if (selectedCountry === 'United Arab Emirates') {
-      setCostSellingCurrency('AED');
-      setCostManualDutyRate('5.0');
-      setCostDutySource('GCC Unified Customs Tariff');
-      setCostDutyVerified(true);
-      setCostManualTaxRate('5.0');
-      setCostTaxSource('UAE Federal Tax Authority');
-      setCostTaxVerified(true);
-    } else if (selectedCountry === 'Germany' || selectedCountry === 'Netherlands') {
-      setCostSellingCurrency('EUR');
-      setCostManualDutyRate('0.0');
-      setCostDutySource('EU TARIC Database');
-      setCostDutyVerified(true);
-      setCostManualTaxRate(selectedCountry === 'Germany' ? '19.0' : '21.0');
-      setCostTaxSource('EU VAT Directive');
-      setCostTaxVerified(true);
-    } else if (selectedCountry === 'United Kingdom') {
-      setCostSellingCurrency('GBP');
-      setCostManualDutyRate('0.0');
-      setCostDutySource('UK Global Tariff (UKGT)');
-      setCostDutyVerified(true);
-      setCostManualTaxRate('20.0');
-      setCostTaxSource('HMRC Standard VAT');
-      setCostTaxVerified(true);
-    }
-  }, [selectedAnalysisProduct, selectedCountry, products]);
+    // Destination selling currency — from the reference country list (dynamic,
+    // never hardcoded per-country) with a sane fallback while it loads.
+    const countryObj = countries.find(c => c.name === selectedCountry);
+    if (countryObj?.currency) setCostSellingCurrency(countryObj.currency);
+  }, [selectedAnalysisProduct, selectedCountry, products, countries]);
+
+  // Country-aware duty & tax lookup. Root-cause fix for the "Singapore shows EU
+  // TARIC / EU VAT" bug: that data was never fetched per destination — a fixed
+  // set of per-country JS branches was hardcoded here, so any country outside
+  // that list (Singapore included) silently kept whatever duty/tax source was
+  // left over from the previously selected country. This now calls the SAME
+  // backend regulatory engine (RegulatoryKnowledgeService via
+  // regulatoryApi.getRegulations) already used by the Compliance Report and
+  // Country Recommendation features, so the source is always jurisdiction-
+  // correct for whichever destination is selected, with no per-country cases
+  // to maintain and no country left unsupported.
+  const [dutyTaxLoading, setDutyTaxLoading] = useState(false);
+  useEffect(() => {
+    const hs = (costHsCode || products.find(p => p.name === selectedAnalysisProduct)?.hscode || '').replace(/\./g, '');
+    if (!selectedCountry || !hs) return;
+
+    let cancelled = false;
+    setDutyTaxLoading(true);
+    regulatoryApi.getRegulations(selectedCountry, hs)
+      .then(res => {
+        if (cancelled) return;
+        const dt = res?.dutiesAndTaxes || {};
+        const dutySourceLabel = dt.source || null;
+        const taxSourceLabel = dt.source || null;
+
+        // Parse the first numeric percentage out of a free-text rate like
+        // "0% (Free port for most goods)" or "€175/tonne (Zero duty ...)".
+        // Non-percentage tariffs (specific duties quoted per weight/volume) have
+        // no single ad-valorem % to extract, so they are left unverified rather
+        // than guessed.
+        const parsePct = (raw) => {
+          if (!raw) return null;
+          const m = String(raw).match(/(-?\d+(?:\.\d+)?)\s*%/);
+          return m ? m[1] : null;
+        };
+
+        const dutyPct = parsePct(dt.mfn_tariff);
+        const taxPct = parsePct(dt.vat);
+
+        // validateDutySource / validateTaxSource — a source can only be marked
+        // "Verified" when it is genuinely jurisdiction-matched to the selected
+        // destination AND a usable rate was actually returned. This is the
+        // generic check the audit requires: it never special-cases Singapore or
+        // any other country by name, it just confirms the source string names an
+        // authority for the destination actually selected.
+        const isJurisdictionMatched = (sourceLabel) => {
+          if (!sourceLabel || !selectedCountry) return false;
+          const src = sourceLabel.toLowerCase();
+          const country = selectedCountry.toLowerCase();
+          if (src.includes(country)) return true;
+          // Cross-jurisdiction blocks named by regulatory body rather than
+          // country name (this is data, not a country hardcode — it maps a
+          // known authority name to the jurisdiction(s) it legitimately covers).
+          const authorityJurisdictions = {
+            'eu taric': ['germany', 'netherlands', 'france', 'italy', 'eu', 'european union'],
+            'eu vat directive': ['germany', 'netherlands', 'france', 'italy', 'eu', 'european union'],
+            'gcc unified': ['saudi arabia', 'united arab emirates', 'uae', 'qatar', 'kuwait', 'bahrain', 'oman'],
+            'zatca': ['saudi arabia'],
+            'uae federal tax authority': ['united arab emirates', 'uae'],
+            'usitc': ['united states', 'usa', 'us'],
+            'us state level sales tax': ['united states', 'usa', 'us'],
+            'uk global tariff': ['united kingdom', 'uk'],
+            'hmrc': ['united kingdom', 'uk'],
+            'singapore customs': ['singapore'],
+          };
+          for (const [authority, jurisdictions] of Object.entries(authorityJurisdictions)) {
+            if (src.includes(authority)) return jurisdictions.includes(country);
+          }
+          return false;
+        };
+
+        if (dutyPct != null) {
+          setCostManualDutyRate(dutyPct);
+          setCostDutySource(dutySourceLabel || 'Source not specified');
+          setCostDutyVerified(isJurisdictionMatched(dutySourceLabel));
+        } else {
+          // No usable ad-valorem rate for this route — do not invent one; leave
+          // the field for the exporter to confirm and mark it unverified.
+          setCostDutySource(dt.mfn_tariff ? `${dt.mfn_tariff} (non-percentage tariff — verify manually)` : 'Verification required');
+          setCostDutyVerified(false);
+        }
+
+        if (taxPct != null) {
+          setCostManualTaxRate(taxPct);
+          setCostTaxSource(taxSourceLabel || 'Source not specified');
+          setCostTaxVerified(isJurisdictionMatched(taxSourceLabel));
+        } else {
+          setCostTaxSource(dt.vat || 'Verification required');
+          setCostTaxVerified(false);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Backend lookup failed — never fall back to a stale/foreign source.
+        // Mark explicitly unverified so the UI cannot show a false "Verified" badge.
+        setCostDutySource('Verification required — regulatory lookup failed');
+        setCostDutyVerified(false);
+        setCostTaxSource('Verification required — regulatory lookup failed');
+        setCostTaxVerified(false);
+      })
+      .finally(() => { if (!cancelled) setDutyTaxLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [selectedCountry, costHsCode, selectedAnalysisProduct, products]);
 
   const handleCalculateCost = () => {
     const productObj = products.find(p => p.name === selectedAnalysisProduct);
@@ -1024,41 +1092,167 @@ export default function AnalysisView({
         regulatoryApi.getCompliance(selectedCountry, hs),
       ]);
 
-      // Map backend response to the format the compliance UI expects
+      // Map backend response to the format the compliance UI expects.
+      //
+      // Requirement model (normalized so nothing is double-counted):
+      //   CORE requirements   = documents + certifications + import/customs permits
+      //   ADDITIONAL rules    = packaging + labeling (real compliance rules, but not
+      //                         "core requirements" — they don't have a document/cert/permit
+      //                         of their own to prepare, so counting them alongside docs/certs
+      //                         inflated the "total requirements" figure and duplicated the
+      //                         single Singapore-style import-permit item across two panels).
+      //
+      // The backend exposes the destination import/customs permit list under several
+      // aliases (`import_regulations`/`regulations`/`customs_rules`/`procedures`) that are
+      // literally the same underlying list — they are not separate "inspections" vs
+      // "customs requirements" categories. Only one canonical array is built here
+      // (`required_import_permits`) so the same permit can never render twice.
+      // Destination import/regulatory requirements. The backend now pre-classifies each
+      // destination requirement into "Import Clearance" (a customs/port release action) or
+      // "Regulatory Compliance" (a standing standard the product must meet) and exposes them
+      // as two normalized lists. We prefer those; if an older/alternate backend shape is
+      // returned we fall back to the single flat list and classify defensively client-side
+      // using the same rule, so the split still works without the new fields.
+      const buildReqItem = (item) => {
+        const str = typeof item === 'string' ? item : item?.title || item?.name || item?.requirement || item?.procedure_name || item?.document_name || '';
+        return {
+          name: str,
+          description: typeof item === 'object' ? (item?.description || item?.reason || item?.remarks || '') : '',
+          // Preserve the backend's real status/mandatory flag; never assume mandatory.
+          mandatory: typeof item === 'object' ? (item?.mandatory === true || /^mandatory$/i.test(item?.status || '')) : true,
+          status: typeof item === 'object' ? (item?.status || '') : '',
+          category: typeof item === 'object' ? (item?.category || '') : '',
+          estimated_days: typeof item === 'object' ? item?.estimatedDays : null,
+          issuing_authority: typeof item === 'object' ? (item?.issuingAuthority || item?.issuing_authority || item?.authority || '') : '',
+        };
+      };
+
+      // Generic client-side fallback classifier — mirrors the backend keyword rule so a split
+      // is still produced if the backend didn't send pre-split lists. Not country-specific.
+      const classifyClearanceVsRegulatory = (item) => {
+        const text = `${item.name} ${item.issuing_authority}`.toLowerCase();
+        const regulatory = /(maximum residue|\bmrl\b|food safety|conformity|standard|technical regulation|registration|verification program|supplier verification|label)/.test(text);
+        const clearance = /(clearance|pre-clearance|declaration|single window|customs|filing|import permit|import system|pre-notification|prior notice|security filing|notification|tradenet|fasah|mirsal|ipaffs)/.test(text);
+        if (regulatory && !clearance) return 'Regulatory Compliance';
+        return 'Import Clearance';
+      };
+
+      let importClearances = [];
+      let regulatoryCompliance = [];
+      if (Array.isArray(regRes?.importClearances) || Array.isArray(regRes?.regulatoryCompliance)) {
+        importClearances = (regRes?.importClearances || []).map(buildReqItem).filter(p => p.name);
+        regulatoryCompliance = (regRes?.regulatoryCompliance || []).map(buildReqItem).filter(p => p.name);
+      } else {
+        const destReqs = (regRes?.regulations || regRes?.import_regulations || regRes?.customs_rules || regRes?.procedures || [])
+          .map(buildReqItem).filter(p => p.name);
+        destReqs.forEach(item => {
+          const cat = item.category || classifyClearanceVsRegulatory(item);
+          if (cat === 'Regulatory Compliance') regulatoryCompliance.push(item);
+          else importClearances.push(item);
+        });
+      }
+      // Combined list preserved for the single "Import & Regulatory Requirements" panel.
+      const importRegulatoryRequirements = [...importClearances, ...regulatoryCompliance];
+
+      // Documents — group into mandatory vs optional/supporting using the backend's real
+      // `mandatory`/`status` field (NOT an array-position heuristic). Prefer the detailed
+      // objects (which carry status); fall back to the plain string list where a document
+      // has no status (defaults to mandatory so nothing verified is downgraded silently).
+      const docSource = (Array.isArray(regRes?.requiredDocumentsDetailed) && regRes.requiredDocumentsDetailed.length)
+        ? regRes.requiredDocumentsDetailed
+        : (regRes?.documents || regRes?.required_documents || []);
+      const requiredDocuments = docSource.map(buildReqItem).filter(d => d.name)
+        .map(d => ({ ...d, required: d.mandatory }));
+
+      const certSource = (Array.isArray(regRes?.certificationsDetailed) && regRes.certificationsDetailed.length)
+        ? regRes.certificationsDetailed
+        : (regRes?.certifications || []);
+      const requiredCertifications = certSource.map(buildReqItem).filter(c => c.name)
+        .map(c => ({ ...c, required: c.mandatory }));
+
+      // Kept for backward compatibility with the rest of the mapping / any other reader.
+      const importPermits = importRegulatoryRequirements;
+
+      // Packaging — prefer the detailed objects that carry a per-rule verified status
+      // (Mandatory / Recommended / Conditional / Not Verified). Fall back to the plain
+      // string list (status unknown → "Not Verified", never silently "Mandatory").
+      const packagingRequirements = (Array.isArray(regRes?.packagingRequirementsDetailed) && regRes.packagingRequirementsDetailed.length)
+        ? regRes.packagingRequirementsDetailed.map(p => ({
+            name: typeof p === 'string' ? p : (p?.requirement || p?.name || ''),
+            status: typeof p === 'object' ? (p?.status || 'Not Verified') : 'Not Verified',
+          })).filter(p => p.name)
+        : normalizeItemList(regRes?.packaging_requirements).map(t => ({ name: t, status: 'Not Verified' }));
+      const labelingRequirements = normalizeItemList(regRes?.labeling || regRes?.labeling_requirements);
+
+      // Import restrictions: the backend's structured "restrictions" list is now a true
+      // empty array when nothing was found (no placeholder/sentinel entry), so length is
+      // a reliable signal. Fall back to the flat `restricted_products` array (also a true
+      // empty array when clear) for older/alternate response shapes.
+      const importRestrictionsList = normalizeItemList(regRes?.restrictions?.length ? regRes.restrictions : regRes?.restricted_products);
+      const restrictionsVerified = regRes?.restrictionsVerified === true || importRestrictionsList.length === 0;
+      const restrictionsStatusMessage = regRes?.restrictionsStatusMessage
+        || (restrictionsVerified ? 'No product-specific restriction or prohibition identified from verified sources for this route.' : null);
+
+      // Unique CORE requirement count — documents + certifications + import clearances +
+      // regulatory compliance, each counted exactly once (packaging/labeling are ADDITIONAL
+      // rules and are never folded into the core figure). Prefer the backend's own
+      // normalized core count when present so the frontend and backend agree exactly.
+      const clearancesCount = importClearances.length;
+      const regulatoryCount = regulatoryCompliance.length;
+      const coreRequirementCount = (typeof compRes?.coreRequirementCount === 'number')
+        ? compRes.coreRequirementCount
+        : (typeof regRes?.core_requirement_count === 'number')
+          ? regRes.core_requirement_count
+          : requiredDocuments.length + requiredCertifications.length + clearancesCount + regulatoryCount;
+
+      // Prefer the backend's own complexity label (LOW/MEDIUM/HIGH, from
+      // RegulatoryKnowledgeService.getComplexity / RegulatoryRetrievalService) when present;
+      // otherwise fall back to a safe, dynamically computed "N requirements" string instead
+      // of ever rendering "undefined".
+      const backendComplexity = compRes?.complexity;
+      const complexityLabel = (backendComplexity && backendComplexity !== 'UNKNOWN')
+        ? backendComplexity
+        : (coreRequirementCount > 0 ? `${coreRequirementCount} requirements` : 'Not available');
+
       const mapped = {
         compliance_score: compRes?.complianceScore || 0,
         readiness_percent: compRes?.complianceScore || 0,
-        complexity: compRes?.complexity || 'UNKNOWN',
+        // Kept for backward compatibility with any other reader of this state.
+        complexity: backendComplexity || 'UNKNOWN',
+        // This is the field the UI actually renders — see fix for the "Complexity: undefined" bug.
+        overall_complexity: complexityLabel,
+        core_requirement_count: coreRequirementCount,
         export_readiness: (compRes?.complianceScore || 0) >= 80 ? 'Ready' 
           : (compRes?.complianceScore || 0) >= 60 ? 'Minor Actions Required'
           : (compRes?.complianceScore || 0) >= 40 ? 'Moderate Actions Required'
           : 'High Preparation Required',
-        // Convert string arrays to object format the UI expects
-        required_licenses: (regRes?.documents || regRes?.required_documents || []).map((item, i) => {
-          const str = typeof item === 'string' ? item : item?.title || item?.name || item?.requirement || item?.document_name || item?.documentName || '';
-          return { name: str, description: typeof item === 'object' ? (item?.description || item?.remarks || '') : '', required: i < 5, issuing_authority: typeof item === 'object' ? (item?.issuingAuthority || item?.issuing_authority || '') : '' };
-        }),
-        required_certifications: (regRes?.certifications || []).map(item => {
-          const str = typeof item === 'string' ? item : item?.title || item?.name || item?.requirement || item?.certification_name || item?.certificationName || '';
-          return { name: str, description: typeof item === 'object' ? (item?.description || item?.remarks || '') : '', required: true, estimated_days: typeof item === 'object' ? item?.estimatedDays : null, issuing_authority: typeof item === 'object' ? (item?.issuingAuthority || item?.issuing_authority || '') : '' };
-        }),
-        required_inspections: (regRes?.procedures || regRes?.customs_rules || []).map(item => {
-          const str = typeof item === 'string' ? item : item?.title || item?.name || item?.requirement || item?.procedure_name || '';
-          return { name: str, description: typeof item === 'object' ? (item?.description || item?.remarks || '') : '', estimated_days: typeof item === 'object' ? item?.estimatedDays : null };
-        }),
-        packaging_requirements: normalizeItemList(regRes?.packaging_requirements),
-        labeling_requirements: normalizeItemList(regRes?.labeling || regRes?.labeling_requirements),
-        customs_rules: normalizeItemList(regRes?.procedures || regRes?.customs_rules),
-        import_restrictions: normalizeItemList(regRes?.restrictions || regRes?.restricted_products),
-        import_regulations: normalizeItemList(regRes?.regulations || regRes?.import_regulations),
-        timeline: {
-          documents: (compRes?.documentsCount || 0) > 5 ? '5-7 days' : (compRes?.documentsCount || 0) > 0 ? '2-3 days' : '1 day',
-          certifications: (compRes?.certificationsCount || 0) > 3 ? '10-15 days' : (compRes?.certificationsCount || 0) > 0 ? '5-7 days' : '1 day',
-          inspection: (compRes?.certificationsCount || 0) > 2 ? '3-5 days' : '1-2 days',
-          customs: '2-5 days',
-          shipping: '7-21 days',
-          total: (compRes?.complianceScore || 0) >= 80 ? '14-21 days' : (compRes?.complianceScore || 0) >= 50 ? '21-35 days' : '35-60 days',
-        },
+        // Core requirements — each item appears in exactly one of these four canonical
+        // categories (documents / certifications / import clearances / regulatory compliance).
+        required_licenses: requiredDocuments,
+        required_certifications: requiredCertifications,
+        // Combined destination requirements for the "Import & Regulatory Requirements" panel,
+        // plus the normalized split for sub-grouping and the checklist.
+        required_import_permits: importPermits,
+        import_clearances: importClearances,
+        regulatory_compliance: regulatoryCompliance,
+        // Additional compliance rules — real requirements, but not part of the
+        // "core requirement" count (see note above).
+        packaging_requirements: packagingRequirements,
+        labeling_requirements: labelingRequirements,
+        // Customs/import-permit requirements, exposed once under a single canonical key.
+        // (Previously this was independently re-derived as both "required_inspections" and
+        // "customs_rules" from the same backend list, so the same permit rendered twice.)
+        customs_rules: importPermits.map(p => p.name),
+        import_restrictions: importRestrictionsList,
+        restrictions_verified: restrictionsVerified,
+        restrictions_status_message: restrictionsStatusMessage,
+        import_regulations: importPermits.map(p => p.name),
+        // No backend-verified processing-time data exists for this report (see
+        // RegulatoryKnowledgeService — it returns compliance counts and scores, not day
+        // estimates). Rather than inventing day ranges, every stage is explicitly marked
+        // "Not estimated" unless the backend one day starts returning real values under
+        // compData.timeline.
+        timeline: null,
         duties: { duty_rate: compRes?.dutyRate, tax_rate: compRes?.taxRate },
         risk_analysis: {
           overall: (compRes?.complianceScore || 0) >= 80 ? 'Low' : (compRes?.complianceScore || 0) >= 50 ? 'Medium' : 'High',
@@ -2283,16 +2477,40 @@ export default function AnalysisView({
               const readyPct = compData?.readiness_percent ?? score;
               const readiness = compData?.export_readiness || (readyPct >= 85 ? 'Ready' : readyPct >= 70 ? 'Minor Actions Required' : readyPct >= 55 ? 'Moderate Actions Required' : 'High Preparation Required');
               const readinessColor = readyPct >= 85 ? 'text-emerald-600 dark:text-emerald-400' : readyPct >= 70 ? 'text-primary' : readyPct >= 55 ? 'text-amber-600 dark:text-amber-400' : 'text-destructive';
-              const allItems = [...(compData?.required_certifications || []), ...(compData?.required_licenses || []), ...(compData?.required_inspections || [])];
+              // CORE requirements — documents, certifications, import permits. Each
+              // requirement is counted in exactly one of these three, so summing them
+              // never double-counts the same item (e.g. the Singapore SFA Inward TradeNet
+              // Import Permit only ever appears in `permitsCount`, not also under
+              // "inspections"/"customs" as a separate line item).
               const docsCount = (compData?.required_licenses || []).length;
               const certsCount = (compData?.required_certifications || []).length;
-              const inspCount = (compData?.required_inspections || []).length;
+              // Destination requirements are split into two canonical categories.
+              const importClearanceItems = compData?.import_clearances || [];
+              const regulatoryComplianceItems = compData?.regulatory_compliance || [];
+              const clearancesCount = importClearanceItems.length;
+              const regulatoryCount = regulatoryComplianceItems.length;
+              // Combined import + regulatory count (the old "permits" figure, now correctly named).
+              const importRegCount = clearancesCount + regulatoryCount;
+              // Documents split into mandatory vs optional/supporting from the backend flag.
+              const mandatoryDocs = (compData?.required_licenses || []).filter(d => d.required);
+              const optionalDocs = (compData?.required_licenses || []).filter(d => !d.required);
+              // ADDITIONAL compliance rules — real rules, but not part of the core count.
               const packCount = (compData?.packaging_requirements || []).length;
               const labelCount = (compData?.labeling_requirements || []).length;
               const customsRules = compData?.customs_rules || [];
               const importRestrictions = compData?.import_restrictions || [];
+              // Restriction status: "verified/clear" is a genuinely different state from
+              // "action needed" — a route with zero restrictions found is GOOD news, not a
+              // gap. `restrictions_verified` is only true when the backend list was
+              // actually empty (no sentinel/placeholder entries survive here — see
+              // RegulatoryKnowledgeService).
+              const restrictionsVerified = compData?.restrictions_verified ?? (importRestrictions.length === 0);
+              const restrictionsStatusMessage = compData?.restrictions_status_message
+                || (restrictionsVerified ? 'No product-specific restriction or prohibition identified.' : null);
               const riskData = compData?.risk_analysis || {};
-              const tl = compData?.timeline || {};
+              // No backend-verified timeline data exists for this report; `tl` stays null so
+              // every stage renders "Not estimated" rather than a fabricated "0 days".
+              const tl = compData?.timeline || null;
               const dutyData = compData?.duties || {};
               const riskColor = (lvl) => lvl === 'Low' || lvl === 'Very Low' ? 'text-emerald-600 dark:text-emerald-400' : lvl === 'Medium' ? 'text-amber-600 dark:text-amber-400' : lvl === 'High' ? 'text-destructive' : 'text-slate-400';
 
@@ -2339,17 +2557,24 @@ export default function AnalysisView({
                       </div>
                       <div className="bg-card border border-border rounded-2xl p-5 text-center space-y-2">
                         <span className="text-[10px] font-medium text-slate-400 uppercase block">Complexity</span>
-                        <span className={`text-xl font-bold block ${compData.overall_complexity === 'Low' ? 'text-emerald-600 dark:text-emerald-400' : compData.overall_complexity === 'Medium' ? 'text-amber-600 dark:text-amber-400' : 'text-destructive'}`}>{compData.overall_complexity}</span>
-                        <span className="text-xs text-slate-400">{docsCount + certsCount + inspCount} total requirements</span>
-                        {compData.complexity_index !== undefined && <span className="text-[10px] text-slate-400 block">Difficulty index {compData.complexity_index}/100</span>}
+                        <span className={`text-xl font-bold block ${compData.overall_complexity === 'LOW' || compData.overall_complexity === 'Low' ? 'text-emerald-600 dark:text-emerald-400' : compData.overall_complexity === 'MEDIUM' || compData.overall_complexity === 'Medium' ? 'text-amber-600 dark:text-amber-400' : compData.overall_complexity === 'Not available' ? 'text-slate-400' : 'text-destructive'}`}>{compData.overall_complexity ?? 'Not available'}</span>
+                        <span className="text-xs text-slate-400">{docsCount + certsCount + importRegCount} unique requirements</span>
+                        {compData.complexity_index !== undefined && compData.complexity_index !== null && <span className="text-[10px] text-slate-400 block">Difficulty index {compData.complexity_index}/100</span>}
                       </div>
                       <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
-                        <span className="text-[10px] font-medium text-slate-400 uppercase block">Summary</span>
-                        <div className="grid grid-cols-3 gap-2 text-center">
+                        <span className="text-[10px] font-medium text-slate-400 uppercase block">Core Requirements</span>
+                        <div className="grid grid-cols-4 gap-1.5 text-center">
                           <div><span className="text-sm font-bold text-primary block">{docsCount}</span><span className="text-[9px] text-slate-400 uppercase">Docs</span></div>
-                          <div><span className="text-sm font-bold text-primary block">{certsCount}</span><span className="text-[9px] text-slate-400 uppercase">Certs</span></div>
-                          <div><span className="text-sm font-bold text-primary block">{inspCount}</span><span className="text-[9px] text-slate-400 uppercase">Inspect</span></div>
+                          <div><span className="text-sm font-bold text-primary block">{certsCount}</span><span className="text-[9px] text-slate-400 uppercase">Cert</span></div>
+                          <div><span className="text-sm font-bold text-primary block">{clearancesCount}</span><span className="text-[9px] text-slate-400 uppercase">Clearances</span></div>
+                          <div><span className="text-sm font-bold text-primary block">{regulatoryCount}</span><span className="text-[9px] text-slate-400 uppercase">Regulatory</span></div>
                         </div>
+                        {(packCount > 0 || labelCount > 0) && (
+                          <div className="flex items-center justify-center gap-3 pt-1.5 border-t border-border/60 text-[9px] text-slate-400">
+                            {packCount > 0 && <span>{packCount} Packaging Rule{packCount !== 1 ? 's' : ''}</span>}
+                            {labelCount > 0 && <span>{labelCount} Labelling Rule{labelCount !== 1 ? 's' : ''}</span>}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -2359,31 +2584,74 @@ export default function AnalysisView({
                         <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center shrink-0"><Shield className="w-4 h-4 text-primary"/></div>
                         <div>
                           <span className="text-xs font-bold text-primary uppercase tracking-wider block mb-1">Compliance Assessment</span>
-                          <p className="text-xs text-foreground leading-relaxed">{compData.recommendation || `${selectedAnalysisProduct} (HS ${hsCode}) to ${selectedCountry}. Compliance score: ${score}/100. Complexity: ${compData.overall_complexity}. ${allItems.filter(i => i.required).length} mandatory requirements identified.`}</p>
-                          <p className="text-xs text-slate-400 leading-relaxed mt-1.5">{docsCount} document(s), {certsCount} certification(s), {inspCount} inspection(s), {packCount} packaging rule(s) and {labelCount} labelling rule(s) apply for {selectedCountry}. Readiness: {readiness} ({readyPct}%).</p>
+                          <p className="text-xs text-foreground leading-relaxed">
+                            {compData.recommendation || (() => {
+                              const complexityText = (compData.overall_complexity && compData.overall_complexity !== 'Not available')
+                                ? compData.overall_complexity
+                                : 'not available';
+                              const parts = [];
+                              if (docsCount > 0) parts.push(`${docsCount} document${docsCount !== 1 ? 's' : ''}`);
+                              if (certsCount > 0) parts.push(`${certsCount} certification${certsCount !== 1 ? 's' : ''}`);
+                              if (clearancesCount > 0) parts.push(`${clearancesCount} import clearance${clearancesCount !== 1 ? 's' : ''}`);
+                              if (regulatoryCount > 0) parts.push(`${regulatoryCount} regulatory compliance requirement${regulatoryCount !== 1 ? 's' : ''}`);
+                              const coreTotal = docsCount + certsCount + clearancesCount + regulatoryCount;
+                              const coreBreakdown = parts.length > 0
+                                ? parts.slice(0, -1).join(', ') + (parts.length > 1 ? `, and ${parts[parts.length - 1]}` : parts[0])
+                                : 'no mandatory documents, certifications, or clearances';
+                              return `${selectedAnalysisProduct} (HS ${hsCode}) to ${selectedCountry}. Compliance score: ${score}/100. Compliance complexity: ${complexityText}. ${coreTotal} unique core compliance requirement${coreTotal !== 1 ? 's were' : ' was'} identified: ${coreBreakdown}.`;
+                            })()}
+                          </p>
+                          <p className="text-xs text-slate-400 leading-relaxed mt-1.5">
+                            {packCount > 0 || labelCount > 0
+                              ? `Additional compliance rules include ${[packCount > 0 ? `${packCount} packaging rule${packCount !== 1 ? 's' : ''}` : null, labelCount > 0 ? `${labelCount} labelling rule${labelCount !== 1 ? 's' : ''}` : null].filter(Boolean).join(' and ')}. `
+                              : ''}
+                            Readiness: {readiness} ({readyPct}%).
+                          </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Required Documents & Licenses */}
-                    {compData.required_licenses?.length > 0 && (
-                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-primary"/>Required Documents</h3>
-                        <div className="space-y-2">{compData.required_licenses.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
-                            <span className={`text-xs font-bold ${item.required ? 'text-amber-500' : 'text-emerald-500'}`}>{item.required ? '!' : '+'}</span>
-                            <div className="flex-grow">
-                              <span className="text-xs font-semibold text-foreground block">{item.name}</span>
-                              <span className="text-[10px] text-slate-400">{item.description}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {item.issuing_authority && <span className="text-[10px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded font-medium">{item.issuing_authority}</span>}
-                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${item.required ? 'bg-destructive/10 text-destructive' : 'bg-slate-100 text-slate-400'}`}>{item.required ? 'Mandatory' : 'Optional'}</span>
-                            </div>
+                    {/* Export Documents — grouped into Mandatory and Optional / Supporting
+                        from the backend's real mandatory flag (never an array-position guess).
+                        The total (Mandatory + Optional) equals the Docs core count. */}
+                    {compData.required_licenses?.length > 0 && (() => {
+                      const renderDocRow = (item, i) => (
+                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
+                          <span className={`text-xs font-bold ${item.required ? 'text-amber-500' : 'text-emerald-500'}`}>{item.required ? '!' : '+'}</span>
+                          <div className="flex-grow">
+                            <span className="text-xs font-semibold text-foreground block">{item.name}</span>
+                            {item.description && <span className="text-[10px] text-slate-400">{item.description}</span>}
                           </div>
-                        ))}</div>
-                      </div>
-                    )}
+                          <div className="flex items-center gap-2">
+                            {item.issuing_authority && <span className="text-[10px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded font-medium">{item.issuing_authority}</span>}
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${item.required ? 'bg-destructive/10 text-destructive' : 'bg-slate-100 text-slate-400'}`}>{item.required ? 'Mandatory' : 'Optional'}</span>
+                          </div>
+                        </div>
+                      );
+                      return (
+                        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                          <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-primary"/>Export Documents ({docsCount})</h3>
+                          {mandatoryDocs.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-foreground uppercase tracking-wider">Mandatory Documents</span>
+                                <span className="text-[9px] text-slate-400">{mandatoryDocs.length} item{mandatoryDocs.length !== 1 ? 's' : ''}</span>
+                              </div>
+                              {mandatoryDocs.map(renderDocRow)}
+                            </div>
+                          )}
+                          {optionalDocs.length > 0 && (
+                            <div className="space-y-2 pt-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-foreground uppercase tracking-wider">Optional / Supporting Documents</span>
+                                <span className="text-[9px] text-slate-400">{optionalDocs.length} item{optionalDocs.length !== 1 ? 's' : ''}</span>
+                              </div>
+                              {optionalDocs.map(renderDocRow)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Required Certifications */}
                     {compData.required_certifications?.length > 0 && (
@@ -2405,28 +2673,69 @@ export default function AnalysisView({
                       </div>
                     )}
 
-                    {/* Required Inspections */}
-                    {compData.required_inspections?.length > 0 && (
-                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Eye className="w-3.5 h-3.5 text-primary"/>Required Inspections</h3>
-                        <div className="space-y-2">{compData.required_inspections.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
-                            <span className="text-primary text-xs font-bold">*</span>
-                            <div className="flex-grow">
-                              <span className="text-xs font-semibold text-foreground block">{item.name}</span>
-                              <span className="text-[10px] text-slate-400">{item.description}</span>
-                            </div>
+                    {/* Import & Regulatory Requirements — canonical single panel for the
+                        destination-side obligations, split into "Import Clearances" (customs /
+                        port release actions) and "Regulatory Compliance" (standing standards
+                        the product must meet). This is deliberately the ONLY place these
+                        destination requirements render, so nothing is shown twice. */}
+                    {importRegCount > 0 && (() => {
+                      const renderReqRow = (item, i) => (
+                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent/40 transition-colors">
+                          <span className="text-primary text-xs font-bold">*</span>
+                          <div className="flex-grow">
+                            <span className="text-xs font-semibold text-foreground block">{item.name}</span>
+                            {item.description && <span className="text-[10px] text-slate-400">{item.description}</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {item.issuing_authority && <span className="text-[10px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded font-medium">{item.issuing_authority}</span>}
                             {item.estimated_days && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">{item.estimated_days}</span>}
                           </div>
-                        ))}</div>
-                      </div>
-                    )}
+                        </div>
+                      );
+                      return (
+                        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                          <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Eye className="w-3.5 h-3.5 text-primary"/>Import &amp; Regulatory Requirements ({importRegCount})</h3>
+                          {clearancesCount > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-foreground uppercase tracking-wider">Import Clearances</span>
+                                <span className="text-[9px] text-slate-400">{clearancesCount} item{clearancesCount !== 1 ? 's' : ''}</span>
+                              </div>
+                              {importClearanceItems.map(renderReqRow)}
+                            </div>
+                          )}
+                          {regulatoryCount > 0 && (
+                            <div className="space-y-2 pt-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-foreground uppercase tracking-wider">Regulatory Compliance</span>
+                                <span className="text-[9px] text-slate-400">{regulatoryCount} item{regulatoryCount !== 1 ? 's' : ''}</span>
+                              </div>
+                              {regulatoryComplianceItems.map(renderReqRow)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Packaging & Labeling */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       <div className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
                         <h4 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-primary"/>Packaging Requirements ({packCount})</h4>
-                        {compData.packaging_requirements?.length > 0 ? <div className="space-y-1.5">{compData.packaging_requirements.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30"><span className="text-primary shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No specific packaging requirements.</p>}
+                        {compData.packaging_requirements?.length > 0 ? <div className="space-y-1.5">{compData.packaging_requirements.map((item, i) => {
+                          const pkgText = typeof item === 'string' ? item : (item?.name || renderItemText(item));
+                          const pkgStatus = (typeof item === 'object' && item?.status) ? item.status : 'Not Verified';
+                          const statusStyle = pkgStatus === 'Mandatory' ? 'bg-destructive/10 text-destructive'
+                            : pkgStatus === 'Recommended' ? 'bg-amber-50 text-amber-600'
+                            : pkgStatus === 'Conditional' ? 'bg-primary/10 text-primary'
+                            : 'bg-slate-100 text-slate-400';
+                          return (
+                            <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30">
+                              <span className="text-primary shrink-0 text-xs">•</span>
+                              <span className="text-xs text-foreground/90 flex-grow">{pkgText}</span>
+                              <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${statusStyle}`}>{pkgStatus}</span>
+                            </div>
+                          );
+                        })}</div> : <p className="text-xs text-slate-400 italic">No specific packaging requirements.</p>}
                       </div>
                       <div className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
                         <h4 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-primary"/>Labeling Requirements ({labelCount})</h4>
@@ -2436,13 +2745,34 @@ export default function AnalysisView({
 
                     {/* Customs Requirements & Import Restrictions */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* Additional customs procedure notes, if the backend ever returns
+                          customs guidance distinct from the canonical import permit above
+                          (e.g. a future country with both a permit AND a separate procedure).
+                          For the common case where they're the same list, this panel is
+                          intentionally omitted to avoid re-showing the "Required Import
+                          Permit" panel's own item a second time. */}
+                      {customsRules.length > 0 && customsRules.some(r => !(compData.required_import_permits || []).some(p => p.name === renderItemText(r))) && (
+                        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                          <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-primary"/>Customs Requirements ({customsRules.length})</h3>
+                          <div className="space-y-1.5">{customsRules.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30"><span className="text-primary shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div>
+                        </div>
+                      )}
                       <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-primary"/>Customs Requirements ({customsRules.length})</h3>
-                        {customsRules.length > 0 ? <div className="space-y-1.5">{customsRules.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-slate-100/30"><span className="text-primary shrink-0 text-xs">•</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No customs requirements returned.</p>}
-                      </div>
-                      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 text-destructive"/>Import Restrictions ({importRestrictions.length})</h3>
-                        {importRestrictions.length > 0 ? <div className="space-y-1.5">{importRestrictions.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-destructive/10"><span className="text-destructive shrink-0 text-xs">!</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div> : <p className="text-xs text-slate-400 italic">No import restrictions apply to this product.</p>}
+                        <h3 className={`text-xs font-bold uppercase tracking-wider border-b border-border pb-2 flex items-center gap-1.5 ${restrictionsVerified ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
+                          {restrictionsVerified ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500"/> : <AlertTriangle className="w-3.5 h-3.5 text-destructive"/>}
+                          Import Restrictions
+                          <span className={`ml-auto text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${restrictionsVerified ? 'bg-emerald-50 text-emerald-600' : 'bg-destructive/10 text-destructive'}`}>
+                            {restrictionsVerified ? 'Verified' : 'Action Needed'}
+                          </span>
+                        </h3>
+                        {restrictionsVerified ? (
+                          <div className="flex gap-2 items-start p-2 rounded-lg bg-emerald-50/60">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5"/>
+                            <span className="text-xs text-foreground/90">{restrictionsStatusMessage}</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">{importRestrictions.map((item, i) => <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-destructive/10"><span className="text-destructive shrink-0 text-xs">!</span><span className="text-xs text-foreground/90">{renderItemText(item)}</span></div>)}</div>
+                        )}
                       </div>
                     </div>
 
@@ -2482,35 +2812,89 @@ export default function AnalysisView({
                       </div>
                     </div>
 
-                    {/* Compliance Timeline */}
+                    {/* Compliance Timeline — no backend-verified processing-time data exists
+                        for this report today, so every stage explicitly reads "Not estimated"
+                        rather than a fabricated "0 days". If/when the backend starts returning
+                        real day estimates under compData.timeline (documents_days,
+                        certifications_days, inspection_days, customs_days, shipping_days,
+                        total_days), those verified values are used automatically. */}
                     <div className="bg-white border border-border rounded-2xl p-5 space-y-3">
                       <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2 flex items-center gap-1.5"><Activity className="w-3.5 h-3.5 text-primary"/>Estimated Compliance Timeline</h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                        {[['Documents', `${tl.documents_days ?? 0} days`], ['Certifications', `${tl.certifications_days ?? 0} days`], ['Inspection', `${tl.inspection_days ?? 0} days`], ['Customs', `${tl.customs_days ?? 0} days`], ['Shipping', `${tl.shipping_days ?? 0} days`], ['Total Estimate', `${tl.total_days ?? 0} days`]].map(([label, val]) => (
-                          <div key={label} className={`p-3 rounded-xl text-center ${label === 'Total Estimate' ? 'bg-primary/5 border border-primary/15' : 'bg-slate-50 border border-slate-100'}`}>
-                            <span className="text-[8px] font-bold text-slate-400 uppercase block">{label}</span>
-                            <span className={`text-xs font-black block ${label === 'Total Estimate' ? 'text-primary' : 'text-slate-800'}`}>{val}</span>
-                          </div>
-                        ))}
+                        {[
+                          ['Documents', tl?.documents_days],
+                          ['Certifications', tl?.certifications_days],
+                          ['Inspection', tl?.inspection_days],
+                          ['Customs', tl?.customs_days],
+                          ['Shipping', tl?.shipping_days],
+                          ['Total Estimate', tl?.total_days],
+                        ].map(([label, days]) => {
+                          const hasVerifiedValue = days !== undefined && days !== null && days !== '';
+                          const val = hasVerifiedValue ? `${days} days` : 'Not estimated';
+                          return (
+                            <div key={label} className={`p-3 rounded-xl text-center ${label === 'Total Estimate' ? 'bg-primary/5 border border-primary/15' : 'bg-slate-50 border border-slate-100'}`}>
+                              <span className="text-[8px] font-bold text-slate-400 uppercase block">{label}</span>
+                              <span className={`text-xs font-black block ${!hasVerifiedValue ? 'text-slate-400' : label === 'Total Estimate' ? 'text-primary' : 'text-slate-800'}`}>{val}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    {/* Compliance Checklist */}
+                    {/* Compliance Checklist — one row per requirement category, each backed
+                        by a single canonical count (no category shares its source list with
+                        another, so e.g. the import permit is never listed as both
+                        "Inspections" and "Customs"). Consistent rule: a row is "Ready" once
+                        its required items have been identified/prepared (count > 0 is the
+                        normal case; Import Restrictions is the one deliberate exception,
+                        since "zero restrictions found" is the actually-verified good outcome
+                        rather than a gap). */}
                     <div className="bg-white border border-border rounded-2xl p-5 space-y-3">
                       <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest border-b border-slate-100 pb-2">Compliance Checklist</h3>
                       <div className="space-y-1.5">
-                        {[['Export Documents', docsCount, docsCount > 0], ['Certifications', certsCount, certsCount === 0], ['Inspections', inspCount, inspCount === 0], ['Packaging Compliance', packCount, packCount > 0], ['Labeling Compliance', labelCount, labelCount > 0], ['Customs Requirements', customsRules.length, customsRules.length > 0], ['Import Restrictions', importRestrictions.length, importRestrictions.length === 0]].map(([label, count, ready]) => (
-                          <div key={label} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100">
+                        {[
+                          { label: 'Export Documents', count: docsCount, ready: docsCount > 0, status: docsCount > 0 ? 'Ready' : 'Action Needed' },
+                          { label: 'Certifications', count: certsCount, ready: false, status: certsCount > 0 ? 'Action Needed' : 'Ready' },
+                          // Combined destination obligations row. When both sub-categories are
+                          // present we show them as indented detail rows below (no requirement
+                          // is shown twice — the parent count equals the sum of the two).
+                          { label: 'Import & Regulatory Compliance', count: importRegCount, ready: false, status: importRegCount > 0 ? 'Action Needed' : 'Ready',
+                            subRows: [
+                              clearancesCount > 0 ? { label: 'Import Clearances', count: clearancesCount, status: 'Action Needed' } : null,
+                              regulatoryCount > 0 ? { label: 'Regulatory Compliance', count: regulatoryCount, status: 'Action Needed' } : null,
+                            ].filter(Boolean) },
+                          { label: 'Packaging Compliance', count: packCount, ready: packCount > 0, status: packCount > 0 ? 'Ready' : 'Action Needed' },
+                          { label: 'Labeling Compliance', count: labelCount, ready: labelCount > 0, status: labelCount > 0 ? 'Ready' : 'Action Needed' },
+                          { label: 'Import Restrictions', count: importRestrictions.length, ready: restrictionsVerified, status: restrictionsVerified ? 'Verified' : 'Action Needed', isVerified: true },
+                        ].flatMap((row) => [
+                          (
+                          <div key={row.label} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100">
                             <div className="flex items-center gap-2">
-                              <span className={`text-xs ${ready ? 'text-emerald-500' : 'text-amber-500'}`}>{ready ? '+' : '!'}</span>
-                              <span className="text-xs font-bold text-slate-700">{label}</span>
+                              <span className={`text-xs ${row.status === 'Ready' || row.status === 'Verified' ? 'text-emerald-500' : 'text-amber-500'}`}>{row.status === 'Ready' || row.status === 'Verified' ? '+' : '!'}</span>
+                              <span className="text-xs font-bold text-slate-700">{row.label}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-[9px] text-slate-400">{count} items</span>
-                              <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${ready ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{ready ? 'Ready' : 'Action Needed'}</span>
+                              <span className="text-[9px] text-slate-400">{row.isVerified ? (row.count === 0 ? 'Verified' : `${row.count} item${row.count !== 1 ? 's' : ''}`) : `${row.count} item${row.count !== 1 ? 's' : ''}`}</span>
+                              <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${row.status === 'Ready' || row.status === 'Verified' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{row.status}</span>
                             </div>
                           </div>
-                        ))}
+                          ),
+                          // Optional indented sub-rows (e.g. Import Clearances / Regulatory
+                          // Compliance under the combined parent). These are detail views of the
+                          // parent count, not additional requirements, so nothing is double-counted.
+                          ...(row.subRows && row.subRows.length > 1 ? row.subRows.map((sub) => (
+                            <div key={`${row.label}-${sub.label}`} className="flex items-center justify-between py-1.5 pl-8 pr-2.5 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-slate-300">↳</span>
+                                <span className="text-[11px] font-semibold text-slate-500">{sub.label}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] text-slate-400">{sub.count} item{sub.count !== 1 ? 's' : ''}</span>
+                                <span className="text-[8px] px-1.5 py-0.5 rounded font-bold bg-amber-50 text-amber-600">{sub.status}</span>
+                              </div>
+                            </div>
+                          )) : []),
+                        ])}
                       </div>
                     </div>
 
@@ -2522,9 +2906,12 @@ export default function AnalysisView({
                       </div>
                     )}
 
-                    {/* Disclaimer */}
+                    {/* Disclaimer — full, non-truncated, and reusable across any HS code / route.
+                        Uses the backend-provided disclaimer when present, else a complete
+                        default that names the relevant authority types without overstating
+                        that the report is legally authoritative. */}
                     <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-3 text-center">
-                      <p className="text-[10px] text-amber-700 font-medium">This compliance report is generated based on HS Code {hsCode}. Exporters should verify all requirements with customs authorities before shipment.</p>
+                      <p className="text-[10px] text-amber-700 font-medium">This compliance report is generated based on the applicable HS code{hsCode && hsCode !== '--' ? ` (${hsCode})` : ''} and available verified regulatory sources. Exporters should verify all requirements with the relevant customs, food safety, and regulatory authorities before shipment.</p>
                     </div>
                   </div>
                 ) : (
@@ -2686,11 +3073,31 @@ export default function AnalysisView({
                         </div>
                         <div className="space-y-1">
                           <label className="text-[11px] font-semibold text-foreground block">Customs Duty Rate (%)</label>
-                          <input type="number" min="0" max="100" step="0.01" value={costManualDutyRate} onChange={e => { setCostManualDutyRate(e.target.value); setCalculationResult(null); }} placeholder="Verified MFN rate" className="input-claude"/>
+                          <input type="number" min="0" max="100" step="0.01" value={costManualDutyRate} onChange={e => { setCostManualDutyRate(e.target.value); setCostDutyVerified(false); setCalculationResult(null); }} placeholder="Verified MFN rate" className="input-claude"/>
+                          <p className={`text-[10px] flex items-center gap-1 flex-wrap ${costDutyVerified ? 'text-emerald-600' : 'text-amber-600'}`}>
+                            {dutyTaxLoading ? 'Looking up destination tariff…' : (
+                              <>
+                                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${costDutyVerified ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+                                  {costDutyVerified ? 'Verified' : 'Unverified'}
+                                </span>
+                                <span className="truncate" title={costDutySource}>{costDutySource}</span>
+                              </>
+                            )}
+                          </p>
                         </div>
                         <div className="space-y-1">
                           <label className="text-[11px] font-semibold text-foreground block">Import VAT / GST (%)</label>
-                          <input type="number" min="0" max="100" step="0.01" value={costManualTaxRate} onChange={e => { setCostManualTaxRate(e.target.value); setCalculationResult(null); }} placeholder="Destination VAT rate" className="input-claude"/>
+                          <input type="number" min="0" max="100" step="0.01" value={costManualTaxRate} onChange={e => { setCostManualTaxRate(e.target.value); setCostTaxVerified(false); setCalculationResult(null); }} placeholder="Destination VAT rate" className="input-claude"/>
+                          <p className={`text-[10px] flex items-center gap-1 flex-wrap ${costTaxVerified ? 'text-emerald-600' : 'text-amber-600'}`}>
+                            {dutyTaxLoading ? 'Looking up destination tax…' : (
+                              <>
+                                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${costTaxVerified ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+                                  {costTaxVerified ? 'Verified' : 'Unverified'}
+                                </span>
+                                <span className="truncate" title={costTaxSource}>{costTaxSource}</span>
+                              </>
+                            )}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -2740,6 +3147,10 @@ export default function AnalysisView({
                           <span className="text-[10px] font-bold text-slate-600">
                             Calculation Currency: <strong className="text-primary">{CC}</strong> (1 {origCurr} = ₹{r.currencies?.exchangeRate?.toFixed(2) || '22.25'})
                           </span>
+                          <span className="text-slate-300">|</span>
+                          <span className="text-[10px] font-bold text-slate-600">
+                            Total Weight: <strong className="text-primary">{r.transaction?.totalWeightKg?.toLocaleString()} kg</strong> ({r.transaction?.quantity?.toLocaleString()} units × {r.transaction?.unitWeight} kg/unit)
+                          </span>
                         </div>
                         <span className={`text-[10px] font-black px-3 py-1 rounded-full border flex items-center gap-1.5 shadow-sm ${
                           r.confidence.level === 'High' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
@@ -2751,10 +3162,8 @@ export default function AnalysisView({
                             r.confidence.level === 'Medium' ? 'bg-amber-500' : 'bg-red-500'
                           }`}></span>
                           {r.confidence.level} Confidence ({r.confidence.score}/100) — {
-                            r.confidence.level === 'High' ? 'All Major Rates Verified' :
-                            r.confidence.level === 'Medium' ? 'Duty/VAT/FX Verified · Freight/Ins User-Provided' :
-                            'Critical Inputs Unverified'
-                          }
+                            (r.confidence.factors || []).filter(f => f.met).length
+                          }/{(r.confidence.factors || []).length} evidence factors verified
                         </span>
                       </div>
 
@@ -3026,8 +3435,8 @@ export default function AnalysisView({
                             <thead>
                               <tr className="border-b border-slate-100 text-[8px] font-black text-slate-400 uppercase tracking-widest">
                                 <th className="pb-2.5 pr-3">Component</th>
-                                <th className="pb-2.5 pr-3 text-right">Amount (INR)</th>
-                                <th className="pb-2.5 pr-3 text-right">Amount ({origCurr})</th>
+                                <th className="pb-2.5 pr-3 text-right">Amount ({CC})</th>
+                                <th className="pb-2.5 pr-3 text-right">Amount / Unit ({CC})</th>
                                 <th className="pb-2.5 pr-3">Cost Type</th>
                                 <th className="pb-2.5 pr-3">Calculation Basis</th>
                                 <th className="pb-2.5 pr-3">Source</th>
@@ -3043,7 +3452,7 @@ export default function AnalysisView({
                                   </td>
                                   <td className="py-2.5 pr-3 font-black text-slate-900 text-right">{fmtCC(entry.amountCC, 2)}</td>
                                   <td className="py-2.5 pr-3 font-bold text-slate-600 text-right">
-                                    {r.currencies?.exchangeRate > 0 ? fmtOrig(entry.amountCC / r.currencies.exchangeRate, 2) : '—'}
+                                    {fmtCC(entry.amountPerUnitCC, 2)}
                                   </td>
                                   <td className="py-2.5 pr-3 text-slate-500 font-medium">{entry.type}</td>
                                   <td className="py-2.5 pr-3 text-slate-500 max-w-[200px] truncate" title={entry.basis}>{entry.basis}</td>
@@ -3139,21 +3548,58 @@ export default function AnalysisView({
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-50">
-                                {r.sensitivity.slice(0, 6).map((s, idx) => (
-                                  <tr key={idx} className="hover:bg-slate-50/50">
-                                    <td className="py-1.5 font-bold text-slate-700">{s.variable}</td>
-                                    <td className="py-1.5 font-medium text-slate-500">{s.change}</td>
-                                    <td className="py-1.5 font-black text-slate-800 text-right">{fmtCC(s.newProfitCC)}</td>
-                                    <td className="py-1.5 text-right">
-                                      <span className={`font-bold flex items-center justify-end gap-0.5 ${
-                                        s.impactCC >= 0 ? 'text-emerald-600' : 'text-red-600'
-                                      }`}>
-                                        {s.impactCC >= 0 ? <ArrowUpRight className="w-3 h-3"/> : <ArrowDownRight className="w-3 h-3"/>}
-                                        {fmtCC(Math.abs(s.impactCC))}
-                                      </span>
+                                {r.sensitivity.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={4} className="py-3 text-center text-slate-400 font-medium">
+                                      Unavailable — freight, selling price, or duty inputs are required to run sensitivity scenarios.
                                     </td>
                                   </tr>
-                                ))}
+                                ) : r.sensitivity.slice(0, 6).map((s, idx) => {
+                                  // A scenario is only genuinely uncalculable if the engine never
+                                  // produced a profit figure for it (e.g. no freight entered on a
+                                  // CIF shipment). That case gets an explicit "Unavailable" label
+                                  // instead of a silent "—", per the audit requirement.
+                                  const newProfit = s.newProfitCC ?? s.newExporterProfitCC;
+                                  const impact = s.impactCC ?? s.exporterProfitImpactCC;
+                                  const isCalculable = newProfit != null && !isNaN(newProfit);
+                                  return (
+                                    <tr key={idx} className="hover:bg-slate-50/50">
+                                      <td className="py-1.5 font-bold text-slate-700">{s.variable}</td>
+                                      <td className="py-1.5 font-medium text-slate-500">{s.change}</td>
+                                      {isCalculable ? (
+                                        <>
+                                          <td className="py-1.5 font-black text-slate-800 text-right">{fmtCC(newProfit)}</td>
+                                          <td className="py-1.5 text-right">
+                                            {/* Signed impact = scenarioProfit - baseProfit (never abs).
+                                                For duty shifts under CIF the exporter impact is 0 because
+                                                import duty is a buyer-side cost — the buyer landed-cost
+                                                column below carries that effect instead. */}
+                                            {(() => {
+                                              const isZero = Math.abs(impact) < 0.005;
+                                              const cls = isZero ? 'text-slate-500' : impact > 0 ? 'text-emerald-600' : 'text-red-600';
+                                              const sign = isZero ? '' : impact > 0 ? '+' : '−';
+                                              return (
+                                                <span className={`font-bold flex items-center justify-end gap-0.5 ${cls}`}>
+                                                  {isZero ? null : impact > 0 ? <ArrowUpRight className="w-3 h-3"/> : <ArrowDownRight className="w-3 h-3"/>}
+                                                  {sign}{fmtCC(Math.abs(impact))}
+                                                </span>
+                                              );
+                                            })()}
+                                            {s.type === 'duty' && (
+                                              <span className="block text-[8px] text-slate-400 font-medium mt-0.5" title="Under the selected Incoterm import duty is a buyer-side cost">
+                                                Buyer landed {s.buyerLandedCostImpactCC >= 0 ? '+' : '−'}{fmtCC(Math.abs(s.buyerLandedCostImpactCC || 0))}
+                                              </span>
+                                            )}
+                                          </td>
+                                        </>
+                                      ) : (
+                                        <td colSpan={2} className="py-1.5 text-right text-slate-400 italic" title="Required input missing for this variable">
+                                          Unavailable
+                                        </td>
+                                      )}
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -3214,27 +3660,37 @@ export default function AnalysisView({
                             <Bookmark className="w-3.5 h-3.5 text-slate-500"/>
                             Assumptions &amp; Verification Evidence
                           </h4>
-                          <span className="text-[9px] font-bold text-slate-500">{r.confidence.reasons.length} Verification Data Points</span>
+                          <span className="text-[9px] font-bold text-slate-500">{r.confidence.reasons.length} Verification &amp; Input Evidence points</span>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                          {r.confidence.reasons.map((cr, idx) => (
-                            <div key={idx} className="bg-white border border-border/70 rounded-xl p-3 flex items-start gap-2.5 shadow-sm">
-                              <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold shrink-0 mt-0.5 ${
-                                cr.status === 'Verified' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                                cr.status === 'User-provided' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                                'bg-slate-100 text-slate-600 border border-border'
-                              }`}>
-                                {cr.status}
-                              </span>
-                              <div className="min-w-0">
-                                <span className="text-[9px] font-black text-slate-800 block truncate">{cr.item}</span>
-                                <span className="text-[8px] text-slate-500 block mt-0.5">{cr.note}</span>
+                          {r.confidence.reasons.map((cr, idx) => {
+                            // Distinguish Verified / User-provided / Estimated / Unverified so a
+                            // user-supplied freight or insurance figure is never mislabelled as
+                            // independently "Verified" just because the calculation consumed it.
+                            const status = cr.status || 'Unverified';
+                            const badge = status === 'Verified' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                              : status === 'User-provided' ? 'bg-amber-50 text-amber-600 border border-amber-100'
+                              : status === 'Estimated' ? 'bg-sky-50 text-sky-600 border border-sky-100'
+                              : status === 'Not provided' ? 'bg-slate-100 text-slate-500 border border-border'
+                              : 'bg-red-50 text-red-600 border border-red-100'; // Unverified / Not verified
+                            return (
+                              <div key={idx} className="bg-white border border-border/70 rounded-xl p-3 flex items-start gap-2.5 shadow-sm">
+                                <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold shrink-0 mt-0.5 ${badge}`}>
+                                  {status}
+                                </span>
+                                <div className="min-w-0">
+                                  <span className="text-[9px] font-black text-slate-800 block truncate">{cr.item}</span>
+                                  <span className="text-[8px] text-slate-500 block mt-0.5">{cr.note}</span>
+                                  {cr.maxPoints != null && (
+                                    <span className="text-[8px] text-slate-400 block mt-0.5">Confidence contribution: {cr.points ?? 0}/{cr.maxPoints} pts</span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                         <p className="text-[9px] text-slate-400 text-center pt-2">
-                          TradeBridge verified calculation model • Currency rates refreshed daily • GCC unified customs classifications aligned with Saudi ZATCA standards.
+                          TradeBridge calculation model • Currency rates refreshed daily • Tariff &amp; tax rules applied per the destination jurisdiction ({r.transaction?.destination || 'selected country'}).
                         </p>
                       </div>
                     </div>

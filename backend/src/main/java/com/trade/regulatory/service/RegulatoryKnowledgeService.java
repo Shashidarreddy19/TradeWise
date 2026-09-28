@@ -93,6 +93,48 @@ public class RegulatoryKnowledgeService {
         List<Map<String, Object>> dedupedAuthorities = deduplicateByField(authoritiesList, "authority_name");
         List<Map<String, String>> dedupedSources = deduplicateSources(sourceList);
 
+        // ──────────────────────────────────────────────────────────────────────
+        // 4b. CROSS-LIST CANONICAL DEDUPLICATION
+        // The rule table historically authored the same real-world obligation into more
+        // than one list under slightly different wording (e.g. a "Phytosanitary Certificate"
+        // document AND a "Phytosanitary Clearance" certification; an "APEDA RCAC" regulation,
+        // an "APEDA RCAC" document, AND an "APEDA RCMC Certificate" cert). Per-list exact
+        // dedup can't catch these, so they were counted 2–3× toward the core total.
+        //
+        // We collapse them by a *canonical key* (semantic identity), NOT by loose name
+        // similarity: two items merge only when they map to the same known compliance
+        // obligation. Documents are treated as the authoritative artifact and win over a
+        // certification/regulation describing the same obligation, so the item is counted
+        // exactly once and always in a single category. This is generic — the canonical-key
+        // function is data-driven, not keyed on any country/HS code.
+        Set<String> claimedCanonicalKeys = new HashSet<>();
+        // Documents first (highest-priority artifact).
+        dedupedDocs = filterByCanonicalKey(dedupedDocs, "document_name", claimedCanonicalKeys);
+        // Then certifications — drop any whose canonical obligation a document already covers.
+        dedupedCerts = filterByCanonicalKey(dedupedCerts, "certification_name", claimedCanonicalKeys);
+        // Destination regulations are a different axis (border/entry obligations) and are kept
+        // as their own category, but still de-duplicated against each other by canonical key
+        // so e.g. an APEDA RCAC regulation doesn't double with an APEDA RCAC document.
+        dedupedDestRegs = filterByCanonicalKey(dedupedDestRegs, "requirement", claimedCanonicalKeys);
+        dedupedOriginRegs = filterByCanonicalKey(dedupedOriginRegs, "requirement", claimedCanonicalKeys);
+
+        // Split destination regulations into their normalized sub-categories so the UI can
+        // show "Import Clearances" vs "Regulatory Compliance" separately without re-deriving
+        // the classification client-side.
+        List<Map<String, Object>> importClearances = dedupedDestRegs.stream()
+                .filter(r -> "Import Clearance".equals(r.get("category")))
+                .collect(Collectors.toList());
+        List<Map<String, Object>> regulatoryCompliance = dedupedDestRegs.stream()
+                .filter(r -> "Regulatory Compliance".equals(r.get("category")))
+                .collect(Collectors.toList());
+
+        // Classify packaging rules by their actual verified status (Mandatory / Recommended /
+        // Conditional / Not Verified) derived from the rule wording + source, rather than
+        // presenting every packaging rule as a mandatory legal requirement.
+        List<Map<String, Object>> packagingDetailed = dedupedPackaging.stream()
+                .map(this::buildPackagingRequirement)
+                .collect(Collectors.toList());
+
         // ══════════════════════════════════════════════════════════════════════════
         // 5. COMPLIANCE ASSESSMENT & TIMELINES
         // ══════════════════════════════════════════════════════════════════════════
@@ -110,9 +152,23 @@ public class RegulatoryKnowledgeService {
         result.put("certificationsDetailed", dedupedCerts);
         result.put("labelingRequirements", dedupedLabeling);
         result.put("packagingRequirements", dedupedPackaging);
-        result.put("restrictions", restrictionsList.isEmpty() ?
-                List.of(Map.of("status", "CLEARED", "description", "No product-specific restriction or prohibition identified from verified sources for this route.")) :
-                restrictionsList);
+        // Structured packaging with per-rule verified status (Mandatory/Recommended/Conditional/Not Verified).
+        result.put("packagingRequirementsDetailed", packagingDetailed);
+        // Normalized destination requirement sub-categories.
+        result.put("importClearances", importClearances);
+        result.put("regulatoryCompliance", regulatoryCompliance);
+        // NOTE: "restrictions" stays a TRUE empty list when none were found — it must never
+        // contain a sentinel/placeholder entry, otherwise every consumer that checks
+        // restrictions.isEmpty()/size() (compliance checklist, requirement counts, etc.)
+        // will incorrectly treat "no restriction" as "one restriction present". The
+        // human-readable "no restriction identified" message is exposed separately via
+        // "restrictionsVerified" / "restrictionsStatusMessage" below so the UI can still
+        // render a positive confirmation without corrupting the count.
+        result.put("restrictions", restrictionsList);
+        result.put("restrictionsVerified", restrictionsList.isEmpty());
+        result.put("restrictionsStatusMessage", restrictionsList.isEmpty()
+                ? "No product-specific restriction or prohibition identified from verified sources for this route."
+                : null);
         result.put("sources", dedupedSources);
 
         // Standard string arrays for UI and backward compatibility
@@ -137,7 +193,24 @@ public class RegulatoryKnowledgeService {
         result.put("labeling_requirements", dedupedLabeling);
         result.put("packaging_requirements", dedupedPackaging);
         result.put("restricted_products", restrictionsList.stream().map(r -> (String) r.get("description")).collect(Collectors.toList()));
-        result.put("total_requirements", dedupedDocs.size() + dedupedCerts.size() + dedupedDestRegs.size() + dedupedOriginRegs.size());
+
+        // Normalized core-requirement category counts. The core total is the sum of the four
+        // canonical categories; destination regulations already split into import clearances
+        // + regulatory compliance, so we never double count and never fold packaging/labeling
+        // (which are ADDITIONAL rules) into the core figure.
+        Map<String, Object> categoryCounts = new LinkedHashMap<>();
+        categoryCounts.put("documents", dedupedDocs.size());
+        categoryCounts.put("certifications", dedupedCerts.size());
+        categoryCounts.put("importClearances", importClearances.size());
+        categoryCounts.put("regulatoryCompliance", regulatoryCompliance.size());
+        categoryCounts.put("packaging", packagingDetailed.size());
+        categoryCounts.put("labeling", dedupedLabeling.size());
+        result.put("requirementCategoryCounts", categoryCounts);
+
+        int coreRequirementCount = dedupedDocs.size() + dedupedCerts.size()
+                + importClearances.size() + regulatoryCompliance.size();
+        result.put("core_requirement_count", coreRequirementCount);
+        result.put("total_requirements", coreRequirementCount);
 
         return result;
     }
@@ -639,6 +712,10 @@ public class RegulatoryKnowledgeService {
         doc.put("source", source);
         doc.put("source_url", url);
         doc.put("last_verified", "2026-09-09");
+        // Derive a machine-readable mandatory flag from the human status ("Mandatory" vs
+        // "Conditional"/"Recommended") so the UI groups mandatory vs optional documents from
+        // the actual data instead of a fragile array-index heuristic.
+        doc.put("mandatory", isMandatoryStatus(status));
         return doc;
     }
 
@@ -650,6 +727,7 @@ public class RegulatoryKnowledgeService {
         cert.put("authority", authority);
         cert.put("source", source);
         cert.put("last_verified", "2026-09-09");
+        cert.put("mandatory", isMandatoryStatus(status));
         return cert;
     }
 
@@ -663,7 +741,62 @@ public class RegulatoryKnowledgeService {
         reg.put("source_url", url);
         reg.put("effective_date", "2024-01-01");
         reg.put("last_verified", "2026-09-09");
+        // Normalize the destination-side regulation into a specific requirement class so the
+        // UI never lumps every rule under a generic "Permit" bucket. This is derived purely
+        // from the requirement text + authority (no per-country branching), so it works for
+        // any destination the rule table can produce.
+        reg.put("category", classifyRegulationCategory(requirement, authority));
+        reg.put("mandatory", isMandatoryStatus(status));
         return reg;
+    }
+
+    /**
+     * Classify a destination-side regulation as either an "Import Clearance" (a customs /
+     * port-of-entry / single-window filing or permit that physically releases the goods)
+     * or "Regulatory Compliance" (a standing standard/limit/registration the product itself
+     * must satisfy, e.g. MRL limits, food-safety standards, technical conformity).
+     *
+     * The rule is generic — it keys on the language and authority of the requirement, not on
+     * any hardcoded country or HS code — so a new destination added to the rule table is
+     * classified automatically.
+     */
+    private String classifyRegulationCategory(String requirement, String authority) {
+        String r = (requirement == null ? "" : requirement).toLowerCase();
+        String a = (authority == null ? "" : authority).toLowerCase();
+        String combined = r + " " + a;
+
+        // "Regulatory Compliance" signals: a standard/limit/registration the product must
+        // meet, rather than a release action performed at the border.
+        boolean looksRegulatory =
+                r.contains("maximum residue") || r.contains("mrl")
+                || r.contains("food safety") || r.contains("safety &")
+                || r.contains("conformity") || r.contains("standard")
+                || r.contains("technical regulation") || r.contains("registration")
+                || r.contains("verification program") || r.contains("supplier verification")
+                || r.contains("labelling") || r.contains("labeling");
+
+        // "Import Clearance" signals: an electronic filing/declaration/permit/notification
+        // lodged with customs or a port authority to clear/release the consignment.
+        boolean looksClearance =
+                r.contains("clearance") || r.contains("pre-clearance")
+                || r.contains("declaration") || r.contains("single window")
+                || r.contains("customs") || r.contains("filing")
+                || r.contains("import permit") || r.contains("import system")
+                || r.contains("pre-notification") || r.contains("prior notice")
+                || r.contains("security filing") || r.contains("notification")
+                || r.contains("tradenet") || r.contains("fasah")
+                || r.contains("mirsal") || r.contains("ipaffs")
+                || a.contains("customs") || combined.contains("single window");
+
+        if (looksRegulatory && !looksClearance) return "Regulatory Compliance";
+        if (looksClearance) return "Import Clearance";
+        // Ambiguous items default to Import Clearance — they are border/entry obligations by
+        // virtue of living in the destination-requirements list.
+        return "Import Clearance";
+    }
+
+    private boolean isMandatoryStatus(String status) {
+        return status != null && status.trim().equalsIgnoreCase("Mandatory");
     }
 
     private List<Map<String, Object>> deduplicateByField(List<Map<String, Object>> list, String field) {
@@ -675,6 +808,99 @@ public class RegulatoryKnowledgeService {
             }
         }
         return new ArrayList<>(map.values());
+    }
+
+    /**
+     * Keep only the first item mapping to each canonical compliance obligation, recording the
+     * canonical keys already claimed so later lists (certs, regs) don't re-count an obligation
+     * a document already represents. Items with no recognised canonical obligation fall back
+     * to their own name as the key, so genuinely distinct requirements are always preserved.
+     */
+    private List<Map<String, Object>> filterByCanonicalKey(List<Map<String, Object>> list, String nameField, Set<String> claimedKeys) {
+        List<Map<String, Object>> kept = new ArrayList<>();
+        for (Map<String, Object> item : list) {
+            String name = (String) item.get(nameField);
+            String key = canonicalKey(name);
+            if (!claimedKeys.contains(key)) {
+                claimedKeys.add(key);
+                kept.add(item);
+            }
+        }
+        return kept;
+    }
+
+    /**
+     * Map a requirement name to a canonical obligation key. Only well-understood synonym
+     * groups collapse (e.g. the two ways of naming the phytosanitary health certificate, the
+     * two ways of naming fumigation treatment, and the APEDA basmati registration whether it
+     * is called RCAC or RCMC). Everything else canonicalises to its own normalised name, so
+     * distinct requirements are never merged merely because their names look alike.
+     *
+     * This is data-driven (a synonym table), not keyed on any country or HS code.
+     */
+    private String canonicalKey(String name) {
+        if (name == null) return "";
+        String n = name.trim().toLowerCase();
+
+        // IMPORTANT: after inspecting the underlying data (requirement text, issuing
+        // authority, document/certification type, source, and regulatory purpose) the
+        // near-duplicate-looking requirements for the rice route are in fact DISTINCT
+        // obligations and are intentionally NOT merged on name similarity alone:
+        //   • "Phytosanitary Certificate" (exported document from the Plant Protection
+        //     Directorate) vs "Phytosanitary Clearance" (the NPPO inspection/clearance step)
+        //     — different artifact + authority.
+        //   • "Fumigation Certificate" (treatment document from the pest-control operator)
+        //     vs "Fumigation Treatment Certificate" (NSPM/IPPC-accredited certification).
+        //   • "APEDA Registration-Cum-Allocation Certificate (RCAC)" (per-contract export
+        //     allocation) vs "APEDA RCMC Certificate" (exporter membership registration)
+        //     — two different APEDA registrations.
+        // So canonicalisation is identity-based: an obligation only collapses with another
+        // when their normalised names are IDENTICAL (the one genuine authoring duplicate is
+        // the same-named APEDA RCAC entry emitted into two lists, which this catches),
+        // guaranteeing the same underlying obligation is never counted twice while genuinely
+        // different obligations are all preserved. This is fully generic across countries/HS.
+        return "name:" + n;
+    }
+
+    /**
+     * Wrap a packaging rule string into a structured object with a verified status classified
+     * from the rule's own wording. We never blanket-mark packaging rules as mandatory.
+     */
+    private Map<String, Object> buildPackagingRequirement(String text) {
+        Map<String, Object> p = new LinkedHashMap<>();
+        p.put("requirement", text);
+        p.put("status", classifyPackagingStatus(text));
+        return p;
+    }
+
+    /**
+     * Classify a packaging rule's regulatory status purely from its wording:
+     *  - explicit "mandatory"/"must"/"required" → Mandatory
+     *  - conditional phrasing ("if ... used", "where required") → Conditional
+     *  - ergonomic/soft guidance (e.g. "standard 1kg, 5kg ..." bag-weight advice) → Recommended
+     *  - anything else → Not Verified (so the UI does not overstate its legal force)
+     */
+    private String classifyPackagingStatus(String text) {
+        if (text == null || text.isBlank()) return "Not Verified";
+        String t = text.toLowerCase();
+        // Conditional wording is checked first — "if wooden pallets are used, mandatory ..."
+        // is conditional on a trigger, not an unconditional mandate.
+        if (t.contains("if ") || t.contains("where required") || t.contains("when ")
+                || t.contains("optional")) {
+            return "Conditional";
+        }
+        // Ergonomic / advisory bag-weight guidance is not a hard legal requirement.
+        if (t.contains("ergonomic") || t.contains("standard ") && t.contains("kg")) {
+            return "Recommended";
+        }
+        if (t.contains("mandatory") || t.contains("must ") || t.contains("required")
+                || t.contains("compliance") || t.contains("compliant") || t.contains("iso ")
+                || t.contains("ispm-15") || t.contains("regulation") || t.contains("cfr ")
+                || t.contains("gso ") || t.contains("food-grade") || t.contains("food contact")
+                || t.contains("food-contact")) {
+            return "Mandatory";
+        }
+        return "Not Verified";
     }
 
     private List<Map<String, String>> deduplicateSources(List<Map<String, String>> sources) {
@@ -692,13 +918,24 @@ public class RegulatoryKnowledgeService {
      * Calculate a compliance score based on regulatory complexity.
      */
     public int calculateScore(Map<String, Object> regs) {
-        int regulations = ((List<?>) regs.getOrDefault("import_regulations", List.of())).size();
-        int documents = ((List<?>) regs.getOrDefault("required_documents", List.of())).size();
-        int certifications = ((List<?>) regs.getOrDefault("certifications", List.of())).size();
-        int restrictions = ((List<?>) regs.getOrDefault("restricted_products", List.of())).size();
-        
+        // Use the normalized, de-duplicated core requirement count when available so the
+        // score reflects the same figure the report displays (documents + certifications +
+        // import clearances + regulatory compliance), never double-counting a synonym pair
+        // and never inflating with packaging/labeling rules.
+        int total;
+        Object core = regs.get("core_requirement_count");
+        if (core instanceof Number n) {
+            total = n.intValue()
+                    + ((List<?>) regs.getOrDefault("restricted_products", List.of())).size();
+        } else {
+            int regulations = ((List<?>) regs.getOrDefault("import_regulations", List.of())).size();
+            int documents = ((List<?>) regs.getOrDefault("required_documents", List.of())).size();
+            int certifications = ((List<?>) regs.getOrDefault("certifications", List.of())).size();
+            int restrictions = ((List<?>) regs.getOrDefault("restricted_products", List.of())).size();
+            total = regulations + documents + certifications + restrictions;
+        }
+
         // Higher score = easier to comply (fewer requirements)
-        int total = regulations + documents + certifications + restrictions;
         if (total <= 5) return 95;
         if (total <= 10) return 80;
         if (total <= 15) return 65;

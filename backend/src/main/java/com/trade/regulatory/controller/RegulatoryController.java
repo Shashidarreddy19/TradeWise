@@ -89,7 +89,15 @@ public class RegulatoryController {
         response.put("certificationsDetailed", kb.get("certificationsDetailed"));
         response.put("labelingRequirements", kb.get("labelingRequirements"));
         response.put("packagingRequirements", kb.get("packagingRequirements"));
+        response.put("packagingRequirementsDetailed", kb.get("packagingRequirementsDetailed"));
+        // Normalized destination requirement sub-categories + core category counts.
+        response.put("importClearances", kb.get("importClearances"));
+        response.put("regulatoryCompliance", kb.get("regulatoryCompliance"));
+        response.put("requirementCategoryCounts", kb.get("requirementCategoryCounts"));
+        response.put("core_requirement_count", kb.get("core_requirement_count"));
         response.put("restrictions", kb.get("restrictions"));
+        response.put("restrictionsVerified", kb.get("restrictionsVerified"));
+        response.put("restrictionsStatusMessage", kb.get("restrictionsStatusMessage"));
         response.put("dutiesAndTaxes", kb.get("dutiesAndTaxes"));
         response.put("complianceAssessment", kb.get("complianceAssessment"));
         response.put("sources", kb.get("sources"));
@@ -157,6 +165,12 @@ public class RegulatoryController {
         }
         ComplianceScore score = retrievalService.calculateCompliance(regResult);
 
+        // Normalized category breakdown from the knowledge base (populated on the fallback path).
+        Object kbCategoryCounts = null;
+        Object kbCoreCount = null;
+        Object kbImportClearances = null;
+        Object kbRegulatoryCompliance = null;
+
         // Use knowledge-based scoring when DB data is generic (chapter-level match)
         // or when there's insufficient specific data
         boolean isGenericMatch = "HS2_CHAPTER".equals(regResult.matchType)
@@ -175,7 +189,14 @@ public class RegulatoryController {
             score.restrictionsCount = ((List<?>) kb.getOrDefault("restricted_products", List.of())).size();
             score.proceduresCount = ((List<?>) kb.getOrDefault("customs_rules", List.of())).size();
             score.regulationFound = true;
-            score.regulationFound = true;
+
+            // Attach the normalized core-category breakdown so the compliance response can
+            // drive the report's Core Requirements panel and checklist without the frontend
+            // re-deriving (and potentially mis-deriving) the categories.
+            kbCategoryCounts = kb.get("requirementCategoryCounts");
+            kbCoreCount = kb.get("core_requirement_count");
+            kbImportClearances = kb.get("importClearances");
+            kbRegulatoryCompliance = kb.get("regulatoryCompliance");
         }
 
         Map<String, Object> response = new LinkedHashMap<>();
@@ -192,6 +213,12 @@ public class RegulatoryController {
         response.put("labelingCount", score.labelingCount);
         response.put("restrictionsCount", score.restrictionsCount);
         response.put("proceduresCount", score.proceduresCount);
+        // Normalized core-category breakdown (documents / certifications / import clearances /
+        // regulatory compliance) so the report renders exactly one canonical count per bucket.
+        if (kbCategoryCounts != null) response.put("requirementCategoryCounts", kbCategoryCounts);
+        if (kbCoreCount != null) response.put("coreRequirementCount", kbCoreCount);
+        if (kbImportClearances != null) response.put("importClearances", kbImportClearances);
+        if (kbRegulatoryCompliance != null) response.put("regulatoryCompliance", kbRegulatoryCompliance);
         return ResponseEntity.ok(response);
     }
 
